@@ -1,171 +1,200 @@
-/* Color Palette */
 :root {
     --lavender: #e6d0ec;
-    --purple: #c4a3d8;
-    --light-bg: #f2ecfb;
+    --purple: #b27dd3;
+    --light-bg: #f9f6fc;
     --dark: #2c2c2c;
     --muted-gray: #78768b;
     --mint: #daf7f5;
+    --gradient: linear-gradient(135deg, #e6d0ec, #c4a3d8);
   }
   
   * {
-    box-sizing: border-box;
     margin: 0;
     padding: 0;
-    font-family: "Segoe UI", sans-serif;
+    box-sizing: border-box;
+    font-family: 'Poppins', sans-serif;
   }
   
   body {
-    background-color: var(--lavender);
+    background: var(--gradient);
     min-height: 100vh;
     display: flex;
-    align-items: center;
     justify-content: center;
-  }
-  
-  .background {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: var(--lavender);
-    z-index: -1;
+    align-items: center;
+    padding: 30px;
   }
   
   .login-container {
-    width: 1150px;
-    height:650px;
+    width: 1200px;
+    height: 700px;
     display: flex;
-    background-color: var(--purple);
-    border-radius: 20px;
+    background: var(--light-bg);
+    border-radius: 30px;
+    box-shadow: 0 40px 60px rgba(0, 0, 0, 0.15);
     overflow: hidden;
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-  }
-  
-  .branding, .login-box {
-    flex: 1;
-    padding: 40px 30px;
+    animation: fadeIn 1s ease forwards;
   }
   
   .branding {
-    background-color: var(--purple);
+    flex: 1;
+    background: var(--purple);
     color: white;
+    padding: 60px;
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
-  }
-  
-  .branding h1 {
-    font-size: 2.8rem;
-    margin-bottom: 15px;
-  }
-  
-  .branding p {
-    font-size: 1.2rem;
-    max-width: 250px;
-    text-align: center;
-    line-height: 1.5;
+    clip-path: polygon(0% 0, 100% 0, 85% 100%, 0% 100%);
   }
   
   .login-box {
-    background-color: var(--light-bg);
+    flex: 1.2;
+    padding: 80px 60px;
     display: flex;
     flex-direction: column;
     justify-content: center;
+  }
+
+  .login-box h1{
+    text-align: center;
+    margin-bottom: 100px;
+    font-size: 5rem;
+    font-weight: 600;
+    letter-spacing: 1px;
+    animation: slideIn 1s ease forwards;
+
+  }
+  .login-box h1 span{
+    color: red;
+  }
+
+  .login-box p{
+    font-size: 1.5rem;
+    text-align: center;
+    position: relative;
+    bottom:75px;
+    opacity: 0.9;
+    animation: fadeIn 1.2s ease forwards;
   }
   
   .login-box h2 {
-    display: inline-block;
-    margin-bottom: 30px;
-    align-items: center;
-    justify-content: center;
+    font-size: 2.5rem;
+    font-weight: 600;
+    text-align: center;
+    position: relative;
+    bottom:55px;
+    margin-bottom: 40px;
     color: var(--dark);
-    font-size: 2rem;
   }
   
   form {
+    position: relative;
+    bottom:60px;
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 24px;
   }
   
   .input-group {
     position: relative;
-    margin-bottom: 10px;
   }
   
   .input-group input {
     width: 100%;
-    padding: 14px 12px;
-    border: 1px solid var(--muted-gray);
-    border-radius: 10px;
-    background-color: transparent;
-    font-size: 1rem;
+    padding: 16px 14px;
+    border-radius: 14px;
+    border: 1.5px solid var(--muted-gray);
+    background: transparent;
     color: var(--dark);
-    outline: none;
-    transition: all 0.2s;
+    font-size: 1rem;
+    transition: border-color 0.3s ease, background 0.3s ease;
+  }
+  
+  .input-group input:focus {
+    border-color: var(--purple);
+    background-color: #f5effb;
   }
   
   .input-group label {
     position: absolute;
-    top: 14px;
-    left: 12px;
-    background-color: var(--light-bg);
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
     color: var(--muted-gray);
-    padding: 0 5px;
-    font-size: 1rem;
+    background: var(--light-bg);
+    padding: 0 6px;
+    transition: all 0.25s ease;
     pointer-events: none;
-    transition: 0.2s ease;
   }
   
   .input-group input:focus + label,
   .input-group input:not(:placeholder-shown) + label {
     top: -10px;
-    left: 10px;
+    left: 12px;
     font-size: 0.8rem;
-    color: var(--dark);
+    color: var(--purple);
   }
   
   button {
-    padding: 12px;
-    background-color: var(--dark);
-    color: white;
+    padding: 16px;
     border: none;
-    border-radius: 10px;
+    background: var(--dark);
+    color: white;
     font-size: 1rem;
+    border-radius: 14px;
     cursor: pointer;
-    transition: background 0.3s ease;
+    transition: background 0.3s ease, transform 0.2s ease;
   }
   
   button:hover {
     background-color: var(--muted-gray);
+    transform: translateY(-2px);
   }
   
   .signup-link {
+    margin-top: 20px;
     text-align: center;
-    margin-top: 15px;
-    font-size: 0.95rem;
-    color: var(--dark);
-  }
+    font-size: 1rem;
+    color: var(--muted-gray);
+    position: relative;
+    bottom:50px;
+}
   
   .signup-link a {
-    color: var(--dark);
+    color: #000;
+    font-weight: 500;
+    text-decoration: none;
+  }
+  
+  .signup-link a:hover {
     text-decoration: underline;
   }
   
-  @media (max-width: 768px) {
+  /* Animations */
+  @keyframes fadeIn {
+    0% { opacity: 0; transform: scale(0.96); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+  
+  @keyframes slideIn {
+    from { transform: translateY(-20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  
+  /* Responsive */
+  @media (max-width: 1000px) {
     .login-container {
       flex-direction: column;
+      height: auto;
     }
   
     .branding {
-      padding: 30px 20px;
+      clip-path: none;
+      border-radius: 30px 30px 0 0;
     }
   
     .login-box {
-      padding: 30px 20px;
+      padding: 60px 30px;
     }
   }
   
