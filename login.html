@@ -27,12 +27,13 @@
       <h2>Login</h2>
 
       <!-- Login form -->
-      <form action="/login" method="POST">
+      <form id="login-form">
+        
 
         <!-- Input field for the username -->
         <div class="input-group">
-          <input type="text" name="username" id="username" required placeholder=" " />
-          <label for="username">Username</label>
+          <input type="text" name="email" id="email" required placeholder=" " />
+          <label for="email">Email</label>
         </div>
 
         <!-- Input field for the password -->
@@ -51,5 +52,43 @@
       </div>
     </div>
   </div>
+
+ <!-- Supabase connection -->
+
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+
+  <script>
+    // Initialize Supabase client
+    const { createClient } = supabase;
+const client = createClient(
+
+      'https://pkkmufozdmsztrxbkynw.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBra211Zm96ZG1zenRyeGJreW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ5OTE5NjksImV4cCI6MjA2MDU2Nzk2OX0.UjsX4v-65M9PSMJtcVfikyyYMnjUQ4KDq541b3DiY78'
+    );
+
+    // Handle login form submission
+    const form = document.getElementById('login-form');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+
+      // Use Supabase Auth to sign in with email and password
+      const { data, error } = await client.auth.signInWithPassword({
+  email,
+  password
+});
+
+      if (error) {
+        alert('Login failed: ' + error.message);
+      } else {
+        alert('Login successful!');
+        // Redirect to dashboard or home page
+        // window.location.href = '/dashboard.html';
+      }
+    });
+  </script>
 </body>
 </html>
