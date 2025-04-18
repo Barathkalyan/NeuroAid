@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>NeuroAid - Sign Up</title>
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <!-- Link to external CSS -->
+  <link rel="stylesheet" href="signup.css" />
+</head>
+<body>
+  <div class="signup-container">
+    <div class="form-box">
+      <h1>Neuro<span>Aid</span></h1>
+      <p>"Your personal mental health companion"</p>
+      <h2>Create Account</h2>
+
+      <form id="signup-form">
+        <div class="input-group">
+          <input type="email" id="email" required placeholder=" " />
+          <label for="email">Email</label>
+        </div>
+
+        <div class="input-group">
+          <input type="password" id="password" required placeholder=" " />
+          <label for="password">Password</label>
+        </div>
+
+        <button type="submit">Sign Up</button>
+      </form>
+
+      <div class="login-link">
+        Already have an account? <a href="/login.html">Login</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Supabase CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <script>
+    const { createClient } = supabase;
+    const client = createClient(
+      'https://pkkmufozdmsztrxbkynw.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBra211Zm96ZG1zenRyeGJreW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ5OTE5NjksImV4cCI6MjA2MDU2Nzk2OX0.UjsX4v-65M9PSMJtcVfikyyYMnjUQ4KDq541b3DiY78'
+    );
+
+    const form = document.getElementById('signup-form');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+
+      const { data, error } = await client.auth.signUp({
+        email,
+        password
+      });
+
+      if (error) {
+        alert("Sign up failed: " + error.message);
+      } else {
+        alert("Signup successful! Please verify your email.");
+        window.location.href = '/login.html';
+      }
+    });
+  </script>
+</body>
+</html>
