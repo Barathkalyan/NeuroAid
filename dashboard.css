@@ -6,7 +6,7 @@
   }
   
   body {
-    background: #f6f9fc;
+    background: #e6d0ec;
     color: #333;
     min-height: 100vh;
     display: flex;
@@ -14,8 +14,8 @@
   }
   
   header {
-    background: #4f46e5;
-    color: white;
+    background: #b27dd3;
+    color: rgb(0, 0, 0.15);
     padding: 20px 40px;
     display: flex;
     justify-content: space-between;
@@ -28,7 +28,7 @@
   }
   
   header h1 span {
-    color: #a5f3fc;
+    color: rgb(255, 0, 0);
   }
   
   nav a {
@@ -47,7 +47,7 @@
   }
   
   .card {
-    background: white;
+    background: #f9f6fc;
     border-radius: 16px;
     padding: 20px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
