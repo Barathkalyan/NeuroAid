@@ -4,53 +4,87 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>NeuroAid Dashboard</title>
-
   <!-- Remix Icons -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon/fonts/remixicon.css" />
-  
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css" />
   <!-- Google Fonts -->
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
-
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <!-- Link to external CSS -->
   <link rel="stylesheet" href="dashboard.css" />
 </head>
 <body>
-
-  <header>
-    <h1>Neuro<span>Aid</span></h1>
+  <div class="sidebar">
+    <div class="logo">
+      <i class="ri-brain-line"></i>
+      <h1>Neuro<span>Aid</span></h1>
+    </div>
     <nav>
-      <a href="#">Home</a>
-      <a href="#">Journal</a>
-      <a href="#">Progress</a>
-      <a href="#">Settings</a>
+      <a href="#" class="active"><i class="ri-home-5-line"></i> Home</a>
+      <a href="#"><i class="ri-booklet-line"></i> Journal</a>
+      <a href="#"><i class="ri-bar-chart-2-line"></i> Progress</a>
+      <a href="#"><i class="ri-settings-3-line"></i> Settings</a>
+      <a href="#"><i class="ri-settings-3-line"></i> Profile </a>
     </nav>
-  </header>
+  </div>
 
-  <main class="container">
-    <div class="card">
-      <h3>Welcome Back 👋</h3>
-      <p>Your mental well-being matters. Let’s start today with a positive mindset.</p>
-    </div>
+  <div class="wrapper">
+    <main class="main-content">
+      <header>
+        <div class="search-bar">
+          <i class="ri-search-line"></i>
+          <input type="text" placeholder="Search features, journals..." />
+        </div>
+        <div class="profile">
+          <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile" />
+          <span>John Doe</span>
+          <i class="ri-arrow-down-s-line"></i>
+        </div>
+      </header>
 
-    <div class="card">
-      <h3>Daily Journal</h3>
-      <p>Reflect on your day, track your emotions, and express your thoughts freely.</p>
-    </div>
+      <section class="dashboard">
+        <h2>Dashboard Overview</h2>
+        <div class="card-grid">
+          <div class="card welcome">
+            <div class="card-icon"><i class="ri-hand-heart-line"></i></div>
+            <div class="card-content">
+              <h3>Welcome Back 👋</h3>
+              <p>Your mental well-being is our priority. Start today with a positive mindset.</p>
+              <button class="card-button">Get Started</button>
+            </div>
+          </div>
 
-    <div class="card">
-      <h3>Mood Tracker</h3>
-      <p>Log how you’re feeling and monitor patterns over time for better self-awareness.</p>
-    </div>
+          <div class="card journal">
+            <div class="card-icon"><i class="ri-book-open-line"></i></div>
+            <div class="card-content">
+              <h3>Daily Journal</h3>
+              <p>Reflect on your day and express your thoughts to boost self-awareness.</p>
+              <button class="card-button">Write Now</button>
+            </div>
+          </div>
 
-    <div class="card">
-      <h3>Mindfulness Tips</h3>
-      <p>Explore calming exercises and breathing techniques to center your thoughts.</p>
-    </div>
-  </main>
+          <div class="card mood">
+            <div class="card-icon"><i class="ri-emotion-happy-line"></i></div>
+            <div class="card-content">
+              <h3>Mood Tracker</h3>
+              <p>Log your emotions to monitor patterns and gain deeper insights.</p>
+              <button class="card-button">Track Mood</button>
+            </div>
+          </div>
 
-  <footer>
-    © 2025 NeuroAid. Your mental health companion.
-  </footer>
+          <div class="card tips">
+            <div class="card-icon"><i class="ri-mind-map"></i></div>
+            <div class="card-content">
+              <h3>Mindfulness Tips</h3>
+              <p>Discover exercises to calm your mind and stay centered.</p>
+              <button class="card-button">Explore Tips</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
 
+    <footer>
+      <span>© 2025 NeuroAid. Your mental health companion.</span>
+    </footer>
+  </div>
 </body>
 </html>
