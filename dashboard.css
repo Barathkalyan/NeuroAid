@@ -1,13 +1,13 @@
 :root {
-  --primary: #7c3aed; /* Vibrant purple for interactive elements */
-  --secondary: #f9faff; /* Very light background for cards and secondary elements */
-  --accent: #d4bfff; /* Soft purple accent for highlights */
-  --glass-bg: rgba(255, 255, 255, 0.9); /* White-based glass background for clarity */
-  --glass-border: rgba(200, 200, 200, 0.3); /* Subtle gray border for glass effect */
-  --shadow: 0 10px 30px rgba(0, 0, 0, 0.05); /* Neutral shadow for depth */
-  --header-bg: linear-gradient(90deg, #a78bfa 0%, #c084fc 100%); /* Purple gradient for header */
-  --text-primary: #1f2937; /* Dark gray for primary text */
-  --text-secondary: #6b7280; /* Lighter gray for secondary text */
+  --primary: #7c3aed;
+  --secondary: #f9faff;
+  --accent: #d4bfff;
+  --glass-bg: rgba(255, 255, 255, 0.9);
+  --glass-border: rgba(200, 200, 200, 0.3);
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+  --header-bg: linear-gradient(90deg, #a78bfa 0%, #c084fc 100%);
+  --text-primary: #1f2937;
+  --text-secondary: #6b7280;
 }
 
 * {
@@ -19,19 +19,17 @@
 
 body {
   min-height: 100vh;
-  background: #f3f4f6; /* Light gray background for better contrast */
+  background: #f3f4f6;
   display: flex;
   flex-direction: column;
 }
 
-/* Wrapper to ensure footer stays at the bottom */
 .wrapper {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
 }
 
-/* Sidebar */
 .sidebar {
   width: 260px;
   background: var(--glass-bg);
@@ -92,7 +90,6 @@ body {
   color: #fff;
 }
 
-/* Main Content */
 .main-content {
   margin-left: 260px;
   flex: 1;
@@ -120,26 +117,26 @@ header {
   background: rgba(255, 255, 255, 0.3);
   padding: 14px 20px;
   border-radius: 10px;
-  width: 450px; /* Increased width for a longer search bar */
+  width: 450px;
 }
 
 .search-bar i {
   color: #fff;
-  font-size: 1.5rem; /* Larger icon */
+  font-size: 1.5rem;
 }
 
 .search-bar input {
   background: transparent;
   border: none;
   color: #fff;
-  font-size: 1.2rem; /* Larger font size for input */
+  font-size: 1.2rem;
   outline: none;
   width: 100%;
 }
 
 .search-bar input::placeholder {
   color: rgba(255, 255, 255, 0.7);
-  font-size: 1.2rem; /* Match placeholder font size */
+  font-size: 1.2rem;
 }
 
 .profile {
@@ -168,7 +165,6 @@ header {
   font-size: 1.2rem;
 }
 
-/* Dashboard Section */
 .dashboard {
   flex: 1;
 }
@@ -247,13 +243,11 @@ header {
   background: #6d28d9;
 }
 
-/* Card color accents */
 .card.welcome .card-icon { background: #f5f3ff; color: #7c3aed; }
 .card.journal .card-icon { background: #f5f3ff; color: #8b5cf6; }
 .card.mood .card-icon { background: #f5f3ff; color: #a78bfa; }
 .card.tips .card-icon { background: #f5f3ff; color: #c084fc; }
 
-/* Footer */
 footer {
   text-align: center;
   padding: 20px;
@@ -262,11 +256,10 @@ footer {
   font-size: 0.9rem;
   backdrop-filter: blur(4px);
   border-top: 1px solid var(--glass-border);
-  margin-top: auto; /* Ensures footer stays at the bottom */
+  margin-top: auto;
   width: 100%;
 }
 
-/* Responsive Design */
 @media (max-width: 900px) {
   .sidebar {
     width: 80px;
@@ -286,7 +279,7 @@ footer {
     margin-left: 80px;
   }
   .search-bar {
-    width: 300px; /* Adjusted for smaller screens */
+    width: 300px;
   }
 }
 

@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>NeuroAid - Profile</title>
+  <!-- Remix Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css" />
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Link to external CSS -->
+  <link rel="stylesheet" href="dashboard.css" />
+  <link rel="stylesheet" href="css/profile.css" />
+  <!-- Link to JavaScript -->
+  <script src="js/utils.js" defer></script>
+  <script src="js/profile.js" defer></script>
+</head>
+<body>
+  <div class="sidebar">
+    <div class="logo">
+      <i class="ri-brain-line"></i>
+      <h1>Neuro<span>Aid</span></h1>
+    </div>
+    <nav>
+      <a href="index.html"><i class="ri-home-5-line"></i> Home</a>
+      <a href="#"><i class="ri-booklet-line"></i> Journal</a>
+      <a href="#"><i class="ri-bar-chart-2-line"></i> Progress</a>
+      <a href="#"><i class="ri-settings-3-line"></i> Settings</a>
+      <a href="profile.html" class="active"><i class="ri-user-line"></i> Profile</a>
+    </nav>
+  </div>
+
+  <div class="wrapper">
+    <main class="main-content">
+      <header>
+        <div class="search-bar">
+          <i class="ri-search-line"></i>
+          <input type="text" placeholder="Search features, journals..." />
+        </div>
+        <div class="profile">
+          <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile" id="header-profile-pic" />
+          <span>John Doe</span>
+          <i class="ri-arrow-down-s-line"></i>
+        </div>
+      </header>
+
+      <section class="profile-section">
+        <div class="profile-header">
+          <h2>Your Profile</h2>
+          <p>Complete your profile to personalize your NeuroAid experience and get the most out of your mental health journey.</p>
+          <div class="progress-container">
+            <div class="progress-circle">
+              <svg class="progress-ring" width="120" height="120">
+                <circle class="progress-ring__circle" stroke="#7c3aed" stroke-width="8" fill="transparent" r="52" cx="60" cy="60"/>
+              </svg>
+              <span class="progress-text">0% Complete</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Profile Overview -->
+        <div class="card profile-overview">
+          <h3>Profile Overview</h3>
+          <div class="profile-picture">
+            <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile Picture" id="profile-pic" />
+            <button class="edit-button" id="edit-picture-btn">Upload Photo</button>
+            <input type="file" id="profile-pic-input" accept="image/*" style="display: none;" />
+          </div>
+          <div class="profile-info">
+            <div class="info-field">
+              <label>Name</label>
+              <input type="text" id="name-input" value="John Doe" readonly />
+              <button class="edit-field-btn" data-field="name">Edit</button>
+            </div>
+            <div class="info-field">
+              <label>Email</label>
+              <input type="email" id="email-input" value="john.doe@example.com" readonly />
+              <button class="edit-field-btn" data-field="email">Edit</button>
+            </div>
+            <div class="info-field">
+              <label>Username</label>
+              <input type="text" id="username-input" value="@johndoe" readonly />
+              <button class="edit-field-btn" data-field="username">Edit</button>
+            </div>
+            <p class="status complete">Basic Info: Complete</p>
+          </div>
+        </div>
+
+        <!-- Personal Details -->
+        <div class="card personal-details">
+          <h3>Personal Details</h3>
+          <div class="form-group">
+            <label for="age-input">Age (Optional)</label>
+            <input type="number" id="age-input" placeholder="Enter your age" />
+          </div>
+          <div class="form-group">
+            <label for="gender-input">Gender</label>
+            <select id="gender-input">
+              <option value="">Select Gender</option>
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+              <option value="non-binary">Non-binary</option>
+              <option value="prefer-not-to-say">Prefer not to say</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="location-input">Location (Optional)</label>
+            <input type="text" id="location-input" placeholder="Enter your city/country" />
+          </div>
+          <div class="form-group">
+            <label for="language-input">Preferred Language</label>
+            <select id="language-input">
+              <option value="">Select Language</option>
+              <option value="english">English</option>
+              <option value="spanish">Spanish</option>
+              <option value="french">French</option>
+            </select>
+          </div>
+          <button class="card-button save-btn" id="save-personal-details">Save</button>
+          <p class="status incomplete">Personal Details: Not Started</p>
+        </div>
+
+        <!-- Mental Health Goals -->
+        <div class="card mental-health-goals">
+          <h3>Your Mental Health Goals</h3>
+          <div class="form-group">
+            <label for="primary-goal">Primary Goal</label>
+            <select id="primary-goal">
+              <option value="">Select Goal</option>
+              <option value="reduce-stress">Reduce Stress</option>
+              <option value="improve-sleep">Improve Sleep</option>
+              <option value="manage-anxiety">Manage Anxiety</option>
+              <option value="build-mindfulness">Build Mindfulness</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="frequency">Engagement Frequency</label>
+            <select id="frequency">
+              <option value="">Select Frequency</option>
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+              <option value="biweekly">Bi-weekly</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Preferred Activities</label>
+            <div class="checkbox-group">
+              <label><input type="checkbox" name="activities" value="journaling"> Journaling</label>
+              <label><input type="checkbox" name="activities" value="mood-tracking"> Mood Tracking</label>
+              <label><input type="checkbox" name="activities" value="mindfulness"> Mindfulness Exercises</label>
+            </div>
+          </div>
+          <button class="card-button save-btn" id="save-goals">Save</button>
+          <p class="status incomplete">Goals: Not Started</p>
+        </div>
+
+        <!-- Privacy & Security -->
+        <div class="card privacy-security">
+          <h3>Privacy & Security</h3>
+          <div class="action-group">
+            <button class="action-btn" id="change-password-btn">Change Password</button>
+            <button class="action-btn" id="export-data-btn">Export Data</button>
+            <button class="action-btn delete" id="delete-account-btn">Delete Account</button>
+          </div>
+        </div>
+
+        <!-- Call-to-Action -->
+        <div class="cta-message">
+          <p>Complete your profile to unlock personalized features! Add your mental health goals to continue.</p>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <span>© 2025 NeuroAid. Your mental health companion.</span>
+    </footer>
+  </div>
+</body>
+</html>
