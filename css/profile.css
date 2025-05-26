@@ -279,20 +279,21 @@
   background: linear-gradient(145deg, #7c3aed, #6d28d9);
   color: #fff;
   border: none;
-  padding: 10px 20px;
-  border-radius: 8px;
-  font-size: 0.95rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: transform 0.1s, box-shadow 0.2s;
-  height: 48px; /* Match input height for alignment */
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 20px 20px;
+  border-radius: 8px;
+  font-size: 1.2rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.2s;
+  height: 58px; /* Match input height for alignment */
+  align-self: center;
 }
 
 .save-btn:hover {
-  transform: translateY(-1px);
+  transform: translateY(-2px);
   box-shadow: 0 2px 8px rgba(124, 58, 237, 0.3);
 }
 
@@ -303,9 +304,9 @@
 .action-group {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 25px;
   width: 100%;
-  align-items: flex-start;
+  align-items: center;
 }
 
 .action-btn {
