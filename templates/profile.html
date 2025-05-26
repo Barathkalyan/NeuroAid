@@ -9,11 +9,11 @@
   <!-- Google Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <!-- Link to external CSS -->
-  <link rel="stylesheet" href="dashboard.css" />
-  <link rel="stylesheet" href="css/profile.css" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/profile.css') }}" />
   <!-- Link to JavaScript -->
-  <script src="js/utils.js" defer></script>
-  <script src="js/profile.js" defer></script>
+  <script src="{{ url_for('static', filename='js/utils.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/profile.js') }}" defer></script>
 </head>
 <body>
   <div class="sidebar">
@@ -22,11 +22,12 @@
       <h1>Neuro<span>Aid</span></h1>
     </div>
     <nav>
-      <a href="index.html"><i class="ri-home-5-line"></i> Home</a>
+      <a href="{{ url_for('index') }}"><i class="ri-home-5-line"></i> Home</a>
       <a href="#"><i class="ri-booklet-line"></i> Journal</a>
       <a href="#"><i class="ri-bar-chart-2-line"></i> Progress</a>
       <a href="#"><i class="ri-settings-3-line"></i> Settings</a>
-      <a href="profile.html" class="active"><i class="ri-user-line"></i> Profile</a>
+      <a href="{{ url_for('profile') }}" class="active"><i class="ri-user-line"></i> Profile</a>
+      <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
     </nav>
   </div>
 
@@ -39,7 +40,7 @@
         </div>
         <div class="profile">
           <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile" id="header-profile-pic" />
-          <span>John Doe</span>
+          <span>{{ session.get('user_email', 'User').split('@')[0] }}</span>
           <i class="ri-arrow-down-s-line"></i>
         </div>
       </header>
@@ -81,7 +82,7 @@
               <div class="form-field">
                 <label for="email-input">Email</label>
                 <div class="input-container">
-                  <input type="email" id="email-input" value="john.doe@example.com" readonly aria-label="Email" />
+                  <input type="email" id="email-input" value="{{ session.get('user_email', 'john.doe@example.com') }}" readonly aria-label="Email" />
                   <button class="edit-field-btn" data-field="email">Edit</button>
                 </div>
               </div>

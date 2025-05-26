@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NeuroAid - Sign Up</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/signup.css') }}" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- Main container for the login page -->
+  <div class="login-container">
+    <div class="branding">
+    </div>
+    <div class="login-box">
+      <h1>Neuro<span>Aid</span></h1>
+      <p>"Your personal mental health companion"</p>
+      <h2>Signup</h2>
+
+      <!-- Display error message if signup fails -->
+      {% if error %}
+        <p style="color: red; text-align: center;">{{ error }}</p>
+      {% endif %}
+
+      <!-- Signup form -->
+      <form id="signup-form" method="POST" action="{{ url_for('signup') }}">
+        <div class="input-group">
+          <input type="text" name="email" id="email" required placeholder=" " />
+          <label for="email">Email</label>
+        </div>
+        <!-- Input field for the password -->
+        <div class="input-group">
+          <input type="password" name="password" id="password" required placeholder=" " />
+          <label for="password">Password</label>
+        </div>
+        <div class="input-group">
+          <input type="password" name="confirm_password" id="confirm-password" required placeholder=" " />
+          <label for="confirm-password">Confirm Password</label>
+        </div>
+
+        <button type="submit">Signup</button>
+      </form>
+      <div class="login-link">
+        Already have an account? <a href="{{ url_for('login') }}">Login!</a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

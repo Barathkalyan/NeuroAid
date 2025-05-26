@@ -1,5 +1,5 @@
 const calculateProfileCompletion = (profileData) => {
-  const totalFields = 7; // Name, Email, Username, Age, Gender, Location, Language, Primary Goal, Frequency, Activities
+  const totalFields = 7; 
   let filledFields = 0;
 
   // Profile Overview
