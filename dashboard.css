@@ -315,3 +315,8 @@ footer {
     font-size: 1rem;
   }
 }
+
+.footer{
+  background-color: black;
+  background: black;
+  height: 30px;}
