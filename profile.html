@@ -50,8 +50,8 @@
           <p>Complete your profile to personalize your NeuroAid experience and get the most out of your mental health journey.</p>
           <div class="progress-container">
             <div class="progress-circle">
-              <svg class="progress-ring" width="120" height="120">
-                <circle class="progress-ring__circle" stroke="#7c3aed" stroke-width="8" fill="transparent" r="52" cx="60" cy="60"/>
+              <svg class="progress-ring" width="100" height="100">
+                <circle class="progress-ring__circle" stroke="#7c3aed" stroke-width="8" fill="transparent" r="44" cx="50" cy="50"/>
               </svg>
               <span class="progress-text">0% Complete</span>
             </div>
@@ -64,31 +64,33 @@
             <h3>Profile Overview</h3>
             <p class="status-indicator complete">Basic Info: Complete</p>
           </div>
-          <div class="profile-picture">
-            <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile Picture" id="profile-pic" />
-            <button class="edit-button" id="edit-picture-btn">Upload Photo</button>
-            <input type="file" id="profile-pic-input" accept="image/*" style="display: none;" />
-          </div>
-          <div class="profile-info">
-            <div class="form-row">
-              <label for="name-input">Name</label>
-              <div class="input-group">
-                <input type="text" id="name-input" value="John Doe" readonly aria-label="Name" />
-                <button class="edit-field-btn" data-field="name">Edit</button>
-              </div>
+          <div class="profile-content">
+            <div class="profile-picture">
+              <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile Picture" id="profile-pic" />
+              <button class="edit-button" id="edit-picture-btn">Upload Photo</button>
+              <input type="file" id="profile-pic-input" accept="image/*" style="display: none;" />
             </div>
-            <div class="form-row">
-              <label for="email-input">Email</label>
-              <div class="input-group">
-                <input type="email" id="email-input" value="john.doe@example.com" readonly aria-label="Email" />
-                <button class="edit-field-btn" data-field="email">Edit</button>
+            <div class="form-container">
+              <div class="form-field">
+                <label for="name-input">Name</label>
+                <div class="input-container">
+                  <input type="text" id="name-input" value="John Doe" readonly aria-label="Name" />
+                  <button class="edit-field-btn" data-field="name">Edit</button>
+                </div>
               </div>
-            </div>
-            <div class="form-row">
-              <label for="username-input">Username</label>
-              <div class="input-group">
-                <input type="text" id="username-input" value="@johndoe" readonly aria-label="Username" />
-                <button class="edit-field-btn" data-field="username">Edit</button>
+              <div class="form-field">
+                <label for="email-input">Email</label>
+                <div class="input-container">
+                  <input type="email" id="email-input" value="john.doe@example.com" readonly aria-label="Email" />
+                  <button class="edit-field-btn" data-field="email">Edit</button>
+                </div>
+              </div>
+              <div class="form-field">
+                <label for="username-input">Username</label>
+                <div class="input-container">
+                  <input type="text" id="username-input" value="@johndoe" readonly aria-label="Username" />
+                  <button class="edit-field-btn" data-field="username">Edit</button>
+                </div>
               </div>
             </div>
           </div>
@@ -100,35 +102,45 @@
             <h3>Personal Details</h3>
             <p class="status-indicator incomplete">Personal Details: Not Started</p>
           </div>
-          <div class="form-row">
-            <label for="age-input">Age (Optional)</label>
-            <input type="number" id="age-input" placeholder="Enter your age" aria-label="Age" />
-          </div>
-          <div class="form-row">
-            <label for="gender-input">Gender</label>
-            <select id="gender-input" aria-label="Gender">
-              <option value="">Select Gender</option>
-              <option value="male">Male</option>
-              <option value="female">Female</option>
-              <option value="non-binary">Non-binary</option>
-              <option value="prefer-not-to-say">Prefer not to say</option>
-            </select>
-          </div>
-          <div class="form-row">
-            <label for="location-input">Location (Optional)</label>
-            <input type="text" id="location-input" placeholder="Enter your city/country" aria-label="Location" />
-          </div>
-          <div class="form-row">
-            <label for="language-input">Preferred Language</label>
-            <select id="language-input" aria-label="Preferred Language">
-              <option value="">Select Language</option>
-              <option value="english">English</option>
-              <option value="spanish">Spanish</option>
-              <option value="french">French</option>
-            </select>
-          </div>
-          <div class="form-actions">
-            <button class="card-button save-btn" id="save-personal-details">Save</button>
+          <div class="form-container">
+            <div class="form-field">
+              <label for="age-input">Age (Optional)</label>
+              <div class="input-container">
+                <input type="number" id="age-input" placeholder="Enter your age" aria-label="Age" />
+              </div>
+            </div>
+            <div class="form-field">
+              <label for="gender-input">Gender</label>
+              <div class="input-container">
+                <select id="gender-input" aria-label="Gender">
+                  <option value="">Select Gender</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="non-binary">Non-binary</option>
+                  <option value="prefer-not-to-say">Prefer not to say</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-field">
+              <label for="location-input">Location (Optional)</label>
+              <div class="input-container">
+                <input type="text" id="location-input" placeholder="Enter your city/country" aria-label="Location" />
+              </div>
+            </div>
+            <div class="form-field">
+              <label for="language-input">Preferred Language</label>
+              <div class="input-container">
+                <select id="language-input" aria-label="Preferred Language">
+                  <option value="">Select Language</option>
+                  <option value="english">English</option>
+                  <option value="spanish">Spanish</option>
+                  <option value="french">French</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-actions">
+              <button class="save-btn" id="save-personal-details">Save</button>
+            </div>
           </div>
         </div>
 
@@ -138,35 +150,50 @@
             <h3>Your Mental Health Goals</h3>
             <p class="status-indicator incomplete">Goals: Not Started</p>
           </div>
-          <div class="form-row">
-            <label for="primary-goal">Primary Goal</label>
-            <select id="primary-goal" aria-label="Primary Goal">
-              <option value="">Select Goal</option>
-              <option value="reduce-stress">Reduce Stress</option>
-              <option value="improve-sleep">Improve Sleep</option>
-              <option value="manage-anxiety">Manage Anxiety</option>
-              <option value="build-mindfulness">Build Mindfulness</option>
-            </select>
-          </div>
-          <div class="form-row">
-            <label for="frequency">Engagement Frequency</label>
-            <select id="frequency" aria-label="Engagement Frequency">
-              <option value="">Select Frequency</option>
-              <option value="daily">Daily</option>
-              <option value="weekly">Weekly</option>
-              <option value="biweekly">Bi-weekly</option>
-            </select>
-          </div>
-          <div class="form-row">
-            <label>Preferred Activities</label>
-            <div class="checkbox-group">
-              <label><input type="checkbox" name="activities" value="journaling" aria-label="Journaling"> Journaling</label>
-              <label><input type="checkbox" name="activities" value="mood-tracking" aria-label="Mood Tracking"> Mood Tracking</label>
-              <label><input type="checkbox" name="activities" value="mindfulness" aria-label="Mindfulness Exercises"> Mindfulness Exercises</label>
+          <div class="form-container">
+            <div class="form-field">
+              <label for="primary-goal">Primary Goal</label>
+              <div class="input-container">
+                <select id="primary-goal" aria-label="Primary Goal">
+                  <option value="">Select Goal</option>
+                  <option value="reduce-stress">Reduce Stress</option>
+                  <option value="improve-sleep">Improve Sleep</option>
+                  <option value="manage-anxiety">Manage Anxiety</option>
+                  <option value="build-mindfulness">Build Mindfulness</option>
+                </select>
+              </div>
             </div>
-          </div>
-          <div class="form-actions">
-            <button class="card-button save-btn" id="save-goals">Save</button>
+            <div class="form-field">
+              <label for="frequency">Engagement Frequency</label>
+              <div class="input-container">
+                <select id="frequency" aria-label="Engagement Frequency">
+                  <option value="">Select Frequency</option>
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="biweekly">Bi-weekly</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-field">
+              <label>Preferred Activities</label>
+              <div class="checkbox-container">
+                <div class="checkbox-option">
+                  <input type="checkbox" id="journaling" name="activities" value="journaling" aria-label="Journaling" />
+                  <label for="journaling">Journaling</label>
+                </div>
+                <div class="checkbox-option">
+                  <input type="checkbox" id="mood-tracking" name="activities" value="mood-tracking" aria-label="Mood Tracking" />
+                  <label for="mood-tracking">Mood Tracking</label>
+                </div>
+                <div class="checkbox-option">
+                  <input type="checkbox" id="mindfulness" name="activities" value="mindfulness" aria-label="Mindfulness Exercises" />
+                  <label for="mindfulness">Mindfulness Exercises</label>
+                </div>
+              </div>
+            </div>
+            <div class="form-actions">
+              <button class="save-btn" id="save-goals">Save</button>
+            </div>
           </div>
         </div>
 
