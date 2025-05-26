@@ -45,8 +45,8 @@ document.addEventListener('DOMContentLoaded', () => {
     updateProgressBar(percentage);
 
     // Update status indicators
-    const personalDetailsStatus = document.querySelector('.personal-details .status');
-    const goalsStatus = document.querySelector('.mental-health-goals .status');
+    const personalDetailsStatus = document.querySelector('.personal-details .status-indicator');
+    const goalsStatus = document.querySelector('.mental-health-goals .status-indicator');
     const ctaMessage = document.querySelector('.cta-message p');
 
     const personalDetailsFilled = profileData.age || profileData.gender || profileData.location || profileData.language;
