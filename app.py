@@ -38,7 +38,7 @@ def login():
             if response.data and len(response.data) > 0:
                 user = response.data[0]
                 if bcrypt.checkpw(password.encode('utf-8'), user['password'].encode('utf-8')):
-                    session['user'] = user['id']
+                    session['user'] = str(user['id'])  # Ensure UUID is stored as a string
                     session['user_email'] = user['email']
                     return redirect(url_for('index'))
                 else:
@@ -76,7 +76,7 @@ def signup():
 
             hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
             user_data = {'email': email, 'password': hashed_password}
-            supabase.table('users').insert(user_data).execute()
+            response = supabase.table('users').insert(user_data).execute()
             return redirect(url_for('login'))
         except Exception as e:
             if "duplicate key value" in str(e).lower():
@@ -100,7 +100,7 @@ def journal():
         return redirect(url_for('login'))
 
     supabase = get_supabase()
-    user_id = session['user']
+    user_id = session['user']  # user_id is a UUID string
 
     if request.method == 'POST':
         content = request.form.get('content')
@@ -108,8 +108,7 @@ def journal():
             try:
                 journal_data = {
                     'user_id': user_id,
-                    'content': content,
-                    'created_at': '2025-05-27T09:24:00+05:30'
+                    'content': content
                 }
                 supabase.table('journal_entries').insert(journal_data).execute()
                 return redirect(url_for('journal'))
@@ -118,7 +117,7 @@ def journal():
                 return render_template('Journal.html', error=f"Failed to save journal: {str(e)}")
 
     try:
-        entries = supabase.table('journal_entries').select('*').eq('user_id', user_id).execute()
+        entries = supabase.table('journal_entries').select('*').eq('user_id', user_id).order('created_at', desc=True).execute()
         return render_template('Journal.html', entries=entries.data if entries.data else [])
     except Exception as e:
         logger.error(f"Journal fetch error: {str(e)}")

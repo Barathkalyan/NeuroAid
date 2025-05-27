@@ -6,7 +6,7 @@ body {
 }
 
 .journal-section {
-  max-width: 900px;
+  width: 1200px;
   margin: 0 auto;
   background-color: #ffffff;
   padding: 20px;
@@ -45,7 +45,8 @@ body {
 }
 
 #editor {
-  height: 450px;
+  height: 500px;
+  width:100%;
   background-color: #f4f0fa;
   border: 1px solid #7a7a8c;
   border-radius: 8px;
