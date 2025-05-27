@@ -1,0 +1,77 @@
+body {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  display: flex;
+  background-color: #f5f5f5;
+}
+
+.journal-section {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.journal-header {
+  margin-bottom: 20px;
+}
+
+.journal-header h2 {
+  color: #2d2d2d;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.journal-header p {
+  color: #666;
+  margin-bottom: 15px;
+}
+
+.journal-meta {
+  display: flex;
+  justify-content: space-between;
+  color: #7c3aed;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+#editor {
+  height: 400px;
+  background-color: #f4f0fa;
+  border: 1px solid #7a7a8c;
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.ql-toolbar.ql-snow {
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+  border-color: #7a7a8c;
+  background-color: #fff;
+}
+
+.ql-container.ql-snow {
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
+  border-color: #7a7a8c;
+}
+
+.journal-actions {
+  margin-top: 20px;
+  text-align: right;
+}
+
+.save-btn {
+  padding: 10px 20px;
+  background-color: #7c3aed;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.3s ease;
+}
+
+.save-btn:hover {
+  background-color: #6b21a8;
+}
