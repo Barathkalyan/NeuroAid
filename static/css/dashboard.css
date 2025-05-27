@@ -239,6 +239,11 @@ header {
   transition: background 0.3s;
 }
 
+.card-button a{
+  color: #fff;
+  text-decoration: none;
+}
+
 .card-button:hover {
   background: #6d28d9;
 }
