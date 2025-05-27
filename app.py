@@ -94,6 +94,36 @@ def index():
         return redirect(url_for('login'))
     return render_template('index.html')
 
+@app.route('/journal', methods=['GET', 'POST'])
+def journal():
+    if 'user' not in session:
+        return redirect(url_for('login'))
+
+    supabase = get_supabase()
+    user_id = session['user']
+
+    if request.method == 'POST':
+        content = request.form.get('content')
+        if content:
+            try:
+                journal_data = {
+                    'user_id': user_id,
+                    'content': content,
+                    'created_at': '2025-05-27T09:24:00+05:30'
+                }
+                supabase.table('journal_entries').insert(journal_data).execute()
+                return redirect(url_for('journal'))
+            except Exception as e:
+                logger.error(f"Journal save error: {str(e)}")
+                return render_template('Journal.html', error=f"Failed to save journal: {str(e)}")
+
+    try:
+        entries = supabase.table('journal_entries').select('*').eq('user_id', user_id).execute()
+        return render_template('Journal.html', entries=entries.data if entries.data else [])
+    except Exception as e:
+        logger.error(f"Journal fetch error: {str(e)}")
+        return render_template('Journal.html', error=f"Failed to fetch journals: {str(e)}")
+
 @app.route('/profile')
 def profile():
     if 'user' not in session:

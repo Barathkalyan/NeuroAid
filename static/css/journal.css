@@ -6,12 +6,16 @@ body {
 }
 
 .journal-section {
-  max-width: 800px;
+  max-width: 900px;
   margin: 0 auto;
+  background-color: #ffffff;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
 
 .journal-header {
-  margin-bottom: 20px;
+  margin-bottom: 30px;
 }
 
 .journal-header h2 {
@@ -20,11 +24,13 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
+  font-size: 24px;
 }
 
 .journal-header p {
   color: #666;
   margin-bottom: 15px;
+  font-size: 16px;
 }
 
 .journal-meta {
@@ -33,14 +39,17 @@ body {
   color: #7c3aed;
   font-size: 14px;
   font-weight: 500;
+  background-color: #f4f0fa;
+  padding: 8px 12px;
+  border-radius: 5px;
 }
 
 #editor {
-  height: 400px;
+  height: 450px;
   background-color: #f4f0fa;
   border: 1px solid #7a7a8c;
   border-radius: 8px;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
 }
 
 .ql-toolbar.ql-snow {
@@ -48,12 +57,20 @@ body {
   border-top-right-radius: 8px;
   border-color: #7a7a8c;
   background-color: #fff;
+  padding: 8px;
 }
 
 .ql-container.ql-snow {
   border-bottom-left-radius: 8px;
   border-bottom-right-radius: 8px;
   border-color: #7a7a8c;
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+}
+
+.ql-editor {
+  background-color: #f4f0fa;
+  color: #2d2d2d;
 }
 
 .journal-actions {
@@ -62,13 +79,14 @@ body {
 }
 
 .save-btn {
-  padding: 10px 20px;
+  padding: 12px 24px;
   background-color: #7c3aed;
   color: #ffffff;
   border: none;
   border-radius: 8px;
   cursor: pointer;
   font-weight: 500;
+  font-size: 16px;
   transition: background-color 0.3s ease;
 }
 

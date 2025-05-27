@@ -14,6 +14,8 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   const wordCountElement = document.querySelector('.word-count');
+  const journalForm = document.getElementById('journal-form');
+  const journalContentInput = document.getElementById('journal-content');
 
   quill.on('text-change', () => {
     const text = quill.getText().trim();
@@ -21,9 +23,7 @@ document.addEventListener('DOMContentLoaded', () => {
     wordCountElement.textContent = `${wordCount} words`;
   });
 
-  window.saveJournal = function() {
-    const content = quill.root.innerHTML;
-    console.log("Journal Content:", content);
-    alert("Journal saved (check console)");
-  };
+  journalForm.addEventListener('submit', (event) => {
+    journalContentInput.value = quill.root.innerHTML;
+  });
 });

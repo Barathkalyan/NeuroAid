@@ -48,8 +48,13 @@
       </header>
 
       <section class="journal-section">
+        {% if error %}
+          <div class="error-message" style="color: #b71c1c; background-color: #ffebee; padding: 10px; border-radius: 5px; margin-bottom: 20px;">
+            {{ error }}
+          </div>
+        {% endif %}
         <div class="journal-header">
-          <h2>📝 Your Daily Journal</h2>
+          <h2><i class="ri-booklet-line"></i> Your Daily Journal</h2>
           <p>Write freely and reflect on your day to boost self-awareness.</p>
           <div class="journal-meta">
             <span class="date">May 27, 2025</span>
@@ -58,12 +63,30 @@
         </div>
 
         <!-- Editor Container -->
-        <div id="editor"></div>
+        <form id="journal-form" method="POST" action="{{ url_for('journal') }}">
+          <div id="editor"></div>
+          <input type="hidden" name="content" id="journal-content">
+          <div class="journal-actions">
+            <button type="submit" class="save-btn">Save Entry</button>
+          </div>
+        </form>
 
-        <!-- Save Button -->
-        <div class="journal-actions">
-          <button class="save-btn" onclick="saveJournal()">Save Entry</button>
-        </div>
+        <!-- Display Saved Entries -->
+        {% if entries %}
+          <div class="entries-section">
+            <h3 style="color: #2d2d2d; margin-top: 40px; margin-bottom: 20px;">Your Journal Entries</h3>
+            <div class="entries-list">
+              {% for entry in entries %}
+                <div class="entry-card" style="background-color: #f4f0fa; padding: 15px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);">
+                  <div class="entry-meta" style="display: flex; justify-content: space-between; font-size: 14px; color: #7c3aed; margin-bottom: 10px;">
+                    <span>{{ entry.created_at }}</span>
+                  </div>
+                  <div class="entry-content" style="color: #2d2d2d;">{{ entry.content | safe }}</div>
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+        {% endif %}
       </section>
     </main>
 
