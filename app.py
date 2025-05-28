@@ -123,6 +123,27 @@ def journal():
         logger.error(f"Journal fetch error: {str(e)}")
         return render_template('Journal.html', error=f"Failed to fetch journals: {str(e)}")
 
+@app.route('/delete_entry/<entry_id>', methods=['DELETE'])
+def delete_entry(entry_id):
+    if 'user' not in session:
+        return "Unauthorized", 401
+    
+    supabase = get_supabase()
+    user_id = session['user']
+
+    try:
+        # Check if the entry belongs to the logged-in user
+        response = supabase.table('journal_entries').select('*').eq('id', entry_id).execute()
+        if not response.data or response.data[0]['user_id'] != user_id:
+            return "Forbidden", 403
+        
+        # Delete the entry
+        supabase.table('journal_entries').delete().eq('id', entry_id).execute()
+        return "Deleted", 200
+    except Exception as e:
+        print(f"Delete error: {str(e)}")
+        return "Internal Server Error", 500
+
 @app.route('/profile')
 def profile():
     if 'user' not in session:

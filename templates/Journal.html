@@ -82,6 +82,10 @@
                     <span>{{ entry.created_at }}</span>
                   </div>
                   <div class="entry-content" style="color: #2d2d2d;">{{ entry.content | safe }}</div>
+                  <button class="delete-entry-btn" data-id="{{ entry.id }}" style="position: absolute; top: 15px; right: 15px; background-color: #ef4444; color: white; padding: 5px 10px; border: none; border-radius: 5px; cursor: pointer;">
+                   Delete
+                  </button>
+
                 </div>
               {% endfor %}
             </div>
