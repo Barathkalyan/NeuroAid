@@ -48,9 +48,9 @@
         </div>
 
         <!-- Today's Suggestions Widget -->
-        <div class="suggestions-card" style="background-color: #e8e1fa; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); margin-bottom: 30px;">
+        <div class="suggestions-card debug-suggestions" style="background-color: #e8e1fa; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); margin-bottom: 30px;">
           <h3 style="color: #2d2d2d; margin-bottom: 15px;"><i class="ri-lightbulb-line"></i> Today's Suggestions</h3>
-          {% if suggestions %}
+          {% if suggestions is defined and suggestions %}
             <ul style="list-style-type: disc; padding-left: 20px; color: #2d2d2d; font-size: 16px;">
               {% for suggestion in suggestions %}
                 <li style="margin-bottom: 10px;">{{ suggestion }}</li>
@@ -58,6 +58,30 @@
             </ul>
           {% else %}
             <p style="color: #666;">No suggestions available. Write a journal entry to get started!</p>
+          {% endif %}
+        </div>
+
+        <!-- Recent Reflections Section -->
+        <div class="recent-reflections debug-reflections" style="margin-bottom: 30px;">
+          <h3 style="color: #2d2d2d; margin-bottom: 15px;"><i class="ri-booklet-line"></i> Recent Reflections</h3>
+          {% if recent_entries is defined and recent_entries %}
+            {% for entry in recent_entries %}
+              <div class="entry-preview" style="background-color: #ffffff; border: 1px solid #e8e1fa; border-radius: 8px; padding: 15px; margin-bottom: 10px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);">
+                <div class="entry-meta" style="font-size: 14px; color: #7c3aed; margin-bottom: 5px;">
+                  {{ entry.created_at }}
+                </div>
+                <div class="entry-snippet" style="color: #2d2d2d; font-size: 16px; margin-bottom: 10px;">
+                  {{ entry.content_snippet | safe }}
+                </div>
+                <a href="{{ url_for('journal') }}" style="color: #7c3aed; font-size: 14px; text-decoration: none; font-weight: 500;">
+                  Read More
+                </a>
+              </div>
+            {% endfor %}
+          {% else %}
+            <p style="color: #666;">
+              No recent entries. <a href="{{ url_for('journal') }}" style="color: #7c3aed; text-decoration: none;">Start journaling today!</a>
+            </p>
           {% endif %}
         </div>
 

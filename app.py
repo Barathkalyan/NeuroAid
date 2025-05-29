@@ -5,6 +5,7 @@ import logging
 import requests
 from datetime import datetime, timedelta
 import time
+from zoneinfo import ZoneInfo  # For timezone handling
 
 app = Flask(__name__)
 app.secret_key = 'your-secret-key'
@@ -276,11 +277,19 @@ def index():
 
     supabase = get_supabase()
     user_id = session['user']
-    today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
-    today_end = datetime.utcnow().replace(hour=23, minute=59, second=59, microsecond=999999).isoformat()
+
+    # Current time in UTC and IST for debugging
+    utc_now = datetime.utcnow()
+    ist_now = utc_now.replace(tzinfo=ZoneInfo("UTC")).astimezone(ZoneInfo("Asia/Kolkata"))
+    logger.info(f"Current UTC time: {utc_now}, IST time: {ist_now}")
+
+    # Define today's start and end in UTC
+    today_start = utc_now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+    today_end = utc_now.replace(hour=23, minute=59, second=59, microsecond=999999).isoformat()
+    logger.info(f"Today range (UTC): {today_start} to {today_end}")
 
     try:
-        # Fetch the most recent journal entry
+        # Fetch suggestions for today
         latest_entry = supabase.table('journal_entries')\
             .select('created_at, analysis')\
             .eq('user_id', user_id)\
@@ -290,21 +299,49 @@ def index():
 
         suggestions = None
         if latest_entry.data:
-            # Parse the created_at date of the latest entry
-            entry_date = datetime.fromisoformat(latest_entry.data[0]['created_at'].replace('Z', '+00:00'))
-            # Check if the entry is from today
-            if entry_date.date() == datetime.utcnow().date():
+            logger.info(f"Latest entry: {latest_entry.data[0]}")
+            # Parse the entry's created_at in UTC and convert to IST for comparison
+            entry_date = datetime.fromisoformat(latest_entry.data[0]['created_at'].replace('Z', '+00:00')).replace(tzinfo=ZoneInfo("UTC"))
+            entry_date_ist = entry_date.astimezone(ZoneInfo("Asia/Kolkata"))
+            current_date_ist = ist_now.date()
+
+            logger.info(f"Entry date (IST): {entry_date_ist.date()}, Current date (IST): {current_date_ist}")
+
+            if entry_date_ist.date() == current_date_ist:
                 suggestions = latest_entry.data[0]['analysis']['suggestions']
+                logger.info(f"Suggestions found: {suggestions}")
             else:
                 suggestions = ["Write a journal entry for today to get personalized suggestions!"]
+                logger.info("No entry for today, prompting user to write a new entry.")
         else:
             suggestions = ["Write a journal entry to get personalized suggestions!"]
+            logger.info("No journal entries found for user.")
+
+        # Fetch the 3 most recent journal entries for preview (regardless of date)
+        recent_entries = supabase.table('journal_entries')\
+            .select('id, content, created_at')\
+            .eq('user_id', user_id)\
+            .order('created_at', desc=True)\
+            .limit(3)\
+            .execute()
+
+        recent_entries_data = recent_entries.data if recent_entries.data else []
+        logger.info(f"Recent entries fetched: {recent_entries_data}")
+
+        # Format the created_at date for display
+        for entry in recent_entries_data:
+            entry_date = datetime.fromisoformat(entry['created_at'].replace('Z', '+00:00')).replace(tzinfo=ZoneInfo("UTC"))
+            entry_date_ist = entry_date.astimezone(ZoneInfo("Asia/Kolkata"))
+            entry['created_at'] = entry_date_ist.strftime('%B %d, %Y')  # e.g., "May 29, 2025"
+            # Truncate content to 50 characters
+            entry['content_snippet'] = (entry['content'][:50] + '…') if len(entry['content']) > 50 else entry['content']
 
     except Exception as e:
-        logger.error(f"Error fetching latest suggestions: {str(e)}")
+        logger.error(f"Error fetching data for index: {str(e)}")
         suggestions = ["Unable to load suggestions right now. Try writing a journal entry!"]
+        recent_entries_data = []
 
-    return render_template('index.html', suggestions=suggestions)
+    return render_template('index.html', suggestions=suggestions, recent_entries=recent_entries_data)
 
 @app.route('/journal', methods=['GET', 'POST'])
 def journal():
@@ -313,7 +350,7 @@ def journal():
 
     supabase = get_supabase()
     user_id = session['user']
-    current_date = datetime.utcnow().strftime('%B %d, %Y')  # Format: May 29, 2025
+    current_date = datetime.utcnow().replace(tzinfo=ZoneInfo("UTC")).astimezone(ZoneInfo("Asia/Kolkata")).strftime('%B %d, %Y')
 
     if request.method == 'POST':
         content = request.form.get('content')
@@ -340,6 +377,12 @@ def journal():
             .eq('user_id', user_id)\
             .order('created_at', desc=True)\
             .execute()
+
+        # Convert dates to IST for display
+        for entry in entries.data:
+            entry_date = datetime.fromisoformat(entry['created_at'].replace('Z', '+00:00')).replace(tzinfo=ZoneInfo("UTC"))
+            entry['created_at'] = entry_date.astimezone(ZoneInfo("Asia/Kolkata")).strftime('%Y-%m-%d %H:%M:%S')
+
         return render_template('Journal.html', entries=entries.data if entries.data else [], current_date=current_date)
     except Exception as e:
         logger.error(f"Journal fetch error: {str(e)}")
