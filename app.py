@@ -5,7 +5,7 @@ import logging
 import requests
 from datetime import datetime, timedelta
 import time
-from zoneinfo import ZoneInfo  # For timezone handling
+from zoneinfo import ZoneInfo
 
 app = Flask(__name__)
 app.secret_key = 'your-secret-key'
@@ -26,7 +26,7 @@ def query_huggingface(model: str, payload: dict, retries=3, backoff_factor=1):
             response.raise_for_status()
             return response.json()
         except requests.exceptions.HTTPError as e:
-            if response.status_code == 429:  # Rate limit
+            if response.status_code == 429:
                 wait_time = backoff_factor * (2 ** attempt)
                 logger.warning(f"Rate limit hit, retrying in {wait_time}s (attempt {attempt+1}/{retries})")
                 time.sleep(wait_time)
@@ -75,7 +75,7 @@ def derive_mood_from_emotions(emotions):
     return mood_score, confidence
 
 def get_recent_emotions(supabase, user_id, days=7):
-    start_date = (datetime.utcnow() - timedelta(days=days)).isoformat()
+    start_date = (datetime.now(ZoneInfo("UTC")) - timedelta(days=days)).isoformat()
     try:
         query = supabase.table('journal_entries')\
             .select('analysis->emotions')\
@@ -96,7 +96,7 @@ def get_recent_emotions(supabase, user_id, days=7):
         return {}
 
 def get_journaling_frequency(supabase, user_id, days=7):
-    start_date = (datetime.utcnow() - timedelta(days=days)).isoformat()
+    start_date = (datetime.now(ZoneInfo("UTC")) - timedelta(days=days)).isoformat()
     try:
         entries = supabase.table('journal_entries')\
             .select('created_at')\
@@ -219,9 +219,11 @@ def login():
             response = supabase.table('users').select('*').eq('email', email).execute()
             if response.data and len(response.data) > 0:
                 user = response.data[0]
+                logger.info(f"User found: {user['id']}, {user['email']}")
                 if bcrypt.checkpw(password.encode('utf-8'), user['password'].encode('utf-8')):
                     session['user'] = str(user['id'])
                     session['user_email'] = user['email']
+                    logger.info(f"User {user['email']} logged in successfully, user_id: {session['user']}")
                     return redirect(url_for('index'))
                 else:
                     error = 'Invalid credentials.'
@@ -259,6 +261,7 @@ def signup():
             hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
             user_data = {'email': email, 'password': hashed_password}
             response = supabase.table('users').insert(user_data).execute()
+            logger.info(f"User {email} signed up successfully.")
             return redirect(url_for('login'))
         except Exception as e:
             if "duplicate key value" in str(e).lower():
@@ -273,14 +276,16 @@ def signup():
 @app.route('/index')
 def index():
     if 'user' not in session:
+        logger.warning("User not in session, redirecting to login.")
         return redirect(url_for('login'))
 
     supabase = get_supabase()
     user_id = session['user']
+    logger.info(f"Fetching data for user_id: {user_id}")
 
     # Current time in UTC and IST for debugging
-    utc_now = datetime.utcnow()
-    ist_now = utc_now.replace(tzinfo=ZoneInfo("UTC")).astimezone(ZoneInfo("Asia/Kolkata"))
+    utc_now = datetime.now(ZoneInfo("UTC"))
+    ist_now = utc_now.astimezone(ZoneInfo("Asia/Kolkata"))
     logger.info(f"Current UTC time: {utc_now}, IST time: {ist_now}")
 
     # Define today's start and end in UTC
@@ -288,51 +293,80 @@ def index():
     today_end = utc_now.replace(hour=23, minute=59, second=59, microsecond=999999).isoformat()
     logger.info(f"Today range (UTC): {today_start} to {today_end}")
 
+    suggestions = None
+    recent_entries_data = []
+
     try:
         # Fetch suggestions for today
-        latest_entry = supabase.table('journal_entries')\
+        latest_entry_query = supabase.table('journal_entries')\
             .select('created_at, analysis')\
             .eq('user_id', user_id)\
             .order('created_at', desc=True)\
-            .limit(1)\
-            .execute()
+            .limit(1)
 
-        suggestions = None
+        logger.info(f"Executing query for latest entry: {latest_entry_query}")
+        latest_entry = latest_entry_query.execute()
+
         if latest_entry.data:
             logger.info(f"Latest entry: {latest_entry.data[0]}")
-            # Parse the entry's created_at in UTC and convert to IST for comparison
-            entry_date = datetime.fromisoformat(latest_entry.data[0]['created_at'].replace('Z', '+00:00')).replace(tzinfo=ZoneInfo("UTC"))
-            entry_date_ist = entry_date.astimezone(ZoneInfo("Asia/Kolkata"))
-            current_date_ist = ist_now.date()
+            # Handle different created_at formats
+            created_at_str = latest_entry.data[0]['created_at']
+            try:
+                if '.' in created_at_str:
+                    created_at_str = created_at_str.split('.')[0] + '+00:00'
+                else:
+                    created_at_str = created_at_str.replace('Z', '+00:00')
+                entry_date = datetime.fromisoformat(created_at_str).replace(tzinfo=ZoneInfo("UTC"))
+            except ValueError as e:
+                logger.error(f"Error parsing created_at: {created_at_str}, Error: {str(e)}")
+                entry_date = None
 
-            logger.info(f"Entry date (IST): {entry_date_ist.date()}, Current date (IST): {current_date_ist}")
+            if entry_date:
+                entry_date_ist = entry_date.astimezone(ZoneInfo("Asia/Kolkata"))
+                current_date_ist = ist_now.date()
 
-            if entry_date_ist.date() == current_date_ist:
-                suggestions = latest_entry.data[0]['analysis']['suggestions']
-                logger.info(f"Suggestions found: {suggestions}")
+                logger.info(f"Entry date (IST): {entry_date_ist.date()}, Current date (IST): {current_date_ist}")
+
+                if entry_date_ist.date() == current_date_ist:
+                    suggestions = latest_entry.data[0]['analysis'].get('suggestions', [])
+                    logger.info(f"Suggestions found: {suggestions}")
+                else:
+                    suggestions = ["Write a journal entry for today to get personalized suggestions!"]
+                    logger.info("No entry for today, prompting user to write a new entry.")
             else:
-                suggestions = ["Write a journal entry for today to get personalized suggestions!"]
-                logger.info("No entry for today, prompting user to write a new entry.")
+                suggestions = ["Unable to parse entry date. Please try writing a new journal entry!"]
+                logger.info("Failed to parse entry date for suggestions.")
         else:
             suggestions = ["Write a journal entry to get personalized suggestions!"]
             logger.info("No journal entries found for user.")
 
-        # Fetch the 3 most recent journal entries for preview (regardless of date)
-        recent_entries = supabase.table('journal_entries')\
+        # Fetch the 3 most recent journal entries for preview
+        recent_entries_query = supabase.table('journal_entries')\
             .select('id, content, created_at')\
             .eq('user_id', user_id)\
             .order('created_at', desc=True)\
-            .limit(3)\
-            .execute()
+            .limit(3)
+
+        logger.info(f"Executing query for recent entries: {recent_entries_query}")
+        recent_entries = recent_entries_query.execute()
 
         recent_entries_data = recent_entries.data if recent_entries.data else []
         logger.info(f"Recent entries fetched: {recent_entries_data}")
 
         # Format the created_at date for display
         for entry in recent_entries_data:
-            entry_date = datetime.fromisoformat(entry['created_at'].replace('Z', '+00:00')).replace(tzinfo=ZoneInfo("UTC"))
-            entry_date_ist = entry_date.astimezone(ZoneInfo("Asia/Kolkata"))
-            entry['created_at'] = entry_date_ist.strftime('%B %d, %Y')  # e.g., "May 29, 2025"
+            created_at_str = entry['created_at']
+            try:
+                if '.' in created_at_str:
+                    created_at_str = created_at_str.split('.')[0] + '+00:00'
+                else:
+                    created_at_str = created_at_str.replace('Z', '+00:00')
+                entry_date = datetime.fromisoformat(created_at_str).replace(tzinfo=ZoneInfo("UTC"))
+                entry_date_ist = entry_date.astimezone(ZoneInfo("Asia/Kolkata"))
+                entry['created_at'] = entry_date_ist.strftime('%B %d, %Y')
+            except ValueError as e:
+                logger.error(f"Error parsing created_at for recent entry: {created_at_str}, Error: {str(e)}")
+                entry['created_at'] = "Unknown Date"
             # Truncate content to 50 characters
             entry['content_snippet'] = (entry['content'][:50] + '…') if len(entry['content']) > 50 else entry['content']
 
@@ -346,11 +380,12 @@ def index():
 @app.route('/journal', methods=['GET', 'POST'])
 def journal():
     if 'user' not in session:
+        logger.warning("User not in session, redirecting to login.")
         return redirect(url_for('login'))
 
     supabase = get_supabase()
     user_id = session['user']
-    current_date = datetime.utcnow().replace(tzinfo=ZoneInfo("UTC")).astimezone(ZoneInfo("Asia/Kolkata")).strftime('%B %d, %Y')
+    current_date = datetime.now(ZoneInfo("UTC")).astimezone(ZoneInfo("Asia/Kolkata")).strftime('%B %d, %Y')
 
     if request.method == 'POST':
         content = request.form.get('content')
@@ -361,11 +396,12 @@ def journal():
                 journal_data = {
                     'user_id': user_id,
                     'content': content,
-                    'created_at': datetime.utcnow().isoformat(),
+                    'created_at': datetime.now(ZoneInfo("UTC")).isoformat(),
                     'analysis': analysis
                 }
 
                 supabase.table('journal_entries').insert(journal_data).execute()
+                logger.info(f"Journal entry saved for user_id: {user_id}")
                 return redirect(url_for('journal'))
             except Exception as e:
                 logger.error(f"Journal save error: {str(e)}")
@@ -378,10 +414,19 @@ def journal():
             .order('created_at', desc=True)\
             .execute()
 
-        # Convert dates to IST for display
         for entry in entries.data:
-            entry_date = datetime.fromisoformat(entry['created_at'].replace('Z', '+00:00')).replace(tzinfo=ZoneInfo("UTC"))
-            entry['created_at'] = entry_date.astimezone(ZoneInfo("Asia/Kolkata")).strftime('%Y-%m-%d %H:%M:%S')
+            created_at_str = entry['created_at']
+            try:
+                if '.' in created_at_str:
+                    created_at_str = created_at_str.split('.')[0] + '+00:00'
+                else:
+                    created_at_str = created_at_str.replace('Z', '+00:00')
+                entry_date = datetime.fromisoformat(created_at_str).replace(tzinfo=ZoneInfo("UTC"))
+                entry_date_ist = entry_date.astimezone(ZoneInfo("Asia/Kolkata"))
+                entry['created_at'] = entry_date_ist.strftime('%Y-%m-%d %H:%M:%S')
+            except ValueError as e:
+                logger.error(f"Error parsing created_at in journal: {created_at_str}, Error: {str(e)}")
+                entry['created_at'] = "Unknown Date"
 
         return render_template('Journal.html', entries=entries.data if entries.data else [], current_date=current_date)
     except Exception as e:
@@ -391,6 +436,7 @@ def journal():
 @app.route('/delete_entry/<entry_id>', methods=['DELETE'])
 def delete_entry(entry_id):
     if 'user' not in session:
+        logger.warning("User not in session, returning Unauthorized.")
         return "Unauthorized", 401
     
     supabase = get_supabase()
@@ -399,9 +445,11 @@ def delete_entry(entry_id):
     try:
         response = supabase.table('journal_entries').select('*').eq('id', entry_id).execute()
         if not response.data or response.data[0]['user_id'] != user_id:
+            logger.warning(f"User {user_id} attempted to delete entry {entry_id} - Forbidden.")
             return "Forbidden", 403
         
         supabase.table('journal_entries').delete().eq('id', entry_id).execute()
+        logger.info(f"Entry {entry_id} deleted by user {user_id}.")
         return "Deleted", 200
     except Exception as e:
         logger.error(f"Delete error: {str(e)}")
@@ -410,13 +458,16 @@ def delete_entry(entry_id):
 @app.route('/profile')
 def profile():
     if 'user' not in session:
+        logger.warning("User not in session, redirecting to login.")
         return redirect(url_for('login'))
     return render_template('profile.html')
 
 @app.route('/logout')
 def logout():
+    user_email = session.get('user_email', 'Unknown')
     session.pop('user', None)
     session.pop('user_email', None)
+    logger.info(f"User {user_email} logged out.")
     return redirect(url_for('login'))
 
 if __name__ == '__main__':
