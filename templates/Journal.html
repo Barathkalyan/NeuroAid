@@ -57,7 +57,7 @@
           <h2><i class="ri-booklet-line"></i> Your Daily Journal</h2>
           <p>Write freely and reflect on your day to boost self-awareness.</p>
           <div class="journal-meta">
-            <span class="date">May 27, 2025</span>
+            <span class="date">{{ current_date }}</span>
             <span class="word-count">0 words</span>
           </div>
         </div>
@@ -77,27 +77,17 @@
             <h3 style="color: #2d2d2d; margin-top: 40px; margin-bottom: 20px;">Your Journal Entries</h3>
             <div class="entries-list">
               {% for entry in entries %}
-                <div class="entry-card" style="background-color: #f4f0fa; padding: 15px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); position: relative;">
+                <div class="entry-card" style="background-color: #f4f0fa; padding: 15px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);">
                   <div class="entry-meta" style="display: flex; justify-content: space-between; font-size: 14px; color: #7c3aed; margin-bottom: 10px;">
-                   <span>{{ entry.created_at }}</span>
-                 </div>
-
+                    <span>{{ entry.created_at }}</span>
+                    <span>Mood: {{ entry.analysis.mood }}/5</span>
+                  </div>
                   <div class="entry-content" style="color: #2d2d2d;">{{ entry.content | safe }}</div>
-
-                  {% if entry.analysis %}
-                    <div class="entry-analysis" style="margin-top: 15px; font-size: 14px; color: #1f2937;">
-                        <p><strong>Mood:</strong> {{ entry.analysis['mood'] }}</p>
-                        <p><strong>Emotions:</strong> {{ entry.analysis['emotions'] | join(', ') }}</p>
-                        <p><strong>Summary:</strong> {{ entry.analysis['summary'] }}</p>
-                        <p><strong>Suggestions:</strong> {{ entry.analysis['suggestions'] }}</p>
-                    </div>
-                  {% endif %}
-
-                   <button class="delete-entry-btn" data-id="{{ entry.id }}" style="position: absolute; top: 15px; right: 15px; background-color: #ef4444; color: white; padding: 5px 10px; border: none; border-radius: 5px; cursor: pointer;">
-                     Delete
-                   </button>
+                  <div class="entry-analysis" style="margin-top: 10px; font-size: 14px; color: #666;">
+                    <p><strong>Emotions:</strong> {{ entry.analysis.emotions | map(attribute='label') | join(', ') }}</p>
+                    <p><strong>Suggestions:</strong> {{ entry.analysis.suggestions | join('; ') }}</p>
+                  </div>
                 </div>
-
               {% endfor %}
             </div>
           </div>
