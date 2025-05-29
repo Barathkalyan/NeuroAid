@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>NeuroAid Dashboard</title>
+  <title>NeuroAid - Home</title>
   <!-- Remix Icons -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css" />
   <!-- Google Fonts -->
@@ -32,7 +32,7 @@
       <header>
         <div class="search-bar">
           <i class="ri-search-line"></i>
-          <input type="text" placeholder="Search features, journals..." />
+          <input type="text" placeholder="Search..." />
         </div>
         <div class="profile">
           <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile" />
@@ -41,44 +41,34 @@
         </div>
       </header>
 
-      <section class="dashboard">
-        <h2>Dashboard Overview</h2>
-        <div class="card-grid">
-          <div class="card welcome">
-            <div class="card-icon"><i class="ri-hand-heart-line"></i></div>
-            <div class="card-content">
-              <h3>Welcome Back 👋</h3>
-              <p>Your mental well-being is our priority. Start today with a positive mindset.</p>
-              <button class="card-button">Get Started</button>
-            </div>
-          </div>
+      <section class="home-section">
+        <div class="welcome-message" style="margin-bottom: 30px;">
+          <h2 style="color: #2d2d2d;"><i class="ri-home-5-line"></i> Welcome to NeuroAid</h2>
+          <p style="color: #666;">Your companion for mental health and self-reflection.</p>
+        </div>
 
-          <div class="card journal">
-            <div class="card-icon"><i class="ri-book-open-line"></i></div>
-            <div class="card-content">
-              <h3>Daily Journal</h3>
-              <p>Reflect on your day and express your thoughts to boost self-awareness.</p>
-              <button class="card-button"> <a href="{{ url_for('journal') }}">Write Now</a></button>
-            </div>
-          </div>
+        <!-- Today's Suggestions Widget -->
+        <div class="suggestions-card" style="background-color: #e8e1fa; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); margin-bottom: 30px;">
+          <h3 style="color: #2d2d2d; margin-bottom: 15px;"><i class="ri-lightbulb-line"></i> Today's Suggestions</h3>
+          {% if suggestions %}
+            <ul style="list-style-type: disc; padding-left: 20px; color: #2d2d2d; font-size: 16px;">
+              {% for suggestion in suggestions %}
+                <li style="margin-bottom: 10px;">{{ suggestion }}</li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <p style="color: #666;">No suggestions available. Write a journal entry to get started!</p>
+          {% endif %}
+        </div>
 
-          <div class="card mood">
-            <div class="card-icon"><i class="ri-emotion-happy-line"></i></div>
-            <div class="card-content">
-              <h3>Mood Tracker</h3>
-              <p>Log your emotions to monitor patterns and gain deeper insights.</p>
-              <button class="card-button">Track Mood</button>
-            </div>
-          </div>
-
-          <div class="card tips">
-            <div class="card-icon"><i class="ri-mind-map"></i></div>
-            <div class="card-content">
-              <h3>Mindfulness Tips</h3>
-              <p>Discover exercises to calm your mind and stay centered.</p>
-              <button class="card-button">Explore Tips</button>
-            </div>
-          </div>
+        <!-- Quick Actions -->
+        <div class="quick-actions" style="display: flex; gap: 20px;">
+          <a href="{{ url_for('journal') }}" style="background-color: #7c3aed; color: white; padding: 15px 30px; border-radius: 8px; text-decoration: none; font-weight: 500;">
+            Write a Journal Entry
+          </a>
+          <a href="#" style="background-color: #f4f0fa; color: #2d2d2d; padding: 15px 30px; border-radius: 8px; text-decoration: none; font-weight: 500;">
+            View Progress
+          </a>
         </div>
       </section>
     </main>

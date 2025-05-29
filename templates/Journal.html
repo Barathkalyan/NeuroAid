@@ -16,6 +16,27 @@
   <!-- Link to JavaScript -->
   <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
   <script src="{{ url_for('static', filename='js/journal.js') }}" defer></script>
+  <script>
+    async function deleteEntry(entryId) {
+      if (confirm("Are you sure you want to delete this journal entry?")) {
+        try {
+          const response = await fetch(`/delete_entry/${entryId}`, {
+            method: 'DELETE',
+          });
+          if (response.ok) {
+            // Remove the entry card from the DOM
+            document.getElementById(`entry-${entryId}`).remove();
+            alert("Journal entry deleted successfully!");
+          } else {
+            alert("Failed to delete journal entry. Please try again.");
+          }
+        } catch (error) {
+          console.error("Error deleting entry:", error);
+          alert("An error occurred while deleting the entry. Please try again.");
+        }
+      }
+    }
+  </script>
 </head>
 <body>
   <div class="sidebar">
@@ -77,16 +98,14 @@
             <h3 style="color: #2d2d2d; margin-top: 40px; margin-bottom: 20px;">Your Journal Entries</h3>
             <div class="entries-list">
               {% for entry in entries %}
-                <div class="entry-card" style="background-color: #f4f0fa; padding: 15px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);">
+                <div class="entry-card" id="entry-{{ entry.id }}" style="background-color: #f4f0fa; padding: 15px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);">
                   <div class="entry-meta" style="display: flex; justify-content: space-between; font-size: 14px; color: #7c3aed; margin-bottom: 10px;">
                     <span>{{ entry.created_at }}</span>
-                    <span>Mood: {{ entry.analysis.mood }}/5</span>
+                    <button onclick="deleteEntry('{{ entry.id }}')" style="background: none; border: none; cursor: pointer; color: #b71c1c;">
+                      <i class="ri-delete-bin-line"></i>
+                    </button>
                   </div>
                   <div class="entry-content" style="color: #2d2d2d;">{{ entry.content | safe }}</div>
-                  <div class="entry-analysis" style="margin-top: 10px; font-size: 14px; color: #666;">
-                    <p><strong>Emotions:</strong> {{ entry.analysis.emotions | map(attribute='label') | join(', ') }}</p>
-                    <p><strong>Suggestions:</strong> {{ entry.analysis.suggestions | join('; ') }}</p>
-                  </div>
                 </div>
               {% endfor %}
             </div>

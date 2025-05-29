@@ -39,7 +39,6 @@ def query_huggingface(model: str, payload: dict, retries=3, backoff_factor=1):
     return None
 
 def simple_keyword_analysis(text):
-    """Fallback analysis using keyword matching if API fails."""
     text = text.lower()
     emotions = []
     if any(word in text for word in ['sad', 'unhappy', 'down', 'depressed']):
@@ -77,7 +76,6 @@ def derive_mood_from_emotions(emotions):
 def get_recent_emotions(supabase, user_id, days=7):
     start_date = (datetime.utcnow() - timedelta(days=days)).isoformat()
     try:
-        # Use JSONB operator to extract emotions directly
         query = supabase.table('journal_entries')\
             .select('analysis->emotions')\
             .eq('user_id', user_id)\
@@ -125,7 +123,6 @@ def generate_suggestion(emotions, mood, supabase, user_id):
 
     suggestions = []
 
-    # Combined emotion suggestions
     if primary_emotion in ['disappointment', 'sadness']:
         suggestions.append(f"{tone} you’re feeling {primary_emotion.lower()}. Maybe take a moment to write about what’s been challenging—it can help process those feelings.")
         if secondary_emotion in ['sadness', 'disappointment'] and primary_emotion != secondary_emotion:
@@ -137,7 +134,7 @@ def generate_suggestion(emotions, mood, supabase, user_id):
     elif primary_emotion in ['anger', 'frustration', 'annoyance']:
         suggestions.append(f"{tone} you’re feeling {primary_emotion.lower()}. Let’s channel that energy—maybe take a few deep breaths or go for a quick walk to clear your mind.")
         if secondary_emotion in ['sadness', 'disappointment']:
-            suggestions.append(f"I also sense some {secondary_emotion.lower()}. Writing about what’s upsetting you might help you feel lighter—want to give it a try?")
+            suggestions.append(f"I also sense some {secondary_emotion.lower()}. Writing about what’s upsetting you might help you feel lighter—want to try it?")
         else:
             suggestions.append("Sometimes putting your thoughts on paper can help. How about writing what’s been on your mind?")
     elif primary_emotion in ['fear', 'anxiety']:
@@ -183,7 +180,6 @@ def analyze_journal_entry(text, supabase, user_id):
             elif isinstance(first, dict):
                 emotions = [{"label": first['label'], "score": first['score']}]
     else:
-        # Fallback to keyword analysis
         logger.warning("Hugging Face API failed, falling back to keyword analysis")
         emotions = simple_keyword_analysis(text)
 
@@ -277,7 +273,38 @@ def signup():
 def index():
     if 'user' not in session:
         return redirect(url_for('login'))
-    return render_template('index.html')
+
+    supabase = get_supabase()
+    user_id = session['user']
+    today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+    today_end = datetime.utcnow().replace(hour=23, minute=59, second=59, microsecond=999999).isoformat()
+
+    try:
+        # Fetch the most recent journal entry
+        latest_entry = supabase.table('journal_entries')\
+            .select('created_at, analysis')\
+            .eq('user_id', user_id)\
+            .order('created_at', desc=True)\
+            .limit(1)\
+            .execute()
+
+        suggestions = None
+        if latest_entry.data:
+            # Parse the created_at date of the latest entry
+            entry_date = datetime.fromisoformat(latest_entry.data[0]['created_at'].replace('Z', '+00:00'))
+            # Check if the entry is from today
+            if entry_date.date() == datetime.utcnow().date():
+                suggestions = latest_entry.data[0]['analysis']['suggestions']
+            else:
+                suggestions = ["Write a journal entry for today to get personalized suggestions!"]
+        else:
+            suggestions = ["Write a journal entry to get personalized suggestions!"]
+
+    except Exception as e:
+        logger.error(f"Error fetching latest suggestions: {str(e)}")
+        suggestions = ["Unable to load suggestions right now. Try writing a journal entry!"]
+
+    return render_template('index.html', suggestions=suggestions)
 
 @app.route('/journal', methods=['GET', 'POST'])
 def journal():
@@ -309,7 +336,7 @@ def journal():
 
     try:
         entries = supabase.table('journal_entries')\
-            .select('*')\
+            .select('id, content, created_at')\
             .eq('user_id', user_id)\
             .order('created_at', desc=True)\
             .execute()
