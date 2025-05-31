@@ -454,6 +454,10 @@ def delete_entry(entry_id):
     except Exception as e:
         logger.error(f"Delete error: {str(e)}")
         return "Unable to delete entry. Please try again later.", 500
+    
+@app.route('/progress')
+def progress():
+    return render_template('progress.html')
 
 @app.route('/profile')
 def profile():
@@ -472,3 +476,5 @@ def logout():
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
+
+

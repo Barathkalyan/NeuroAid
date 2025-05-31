@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>NeuroAid - Progress</title>
+  <!-- Remix Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css" />
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Link to external CSS -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/progress.css') }}" />
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Link to JavaScript -->
+  <script src="{{ url_for('static', filename='js/progress.js') }}" defer></script>
+</head>
+<body>
+  <div class="app-container">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="logo">
+        <i class="ri-brain-line"></i>
+        <h1>Neuro<span>Aid</span></h1>
+      </div>
+      <nav>
+        <a href="{{ url_for('index') }}"><i class="ri-home-5-line"></i> Home</a>
+        <a href="{{ url_for('journal') }}"><i class="ri-booklet-line"></i> Journal</a>
+        <a href="{{ url_for('progress') }}" class="active"><i class="ri-bar-chart-2-line"></i> Progress</a>
+        <a href="#"><i class="ri-settings-3-line"></i> Settings</a>
+        <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
+        <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
+      </nav>
+    </div>
+
+    <!-- Main Content -->
+    <div class="wrapper">
+      <main class="main-content">
+        <header>
+          <div class="search-bar">
+            <i class="ri-search-line"></i>
+            <input type="text" placeholder="Search progress..." />
+          </div>
+          <div class="profile">
+            <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile" id="header-profile-pic" />
+            <span>{{ session.get('user_email', 'User').split('@')[0] }}</span>
+            <i class="ri-arrow-down-s-line"></i>
+          </div>
+        </header>
+
+        <section class="stats-section">
+          <h2><i class="ri-bar-chart-2-line"></i> Your Progress</h2>
+          <div class="stats-boxes">
+            <div class="stat-box">
+              <i class="ri-calendar-line"></i>
+              <div>
+                <h3>Journaling Streak</h3>
+                <p><strong>7 Days</strong></p>
+              </div>
+            </div>
+            <div class="stat-box">
+              <i class="ri-booklet-line"></i>
+              <div>
+                <h3>Total Entries</h3>
+                <p><strong>10 entries</strong></p>
+              </div>
+            </div>
+            <div class="stat-box">
+              <i class="ri-emotion-happy-line"></i>
+              <div>
+                <h3>Average Mood</h3>
+                <p><strong>Positive</strong></p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="chart-section">
+          <h2><i class="ri-line-chart-line"></i> Mood Over Time</h2>
+          <div class="chart-card">
+            <canvas id="moodChart"></canvas>
+          </div>
+        </section>
+
+        <section class="insights-section">
+          <h2><i class="ri-lightbulb-line"></i> AI Insights</h2>
+          <div class="insights-content">
+            You're becoming more positive over time. Keep journaling daily to maintain your streak!
+          </div>
+        </section>
+      </main>
+
+      <footer>
+        <span>© 2025 NeuroAid. Your mental health companion.</span>
+      </footer>
+    </div>
+  </div>
+</body>
+</html>
