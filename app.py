@@ -213,19 +213,32 @@ def get_mood_data():
     user_id = session['user']
     start_date = (datetime.now(ZoneInfo("UTC")) - timedelta(days=7)).isoformat()
     try:
+        # Fetch entries for the last 7 days
         entries = supabase.table('journal_entries')\
             .select('analysis, created_at')\
             .eq('user_id', user_id)\
             .gt('created_at', start_date)\
             .order('created_at', desc=False)\
             .execute()
-        labels = []
-        data = []
-        # Calculate number of entries in the last 7 days
         num_entries = len(entries.data)
         logger.info(f"Fetched {num_entries} journal entries for user {user_id}")
 
-        # Process entries for mood data
+        # Initialize lists for the last 7 days
+        end_date = datetime.now(ZoneInfo("UTC")).replace(hour=23, minute=59, second=59, microsecond=999999)
+        current_date = (end_date - timedelta(days=6)).replace(hour=0, minute=0, second=0, microsecond=0)
+        labels = []
+        mood_data = []
+        confidence_data = []
+        date_map = {}  # To store entries by normalized date
+
+        # Create labels and initialize data for the last 7 days
+        for i in range(7):
+            date_str = current_date.strftime('%Y-%m-%d')
+            labels.append(current_date.strftime('%b %d'))  # e.g., "May 26"
+            date_map[date_str] = {'moods': [], 'confidences': []}
+            current_date += timedelta(days=1)
+
+        # Process entries to group by day
         for entry in entries.data:
             created_at = entry['created_at']
             try:
@@ -234,27 +247,37 @@ def get_mood_data():
                 else:
                     created_at = created_at.replace('Z', '+00:00')
                 date = datetime.fromisoformat(created_at).replace(tzinfo=ZoneInfo("UTC"))
-                labels.append(date.strftime('%a'))
-                mood = entry['analysis'].get('mood', 3)  # Default to 3 if mood is missing
-                data.append(mood)
-                logger.info(f"Entry date: {date}, Mood: {mood}")
+                date_str = date.strftime('%Y-%m-%d')
+                if date_str in date_map:
+                    mood = entry['analysis'].get('mood', 3)  # Default to 3 if mood is missing
+                    confidence = entry['analysis'].get('confidence', 0.0)  # Default to 0 if confidence is missing
+                    date_map[date_str]['moods'].append(mood)
+                    date_map[date_str]['confidences'].append(confidence)
+                    logger.info(f"Entry date: {date}, Mood: {mood}, Confidence: {confidence}")
             except ValueError as e:
                 logger.error(f"Error parsing created_at: {created_at}, Error: {str(e)}")
                 continue
             except KeyError as e:
-                logger.error(f"Error accessing analysis.mood in entry: {entry}, Error: {str(e)}")
-                data.append(3)  # Fallback to neutral if analysis.mood is missing
-                labels.pop()  # Remove the label to keep arrays in sync
+                logger.error(f"Error accessing analysis fields in entry: {entry}, Error: {str(e)}")
                 continue
 
+        # Calculate average mood and confidence for each day
+        for date_str in date_map:
+            moods = date_map[date_str]['moods']
+            confidences = date_map[date_str]['confidences']
+            avg_mood = sum(moods) / len(moods) if moods else 0
+            avg_confidence = sum(confidences) / len(confidences) if confidences else 0
+            mood_data.append(round(avg_mood, 2))
+            confidence_data.append(round(avg_confidence, 2))
+
         # Fallback if no entries
-        if not labels:
+        if not any(mood_data):
             logger.warning(f"No valid entries found for user {user_id} in the last 7 days")
             labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-            data = [3] * 7
+            mood_data = [3] * 7
+            confidence_data = [0] * 7
 
         # Calculate streak
-        # Fetch all entries for the user to calculate streak, ordered by date descending
         all_entries = supabase.table('journal_entries')\
             .select('created_at')\
             .eq('user_id', user_id)\
@@ -273,14 +296,12 @@ def get_mood_data():
                 else:
                     created_at = created_at.replace('Z', '+00:00')
                 entry_date = datetime.fromisoformat(created_at).replace(tzinfo=ZoneInfo("UTC"))
-                # Normalize to start of day
                 entry_date = entry_date.replace(hour=0, minute=0, second=0, microsecond=0)
                 entry_dates.add(entry_date)
             except ValueError as e:
                 logger.error(f"Error parsing created_at for streak: {created_at}, Error: {str(e)}")
                 continue
 
-        # Check for consecutive days starting from today
         while True:
             if current_date in entry_dates:
                 streak += 1
@@ -292,9 +313,10 @@ def get_mood_data():
 
         return jsonify({
             'labels': labels,
-            'data': data,
+            'data': mood_data,
             'numEntries': num_entries,
-            'streak': streak
+            'streak': streak,
+            'confidence': confidence_data
         })
     except Exception as e:
         logger.error(f"Error fetching mood data: {str(e)}")
@@ -379,12 +401,10 @@ def index():
     user_id = session['user']
     logger.info(f"Fetching data for user_id: {user_id}")
 
-    # Current time in UTC and IST for debugging
     utc_now = datetime.now(ZoneInfo("UTC"))
     ist_now = utc_now.astimezone(ZoneInfo("Asia/Kolkata"))
     logger.info(f"Current UTC time: {utc_now}, IST time: {ist_now}")
 
-    # Define today's start and end in UTC
     today_start = utc_now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
     today_end = utc_now.replace(hour=23, minute=59, second=59, microsecond=999999).isoformat()
     logger.info(f"Today range (UTC): {today_start} to {today_end}")
@@ -393,7 +413,6 @@ def index():
     recent_entries_data = []
 
     try:
-        # Fetch suggestions for today
         latest_entry_query = supabase.table('journal_entries')\
             .select('created_at, analysis')\
             .eq('user_id', user_id)\
@@ -405,7 +424,6 @@ def index():
 
         if latest_entry.data:
             logger.info(f"Latest entry: {latest_entry.data[0]}")
-            # Handle different created_at formats
             created_at_str = latest_entry.data[0]['created_at']
             try:
                 if '.' in created_at_str:
@@ -436,7 +454,6 @@ def index():
             suggestions = ["Write a journal entry to get personalized suggestions!"]
             logger.info("No journal entries found for user.")
 
-        # Fetch the 3 most recent journal entries for preview
         recent_entries_query = supabase.table('journal_entries')\
             .select('id, content, created_at')\
             .eq('user_id', user_id)\
@@ -449,7 +466,6 @@ def index():
         recent_entries_data = recent_entries.data if recent_entries.data else []
         logger.info(f"Recent entries fetched: {recent_entries_data}")
 
-        # Format the created_at date for display
         for entry in recent_entries_data:
             created_at_str = entry['created_at']
             try:
@@ -463,7 +479,6 @@ def index():
             except ValueError as e:
                 logger.error(f"Error parsing created_at for recent entry: {created_at_str}, Error: {str(e)}")
                 entry['created_at'] = "Unknown Date"
-            # Truncate content to 50 characters
             entry['content_snippet'] = (entry['content'][:50] + '…') if len(entry['content']) > 50 else entry['content']
 
     except Exception as e:
