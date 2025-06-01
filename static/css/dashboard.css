@@ -30,6 +30,10 @@ body {
   min-height: 100vh;
 }
 
+.container {
+  display: flex;
+}
+
 .sidebar {
   width: 260px;
   background: var(--glass-bg);
@@ -40,8 +44,12 @@ body {
   flex-direction: column;
   gap: 32px;
   position: fixed;
+  top: 0;
+  left: 0;
   height: 100vh;
-  z-index: 100;
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
+  z-index: 1000;
+  transition: all 0.3s ease;
 }
 
 .logo {
@@ -64,18 +72,7 @@ body {
 .logo h1 span {
   color: var(--primary);
 }
-.container{
-  display: flex;
-}
 
-.sidebar{
-  width:300px;
-  flex-shrink: 0;
-}
-.content{
-  flex-grow: 1;
-  padding: 20px;
-}
 .sidebar nav {
   display: flex;
   flex-direction: column;
@@ -92,7 +89,7 @@ body {
   display: flex;
   align-items: center;
   gap: 18px;
-  transition: background 0.3s, color 0.3s;
+  transition: all 0.3s ease;
 }
 
 .sidebar nav a:hover,
@@ -247,10 +244,10 @@ header {
   font-size: 0.9rem;
   font-weight: 500;
   cursor: pointer;
-  transition: background 0.3s;
+  transition: all 0.3s ease;
 }
 
-.card-button a{
+.card-button a {
   color: #fff;
   text-decoration: none;
 }
@@ -276,24 +273,30 @@ footer {
   width: 100%;
 }
 
+/* Responsive Styles */
 @media (max-width: 900px) {
   .sidebar {
     width: 80px;
     align-items: center;
   }
+
   .sidebar .logo h1 {
     display: none;
   }
+
   .sidebar nav a {
     justify-content: center;
     padding: 12px;
   }
+
   .sidebar nav a span {
     display: none;
   }
+
   .main-content {
     margin-left: 80px;
   }
+
   .search-bar {
     width: 300px;
   }
@@ -308,31 +311,32 @@ footer {
     justify-content: space-between;
     padding: 16px;
   }
+
   .sidebar nav {
     flex-direction: row;
     gap: 8px;
   }
+
   .main-content {
     margin-left: 0;
     padding: 16px;
   }
+
   .card-grid {
     grid-template-columns: 1fr;
   }
+
   .search-bar {
     width: 100%;
     padding: 10px 16px;
   }
+
   .search-bar i {
     font-size: 1.2rem;
   }
+
   .search-bar input,
   .search-bar input::placeholder {
     font-size: 1rem;
   }
 }
-
-.footer{
-  background-color: black;
-  background: black;
-  height: 30px;}
