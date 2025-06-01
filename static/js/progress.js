@@ -1,33 +1,39 @@
 document.addEventListener('DOMContentLoaded', function () {
-    const canvas = document.getElementById('moodChart');
-    canvas.width = 900;
-    canvas.height = 650;
+    // Mood Chart Canvas
+    const moodCanvas = document.getElementById('moodChart');
+    moodCanvas.width = 900;
+    moodCanvas.height = 650;
+
+    // Confidence Chart Canvas
+    const confidenceCanvas = document.getElementById('confidenceChart');
+    confidenceCanvas.width = 900;
+    confidenceCanvas.height = 650;
 
     fetch('/api/mood_data')
         .then(response => response.json())
         .then(data => {
             console.log('API Response:', data);
 
-            // Mood Chart (Chart.js)
-            const ctx = canvas.getContext('2d');
-            const lineGradient = ctx.createLinearGradient(0, 0, 0, 650);
-            lineGradient.addColorStop(0, '#FF6EC7');
-            lineGradient.addColorStop(1, '#7879F1');
-            const fillGradient = ctx.createLinearGradient(0, 0, 0, 650);
-            fillGradient.addColorStop(0, 'rgba(230, 230, 250, 0.5)');
-            fillGradient.addColorStop(1, 'rgba(200, 200, 240, 0.1)');
+            // Mood Chart (Area Chart using Line with Fill)
+            const moodCtx = moodCanvas.getContext('2d');
+            const moodLineGradient = moodCtx.createLinearGradient(0, 0, 0, 650);
+            moodLineGradient.addColorStop(0, '#FF6EC7'); // Neon pink
+            moodLineGradient.addColorStop(1, '#7879F1'); // Neon purple
+            const moodFillGradient = moodCtx.createLinearGradient(0, 0, 0, 650);
+            moodFillGradient.addColorStop(0, 'rgba(230, 230, 250, 0.5)'); // Light violet
+            moodFillGradient.addColorStop(1, 'rgba(200, 200, 240, 0.1)'); // Slightly darker violet
 
-            const chart = new Chart(ctx, {
+            const moodChart = new Chart(moodCtx, {
                 type: 'line',
                 data: {
                     labels: data.labels,
                     datasets: [{
                         label: 'Mood',
                         data: data.data,
-                        borderColor: lineGradient,
+                        borderColor: moodLineGradient,
                         borderWidth: 3,
-                        fill: true,
-                        backgroundColor: fillGradient,
+                        fill: true, // Emphasize the fill for area chart effect
+                        backgroundColor: moodFillGradient,
                         tension: 0.4,
                         pointBackgroundColor: '#FFFFFF',
                         pointBorderColor: '#7879F1',
@@ -46,7 +52,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         y: {
                             beginAtZero: true,
                             max: 5,
-                            min: 1,
+                            min: 0,
                             ticks: {
                                 stepSize: 1,
                                 color: '#000000',
@@ -56,7 +62,7 @@ document.addEventListener('DOMContentLoaded', function () {
                                 }
                             },
                             grid: {
-                                color: 'rgba(0, 0, 0, 0)',
+                                color: 'rgba(0, 0, 0, 0.1)',
                             },
                             title: {
                                 display: true,
@@ -66,7 +72,7 @@ document.addEventListener('DOMContentLoaded', function () {
                                     family: "'Poppins', sans-serif",
                                     size: 20
                                 },
-                                padding: 10
+                                padding: 5
                             }
                         },
                         x: {
@@ -95,7 +101,14 @@ document.addEventListener('DOMContentLoaded', function () {
                     },
                     plugins: {
                         legend: {
-                            display: false
+                            display: true,
+                            labels: {
+                                font: {
+                                    family: "'Poppins', sans-serif",
+                                    size: 14
+                                },
+                                color: '#000000'
+                            }
                         },
                         tooltip: {
                             enabled: false
@@ -123,81 +136,124 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             });
 
-            // Confidence Chart (ApexCharts)
-            const confidenceOptions = {
-                chart: {
-                    type: 'line',
-                    height: 400,
-                    animations: {
-                        enabled: true,
-                        easing: 'easeinout',
-                        speed: 800
-                    }
+            // Confidence Chart (Scatter Chart)
+            const confidenceCtx = confidenceCanvas.getContext('2d');
+            // Prepare scatter data: only show points where confidence > 0
+            const scatterData = data.confidence.map((value, index) => {
+                if (value > 0) {
+                    return { x: index, y: value };
+                }
+                return null;
+            }).filter(point => point !== null);
+
+            const confidenceChart = new Chart(confidenceCtx, {
+                type: 'scatter',
+                data: {
+                    datasets: [{
+                        label: 'Confidence',
+                        data: scatterData,
+                        backgroundColor: '#1E90FF', // Dodger blue
+                        borderColor: '#FFFFFF',
+                        borderWidth: 2,
+                        pointRadius: 5,
+                        pointHoverRadius: 8,
+                        pointHoverBackgroundColor: '#00BFFF', // Deep sky blue
+                        pointHoverBorderColor: '#FFFFFF',
+                        pointHoverBorderWidth: 2
+                    }]
                 },
-                series: [{
-                    name: 'Confidence',
-                    data: data.confidence
-                }],
-                xaxis: {
-                    categories: data.labels,
-                    labels: {
-                        style: {
-                            fontFamily: "'Poppins', sans-serif",
-                            fontSize: '14px',
-                            colors: '#000000'
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 1,
+                            min: 0,
+                            ticks: {
+                                stepSize: 0.2,
+                                color: '#000000',
+                                font: {
+                                    family: "'Poppins', sans-serif",
+                                    size: 17
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.1)',
+                            },
+                            title: {
+                                display: true,
+                                text: 'Confidence Score',
+                                color: '#000000',
+                                font: {
+                                    family: "'Poppins', sans-serif",
+                                    size: 20
+                                },
+                                padding: 5
+                            }
+                        },
+                        x: {
+                            type: 'category',
+                            labels: data.labels,
+                            ticks: {
+                                color: '#000000',
+                                font: {
+                                    family: "'Poppins', sans-serif",
+                                    size: 17
+                                }
+                            },
+                            grid: {
+                                display: false
+                            },
+                            title: {
+                                display: true,
+                                text: 'Day',
+                                color: '#000000',
+                                font: {
+                                    family: "'Poppins', sans-serif",
+                                    size: 16,
+                                    weight: 'bold'
+                                },
+                                padding: 10
+                            }
                         }
                     },
-                    title: {
-                        text: 'Day',
-                        style: {
-                            fontFamily: "'Poppins', sans-serif",
-                            fontSize: '16px',
-                            fontWeight: 'bold',
-                            color: '#000000'
-                        }
-                    }
-                },
-                yaxis: {
-                    min: 0,
-                    max: 1,
-                    tickAmount: 5,
-                    labels: {
-                        style: {
-                            fontFamily: "'Poppins', sans-serif",
-                            fontSize: '14px',
-                            colors: '#000000'
+                    plugins: {
+                        legend: {
+                            display: true,
+                            labels: {
+                                font: {
+                                    family: "'Poppins', sans-serif",
+                                    size: 14
+                                },
+                                color: '#000000'
+                            }
+                        },
+                        tooltip: {
+                            enabled: false
                         }
                     },
-                    title: {
-                        text: 'Confidence Score',
-                        style: {
-                            fontFamily: "'Poppins', sans-serif",
-                            fontSize: '16px',
-                            fontWeight: 'bold',
-                            color: '#000000'
+                    animation: {
+                        duration: 1500,
+                        easing: 'easeOutCubic'
+                    },
+                    elements: {
+                        point: {
+                            shadowColor: 'rgba(255, 255, 255, 0.3)',
+                            shadowBlur: 10,
+                            shadowOffsetX: 0,
+                            shadowOffsetY: 0
                         }
-                    }
-                },
-                stroke: {
-                    curve: 'smooth',
-                    width: 3
-                },
-                colors: ['#7879F1'],
-                markers: {
-                    size: 5,
-                    hover: {
-                        size: 7
-                    }
-                },
-                tooltip: {
-                    style: {
-                        fontFamily: "'Poppins', sans-serif"
+                    },
+                    onClick: (event, elements) => {
+                        if (elements.length > 0) {
+                            const element = elements[0];
+                            const day = data.labels[element.datasetIndex];
+                            alert(`Day: ${day}`);
+                        }
                     }
                 }
-            };
-
-            const confidenceChart = new ApexCharts(document.querySelector("#confidenceChart"), confidenceOptions);
-            confidenceChart.render();
+            });
 
             // Update number of entries
             const numEntriesElement = document.getElementById('entries-count');
@@ -219,25 +275,27 @@ document.addEventListener('DOMContentLoaded', function () {
         })
         .catch(error => {
             console.error('Error fetching mood data:', error);
-            const ctx = canvas.getContext('2d');
-            const lineGradient = ctx.createLinearGradient(0, 0, 0, 650);
-            lineGradient.addColorStop(0, '#FF6EC7');
-            lineGradient.addColorStop(1, '#7879F1');
-            const fillGradient = ctx.createLinearGradient(0, 0, 0, 650);
-            fillGradient.addColorStop(0, 'rgba(230, 230, 250, 0.5)');
-            fillGradient.addColorStop(1, 'rgba(200, 200, 240, 0.1)');
 
-            new Chart(ctx, {
+            // Fallback Mood Chart
+            const moodCtx = moodCanvas.getContext('2d');
+            const moodLineGradient = moodCtx.createLinearGradient(0, 0, 0, 650);
+            moodLineGradient.addColorStop(0, '#FF6EC7');
+            moodLineGradient.addColorStop(1, '#7879F1');
+            const moodFillGradient = moodCtx.createLinearGradient(0, 0, 0, 650);
+            moodFillGradient.addColorStop(0, 'rgba(230, 230, 250, 0.5)');
+            moodFillGradient.addColorStop(1, 'rgba(200, 200, 240, 0.1)');
+
+            new Chart(moodCtx, {
                 type: 'line',
                 data: {
                     labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
                     datasets: [{
                         label: 'Mood',
                         data: [3, 3, 3, 3, 3, 3, 3],
-                        borderColor: lineGradient,
+                        borderColor: moodLineGradient,
                         borderWidth: 3,
                         fill: true,
-                        backgroundColor: fillGradient,
+                        backgroundColor: moodFillGradient,
                         tension: 0.4,
                         pointBackgroundColor: '#FFFFFF',
                         pointBorderColor: '#7879F1',
@@ -256,7 +314,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         y: {
                             beginAtZero: true,
                             max: 5,
-                            min: 1,
+                            min: 0,
                             ticks: {
                                 stepSize: 1,
                                 color: '#000000',
@@ -266,7 +324,7 @@ document.addEventListener('DOMContentLoaded', function () {
                                 }
                             },
                             grid: {
-                                color: 'rgba(0, 0, 0, 0)',
+                                color: 'rgba(0, 0, 0, 0.1)',
                             },
                             title: {
                                 display: true,
@@ -276,7 +334,7 @@ document.addEventListener('DOMContentLoaded', function () {
                                     family: "'Poppins', sans-serif",
                                     size: 20
                                 },
-                                padding: 10
+                                padding: 5
                             }
                         },
                         x: {
@@ -305,7 +363,14 @@ document.addEventListener('DOMContentLoaded', function () {
                     },
                     plugins: {
                         legend: {
-                            display: false
+                            display: true,
+                            labels: {
+                                font: {
+                                    family: "'Poppins', sans-serif",
+                                    size: 14
+                                },
+                                color: '#000000'
+                            }
                         },
                         tooltip: {
                             enabled: false
@@ -333,6 +398,124 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             });
 
+            // Fallback Confidence Chart
+            const confidenceCtx = confidenceCanvas.getContext('2d');
+            const fallbackScatterData = [0, 0, 0, 0, 0, 0, 0].map((value, index) => {
+                if (value > 0) {
+                    return { x: index, y: value };
+                }
+                return null;
+            }).filter(point => point !== null);
+
+            new Chart(confidenceCtx, {
+                type: 'scatter',
+                data: {
+                    datasets: [{
+                        label: 'Confidence',
+                        data: fallbackScatterData,
+                        backgroundColor: '#1E90FF',
+                        borderColor: '#FFFFFF',
+                        borderWidth: 2,
+                        pointRadius: 5,
+                        pointHoverRadius: 8,
+                        pointHoverBackgroundColor: '#00BFFF',
+                        pointHoverBorderColor: '#FFFFFF',
+                        pointHoverBorderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 1,
+                            min: 0,
+                            ticks: {
+                                stepSize: 0.2,
+                                color: '#000000',
+                                font: {
+                                    family: "'Poppins', sans-serif",
+                                    size: 17
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.1)',
+                            },
+                            title: {
+                                display: true,
+                                text: 'Confidence Score',
+                                color: '#000000',
+                                font: {
+                                    family: "'Poppins', sans-serif",
+                                    size: 20
+                                },
+                                padding: 5
+                            }
+                        },
+                        x: {
+                            type: 'category',
+                            labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                            ticks: {
+                                color: '#000000',
+                                font: {
+                                    family: "'Poppins', sans-serif",
+                                    size: 17
+                                }
+                            },
+                            grid: {
+                                display: false
+                            },
+                            title: {
+                                display: true,
+                                text: 'Day',
+                                color: '#000000',
+                                font: {
+                                    family: "'Poppins', sans-serif",
+                                    size: 16,
+                                    weight: 'bold'
+                                },
+                                padding: 10
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            labels: {
+                                font: {
+                                    family: "'Poppins', sans-serif",
+                                    size: 14
+                                },
+                                color: '#000000'
+                            }
+                        },
+                        tooltip: {
+                            enabled: false
+                        }
+                    },
+                    animation: {
+                        duration: 1500,
+                        easing: 'easeOutCubic'
+                    },
+                    elements: {
+                        point: {
+                            shadowColor: 'rgba(255, 255, 255, 0.3)',
+                            shadowBlur: 10,
+                            shadowOffsetX: 0,
+                            shadowOffsetY: 0
+                        }
+                    },
+                    onClick: (event, elements) => {
+                        if (elements.length > 0) {
+                            const element = elements[0];
+                            const day = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][element.datasetIndex];
+                            alert(`Day: ${day}`);
+                        }
+                    }
+                }
+            });
+
             // Fallback for number of entries and streak
             const numEntriesElement = document.getElementById('entries-count');
             if (numEntriesElement) {
@@ -343,81 +526,5 @@ document.addEventListener('DOMContentLoaded', function () {
             if (streakElement) {
                 streakElement.textContent = '0 Days';
             }
-
-            // Fallback Confidence Chart
-            const confidenceOptions = {
-                chart: {
-                    type: 'line',
-                    height: 400,
-                    animations: {
-                        enabled: true,
-                        easing: 'easeinout',
-                        speed: 800
-                    }
-                },
-                series: [{
-                    name: 'Confidence',
-                    data: [0, 0, 0, 0, 0, 0, 0]
-                }],
-                xaxis: {
-                    categories: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-                    labels: {
-                        style: {
-                            fontFamily: "'Poppins', sans-serif",
-                            fontSize: '14px',
-                            colors: '#000000'
-                        }
-                    },
-                    title: {
-                        text: 'Day',
-                        style: {
-                            fontFamily: "'Poppins', sans-serif",
-                            fontSize: '16px',
-                            fontWeight: 'bold',
-                            color: '#000000'
-                        }
-                    }
-                },
-                yaxis: {
-                    min: 0,
-                    max: 1,
-                    tickAmount: 5,
-                    labels: {
-                        style: {
-                            fontFamily: "'Poppins', sans-serif",
-                            fontSize: '14px',
-                            colors: '#000000'
-                        }
-                    },
-                    title: {
-                        text: 'Confidence Score',
-                        style: {
-                            fontFamily: "'Poppins', sans-serif",
-                            fontSize: '16px',
-                            fontWeight: 'bold',
-                            color: '#000000'
-                        }
-                    }
-                },
-                stroke: {
-                    curve: 'smooth',
-                    width: 3
-                },
-                colors: ['#7879F1'],
-                markers: {
-                    size: 5,
-                    hover: {
-                        size: 7
-                    }
-                },
-                tooltip: {
-                    style: {
-                        fontFamily: "'Poppins', sans-serif"
-                    }
-                }
-            };
-
-            const confidenceChart = new ApexCharts(document.querySelector("#confidenceChart"), confidenceOptions);
-            confidenceChart.render();
         });
 });

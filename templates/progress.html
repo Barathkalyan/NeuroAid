@@ -13,8 +13,6 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/progress.css') }}" />
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- ApexCharts -->
-  <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
   <!-- Link to JavaScript -->
   <script src="{{ url_for('static', filename='js/progress.js') }}" defer></script>
 </head>
@@ -88,7 +86,7 @@
         <section class="chart-section">
           <h2><i class="ri-line-chart-line"></i> Confidence Over Time</h2>
           <div class="chart-card">
-            <div id="confidenceChart"></div>
+            <canvas id="confidenceChart"></canvas>
           </div>
         </section>
 
