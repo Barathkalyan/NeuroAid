@@ -64,7 +64,7 @@ body {
 }
 
 .logo h1 {
-  font-size: 1.8rem;
+  font-size: 2.3rem;
   font-weight: 700;
   color: var(--text-primary);
 }
@@ -272,6 +272,29 @@ footer {
   margin-top: auto;
   width: 100%;
 }
+
+.quick-actions {
+  display: flex;
+  gap: 35px;
+}
+
+.action-button {
+  background-color: #7c3aed;
+  color: white;
+  padding: 25px 30px;
+  font-size: 18px;
+  border-radius: 10px;
+  text-decoration: none;
+  font-weight: 700;
+  transition: background-color 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.action-button:hover {
+  background-color: #310c6d; /* Darker purple */
+  transform: translateY(-3px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
 
 /* Responsive Styles */
 @media (max-width: 900px) {
