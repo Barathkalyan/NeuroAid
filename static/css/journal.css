@@ -6,7 +6,7 @@ body {
 }
 
 .journal-section {
-  width: 1200px;
+  width: 1400px;
   margin: 0 auto;
   background-color: #ffffff;
   padding: 20px;
@@ -34,7 +34,7 @@ body {
 }
 
 .journal-meta {
-  display: flex;
+   align-items: center;
   justify-content: space-between;
   color: #7c3aed;
   font-size: 20px;
@@ -45,7 +45,7 @@ body {
 }
 
 #editor {
-  height: 500px;
+  height: 600px;
   width:100%;
   font-size: 23px;
   background-color: #f4f0fa;
@@ -78,17 +78,20 @@ body {
 .journal-actions {
   margin-top: 20px;
   text-align: right;
+
 }
 
 .save-btn {
   padding: 12px 24px;
   background-color: #7c3aed;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
   color: #ffffff;
   border: none;
   border-radius: 8px;
   cursor: pointer;
-  font-weight: 500;
-  font-size: 16px;
+  font-size: 20px;
   transition: background-color 0.3s ease;
 }
 
