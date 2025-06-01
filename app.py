@@ -573,6 +573,13 @@ def progress():
         return redirect(url_for('login'))
     return render_template('progress.html')
 
+@app.route('/vibe')
+def vibe():
+    if 'user' not in session:
+        logger.warning("User not in session, redirecting to login.")
+        return redirect(url_for('login'))
+    return render_template('vibe.html')
+
 @app.route('/profile')
 def profile():
     if 'user' not in session:
