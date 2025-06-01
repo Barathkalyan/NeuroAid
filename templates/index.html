@@ -53,27 +53,27 @@
           {% if suggestions is defined and suggestions %}
             <ul style="list-style-type: disc; padding-left: 20px; margin-top:25px; color: #2d2d2d; font-size: 22px;">
               {% for suggestion in suggestions %}
-                <li style="margin-bottom: 10px; display:flex; gap:15px; margin-top:15px;">{{ suggestion }}</li>
+                <li style="margin-bottom: 10px;list-style-type: disc; display:flex; gap:15px; margin-top:15px;">{{ suggestion }}</li>
               {% endfor %}
             </ul>
           {% else %}
-            <p style="color: #666;">No suggestions available. Write a journal entry to get started!</p>
+            <p style="color: #666; margin-bottom: 10px;list-style-type: disc; display:flex; gap:15px; margin-top:15px;">No suggestions available. Write a journal entry to get started!</p>
           {% endif %}
         </div>
 
         <!-- Recent Reflections Section -->
         <div class="recent-reflections debug-reflections" style="margin-bottom: 30px;">
-          <h3 style="color: #2d2d2d; margin-bottom: 15px;"><i class="ri-booklet-line"></i> Recent Reflections</h3>
+          <h3 style="color: #2d2d2d; margin-bottom: 15px; font-size:30px;"><i class="ri-booklet-line"></i> Recent Reflections</h3>
           {% if recent_entries is defined and recent_entries %}
             {% for entry in recent_entries %}
-              <div class="entry-preview" style="background-color: #ffffff; border: 1px solid #e8e1fa; border-radius: 8px; padding: 15px; margin-bottom: 10px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);">
-                <div class="entry-meta" style="font-size: 14px; color: #7c3aed; margin-bottom: 5px;">
+              <div class="entry-preview" style="background-color: #ffffff; border: 1px solid #c7bbe4; border-radius: 10px; padding: 15px;  margin-bottom: 10px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.07);">
+                <div class="entry-meta" style="font-size: 20px; color: #7c3aed; margin-bottom: 5px;">
                   {{ entry.created_at }}
                 </div>
-                <div class="entry-snippet" style="color: #2d2d2d; font-size: 16px; margin-bottom: 10px;">
+                <div class="entry-snippet" style="color: #202020; font-size: 18px; margin-bottom: 15px; margin-top:15px;">
                   {{ entry.content_snippet | safe }}
                 </div>
-                <a href="{{ url_for('journal') }}" style="color: #7c3aed; font-size: 14px; text-decoration: none; font-weight: 500;">
+                <a href="{{ url_for('journal') }}" style="color: #7c3aed; font-size: 18px; text-decoration: none; font-weight: 500;">
                   Read More
                 </a>
               </div>
