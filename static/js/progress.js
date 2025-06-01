@@ -2,7 +2,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Get the canvas element and set its size for a larger graph
     const canvas = document.getElementById('moodChart');
     canvas.width = 800;  // Increase width
-    canvas.height = 400; // Increase height
+    canvas.height = 600; // Increase height
 
     fetch('/api/mood_data')
         .then(response => response.json())
@@ -54,33 +54,32 @@ document.addEventListener('DOMContentLoaded', function () {
                             min: 1,
                             ticks: {
                                 stepSize: 1,
-                                color: '#D3D3D3',
+                                color: '#000000',
                                 font: {
                                     family: "'Poppins', sans-serif",
-                                    size: 14 // Larger font for readability
+                                    size: 17 // Larger font for readability
                                 }
                             },
                             grid: {
-                                color: 'rgba(255, 255, 255, 0.1)',
+                                color:'rgba(0,0,0,0)',
                             },
                             title: {
                                 display: true,
                                 text: 'Mood Score',
-                                color: '#D3D3D3',
+                                color: '#000000',
                                 font: {
                                     family: "'Poppins', sans-serif",
-                                    size: 16,
-                                    weight: 'bold'
+                                    size: 20
                                 },
                                 padding: 10
                             }
                         },
                         x: {
                             ticks: {
-                                color: '#D3D3D3',
+                                color: '#000000',
                                 font: {
                                     family: "'Poppins', sans-serif",
-                                    size: 14
+                                    size: 17
                                 }
                             },
                             grid: {
@@ -89,7 +88,7 @@ document.addEventListener('DOMContentLoaded', function () {
                             title: {
                                 display: true,
                                 text: 'Day',
-                                color: '#D3D3D3',
+                                color: '#000000',
                                 font: {
                                     family: "'Poppins', sans-serif",
                                     size: 16,
@@ -216,17 +215,18 @@ document.addEventListener('DOMContentLoaded', function () {
                                 font: {
                                     family: "'Poppins', sans-serif",
                                     size: 16,
-                                    weight: 'bold'
+                                    weight: 'bold',
+                                    color: 'rgba(0,0,0,0)',
                                 },
                                 padding: 10
                             }
                         },
                         x: {
                             ticks: {
-                                color: '#D3D3D3',
+                                color: 'rgba(0,0,0,0)',
                                 font: {
                                     family: "'Poppins', sans-serif",
-                                    size: 14
+                                    size: 16
                                 }
                             },
                             grid: {
