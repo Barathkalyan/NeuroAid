@@ -204,14 +204,15 @@ header {
 .stats-boxes {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 24px;
+  gap: 30px;
   width: 100%; }
 
 .stat-box {
   background: var(--glass-bg);
   border-radius: 16px;
+  height: 120px;
   padding: 24px;
-  border: 1px solid var(--glass-border);
+  border: 5px solid var(--glass-border);
   backdrop-filter: blur(12px);
   box-shadow: var(--shadow);
   display: flex;
@@ -239,16 +240,18 @@ header {
 }
 
 .stat-box h3 {
-  font-size: 1.2rem;
+  font-size: 25px;
   font-weight: 600;
   color: var(--text-primary);
   margin-bottom: 8px;
 }
 
 .stat-box p {
-  font-size: 0.95rem;
+  font-size: 20px;
   color: var(--text-secondary);
+  font-weight: 500;
   line-height: 1.5;
+  letter-spacing: 1px;
 }
 
 /* Chart section */
@@ -257,7 +260,7 @@ header {
 }
 
 .chart-section h2 {
-  font-size: 1.8rem;
+  font-size: 32px;
   font-weight: 600;
   color: var(--text-primary);
   margin-bottom: 24px;
@@ -280,11 +283,12 @@ header {
   box-shadow: var(--shadow);
   transition: transform 0.3s ease, box-shadow 0.3s ease;
   width: 100%; /* Ensure chart takes full width */
+  height:600px;
 }
 
 .chart-card:hover {
   transform: translateY(-8px);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1);
+  box-shadow: 10px 12px 40px rgba(0, 0, 0, 0.1);
 }
 
 /* Insights section */
@@ -293,7 +297,7 @@ header {
 }
 
 .insights-section h2 {
-  font-size: 1.8rem;
+  font-size: 30px;
   font-weight: 600;
   color: var(--text-primary);
   margin-bottom: 24px;
