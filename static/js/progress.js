@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         data: data.data,
                         borderColor: moodLineGradient,
                         borderWidth: 3,
-                        fill: true, // Emphasize the fill for area chart effect
+                        fill: true,
                         backgroundColor: moodFillGradient,
                         tension: 0.4,
                         pointBackgroundColor: '#FFFFFF',
@@ -136,30 +136,25 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             });
 
-            // Confidence Chart (Scatter Chart)
+            // Confidence Chart (Bar Chart)
             const confidenceCtx = confidenceCanvas.getContext('2d');
-            // Prepare scatter data: only show points where confidence > 0
-            const scatterData = data.confidence.map((value, index) => {
-                if (value > 0) {
-                    return { x: index, y: value };
-                }
-                return null;
-            }).filter(point => point !== null);
+            const confidenceBarGradient = confidenceCtx.createLinearGradient(0, 0, 0, 650);
+            confidenceBarGradient.addColorStop(0, '#00BFFF'); // Deep sky blue
+            confidenceBarGradient.addColorStop(1, '#1E90FF'); // Dodger blue
 
             const confidenceChart = new Chart(confidenceCtx, {
-                type: 'scatter',
+                type: 'bar',
                 data: {
+                    labels: data.labels,
                     datasets: [{
                         label: 'Confidence',
-                        data: scatterData,
-                        backgroundColor: '#1E90FF', // Dodger blue
+                        data: data.confidence,
+                        backgroundColor: confidenceBarGradient,
                         borderColor: '#FFFFFF',
-                        borderWidth: 2,
-                        pointRadius: 5,
-                        pointHoverRadius: 8,
-                        pointHoverBackgroundColor: '#00BFFF', // Deep sky blue
-                        pointHoverBorderColor: '#FFFFFF',
-                        pointHoverBorderWidth: 2
+                        borderWidth: 1,
+                        borderRadius: 5, // Rounded corners for bars
+                        barThickness: 40, // Thinner bars
+                        categoryPercentage: 0.5
                     }]
                 },
                 options: {
@@ -193,8 +188,6 @@ document.addEventListener('DOMContentLoaded', function () {
                             }
                         },
                         x: {
-                            type: 'category',
-                            labels: data.labels,
                             ticks: {
                                 color: '#000000',
                                 font: {
@@ -237,18 +230,10 @@ document.addEventListener('DOMContentLoaded', function () {
                         duration: 1500,
                         easing: 'easeOutCubic'
                     },
-                    elements: {
-                        point: {
-                            shadowColor: 'rgba(255, 255, 255, 0.3)',
-                            shadowBlur: 10,
-                            shadowOffsetX: 0,
-                            shadowOffsetY: 0
-                        }
-                    },
                     onClick: (event, elements) => {
                         if (elements.length > 0) {
                             const element = elements[0];
-                            const day = data.labels[element.datasetIndex];
+                            const day = data.labels[element.index];
                             alert(`Day: ${day}`);
                         }
                     }
@@ -400,27 +385,22 @@ document.addEventListener('DOMContentLoaded', function () {
 
             // Fallback Confidence Chart
             const confidenceCtx = confidenceCanvas.getContext('2d');
-            const fallbackScatterData = [0, 0, 0, 0, 0, 0, 0].map((value, index) => {
-                if (value > 0) {
-                    return { x: index, y: value };
-                }
-                return null;
-            }).filter(point => point !== null);
+            const confidenceBarGradient = confidenceCtx.createLinearGradient(0, 0, 0, 650);
+            confidenceBarGradient.addColorStop(0, '#00BFFF');
+            confidenceBarGradient.addColorStop(1, '#1E90FF');
 
             new Chart(confidenceCtx, {
-                type: 'scatter',
+                type: 'bar',
                 data: {
+                    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
                     datasets: [{
                         label: 'Confidence',
-                        data: fallbackScatterData,
-                        backgroundColor: '#1E90FF',
+                        data: [0, 0, 0, 0, 0, 0, 0],
+                        backgroundColor: confidenceBarGradient,
                         borderColor: '#FFFFFF',
-                        borderWidth: 2,
-                        pointRadius: 5,
-                        pointHoverRadius: 8,
-                        pointHoverBackgroundColor: '#00BFFF',
-                        pointHoverBorderColor: '#FFFFFF',
-                        pointHoverBorderWidth: 2
+                        borderWidth: 1,
+                        borderRadius: 5,
+                        barThickness: 20
                     }]
                 },
                 options: {
@@ -454,8 +434,6 @@ document.addEventListener('DOMContentLoaded', function () {
                             }
                         },
                         x: {
-                            type: 'category',
-                            labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
                             ticks: {
                                 color: '#000000',
                                 font: {
@@ -498,18 +476,10 @@ document.addEventListener('DOMContentLoaded', function () {
                         duration: 1500,
                         easing: 'easeOutCubic'
                     },
-                    elements: {
-                        point: {
-                            shadowColor: 'rgba(255, 255, 255, 0.3)',
-                            shadowBlur: 10,
-                            shadowOffsetX: 0,
-                            shadowOffsetY: 0
-                        }
-                    },
                     onClick: (event, elements) => {
                         if (elements.length > 0) {
                             const element = elements[0];
-                            const day = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][element.datasetIndex];
+                            const day = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][element.index];
                             alert(`Day: ${day}`);
                         }
                     }
