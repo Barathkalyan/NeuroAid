@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, g
+from flask import Flask, render_template, request, redirect, url_for, session, g, jsonify
 from supabase import create_client, Client
 import bcrypt
 import logging
@@ -85,7 +85,7 @@ def get_recent_emotions(supabase, user_id, days=7):
             .execute()
         all_emotions = []
         for entry in query.data:
-            emotions = entry['analysis']['emotions'] if 'emotions' in entry['analysis'] else []
+            emotions = entry['emotions'] if 'emotions' in entry else []
             all_emotions.extend([e['label'] for e in emotions if e['score'] > 0.3])
         emotion_counts = {}
         for emotion in all_emotions:
@@ -203,6 +203,102 @@ def get_supabase():
 def teardown_supabase(exception):
     if 'supabase' in g:
         g.pop('supabase')
+
+@app.route('/api/mood_data', methods=['GET'])
+def get_mood_data():
+    if 'user' not in session:
+        logger.warning("User not in session, returning Unauthorized.")
+        return jsonify({'error': 'Unauthorized'}), 401
+    supabase = get_supabase()
+    user_id = session['user']
+    start_date = (datetime.now(ZoneInfo("UTC")) - timedelta(days=7)).isoformat()
+    try:
+        entries = supabase.table('journal_entries')\
+            .select('analysis, created_at')\
+            .eq('user_id', user_id)\
+            .gt('created_at', start_date)\
+            .order('created_at', desc=False)\
+            .execute()
+        labels = []
+        data = []
+        # Calculate number of entries in the last 7 days
+        num_entries = len(entries.data)
+        logger.info(f"Fetched {num_entries} journal entries for user {user_id}")
+
+        # Process entries for mood data
+        for entry in entries.data:
+            created_at = entry['created_at']
+            try:
+                if '.' in created_at:
+                    created_at = created_at.split('.')[0] + '+00:00'
+                else:
+                    created_at = created_at.replace('Z', '+00:00')
+                date = datetime.fromisoformat(created_at).replace(tzinfo=ZoneInfo("UTC"))
+                labels.append(date.strftime('%a'))
+                mood = entry['analysis'].get('mood', 3)  # Default to 3 if mood is missing
+                data.append(mood)
+                logger.info(f"Entry date: {date}, Mood: {mood}")
+            except ValueError as e:
+                logger.error(f"Error parsing created_at: {created_at}, Error: {str(e)}")
+                continue
+            except KeyError as e:
+                logger.error(f"Error accessing analysis.mood in entry: {entry}, Error: {str(e)}")
+                data.append(3)  # Fallback to neutral if analysis.mood is missing
+                labels.pop()  # Remove the label to keep arrays in sync
+                continue
+
+        # Fallback if no entries
+        if not labels:
+            logger.warning(f"No valid entries found for user {user_id} in the last 7 days")
+            labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+            data = [3] * 7
+
+        # Calculate streak
+        # Fetch all entries for the user to calculate streak, ordered by date descending
+        all_entries = supabase.table('journal_entries')\
+            .select('created_at')\
+            .eq('user_id', user_id)\
+            .order('created_at', desc=True)\
+            .execute()
+
+        streak = 0
+        current_date = datetime.now(ZoneInfo("UTC")).replace(hour=0, minute=0, second=0, microsecond=0)
+        entry_dates = set()
+
+        for entry in all_entries.data:
+            created_at = entry['created_at']
+            try:
+                if '.' in created_at:
+                    created_at = created_at.split('.')[0] + '+00:00'
+                else:
+                    created_at = created_at.replace('Z', '+00:00')
+                entry_date = datetime.fromisoformat(created_at).replace(tzinfo=ZoneInfo("UTC"))
+                # Normalize to start of day
+                entry_date = entry_date.replace(hour=0, minute=0, second=0, microsecond=0)
+                entry_dates.add(entry_date)
+            except ValueError as e:
+                logger.error(f"Error parsing created_at for streak: {created_at}, Error: {str(e)}")
+                continue
+
+        # Check for consecutive days starting from today
+        while True:
+            if current_date in entry_dates:
+                streak += 1
+                current_date -= timedelta(days=1)
+            else:
+                break
+
+        logger.info(f"Calculated streak for user {user_id}: {streak} days")
+
+        return jsonify({
+            'labels': labels,
+            'data': data,
+            'numEntries': num_entries,
+            'streak': streak
+        })
+    except Exception as e:
+        logger.error(f"Error fetching mood data: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/', methods=['GET', 'POST'])
 def login():
@@ -457,6 +553,9 @@ def delete_entry(entry_id):
     
 @app.route('/progress')
 def progress():
+    if 'user' not in session:
+        logger.warning("User not in session, redirecting to login.")
+        return redirect(url_for('login'))
     return render_template('progress.html')
 
 @app.route('/profile')
@@ -476,5 +575,3 @@ def logout():
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
-
-
