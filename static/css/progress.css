@@ -107,9 +107,9 @@ body {
 .main-content {
   flex: 1;
   padding: 24px;
-  max-width: 1200px; /* Center content with max-width */
+  width: 1200px;
   width: 100%;
-  margin: 0 auto; /* Center horizontally */
+  margin: 0 auto; 
 }
 
 /* Header */
@@ -187,7 +187,7 @@ header {
 }
 
 .stats-section h2 {
-  font-size: 1.8rem;
+  font-size: 32px;
   font-weight: 600;
   color: var(--text-primary);
   margin-bottom: 24px;
@@ -198,15 +198,14 @@ header {
 
 .stats-section h2 i {
   color: var(--primary);
-  font-size: 2rem;
+  font-size: 2.2rem;
 }
 
 .stats-boxes {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 24px;
-  width: 100%; /* Ensure grid takes full width */
-}
+  width: 100%; }
 
 .stat-box {
   background: var(--glass-bg);
@@ -333,44 +332,35 @@ footer {
   margin-top: auto;
   width: 100%;
 }
-
 /* Responsive design */
 @media (max-width: 900px) {
   .sidebar {
     width: 80px;
     align-items: center;
   }
-
   .sidebar .logo h1 {
     display: none;
   }
-
   .sidebar nav a {
     justify-content: center;
     padding: 12px;
   }
-
   .sidebar nav a span {
     display: none;
   }
-
   .wrapper {
     margin-left: 80px;
   }
-
   .main-content {
     padding: 16px;
   }
-
   .search-bar {
     width: 300px;
   }
-
   .stats-boxes {
     grid-template-columns: 1fr;
   }
 }
-
 @media (max-width: 600px) {
   .sidebar {
     width: 100%;
@@ -380,20 +370,16 @@ footer {
     justify-content: space-between;
     padding: 16px;
   }
-
   .sidebar nav {
     flex-direction: row;
     gap: 8px;
   }
-
   .wrapper {
     margin-left: 0;
   }
-
   .main-content {
     padding: 16px;
   }
-
   .stats-section h2,
   .chart-section h2,
   .insights-section h2 {
