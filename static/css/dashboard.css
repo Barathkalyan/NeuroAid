@@ -64,7 +64,18 @@ body {
 .logo h1 span {
   color: var(--primary);
 }
+.container{
+  display: flex;
+}
 
+.sidebar{
+  width:300px;
+  flex-shrink: 0;
+}
+.content{
+  flex-grow: 1;
+  padding: 20px;
+}
 .sidebar nav {
   display: flex;
   flex-direction: column;
@@ -74,13 +85,13 @@ body {
 .sidebar nav a {
   color: var(--text-primary);
   text-decoration: none;
-  font-size: 1rem;
+  font-size: 1.3rem;
   font-weight: 500;
   padding: 12px 16px;
   border-radius: 8px;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 18px;
   transition: background 0.3s, color 0.3s;
 }
 
