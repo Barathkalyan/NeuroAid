@@ -24,20 +24,20 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 24px;
+  font-size: 32px;
 }
 
 .journal-header p {
   color: #666;
   margin-bottom: 15px;
-  font-size: 16px;
+  font-size: 25px;
 }
 
 .journal-meta {
   display: flex;
   justify-content: space-between;
   color: #7c3aed;
-  font-size: 14px;
+  font-size: 20px;
   font-weight: 500;
   background-color: #f4f0fa;
   padding: 8px 12px;
@@ -47,6 +47,7 @@ body {
 #editor {
   height: 500px;
   width:100%;
+  font-size: 23px;
   background-color: #f4f0fa;
   border: 1px solid #7a7a8c;
   border-radius: 8px;

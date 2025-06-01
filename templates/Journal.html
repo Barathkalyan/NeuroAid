@@ -95,17 +95,17 @@
         <!-- Display Saved Entries -->
         {% if entries %}
           <div class="entries-section">
-            <h3 style="color: #2d2d2d; margin-top: 40px; margin-bottom: 20px;">Your Journal Entries</h3>
+            <h3 style="color: #2d2d2d; margin-top: 40px; margin-bottom: 20px; font-size:28px;">Your Journal Entries</h3>
             <div class="entries-list">
               {% for entry in entries %}
                 <div class="entry-card" id="entry-{{ entry.id }}" style="background-color: #f4f0fa; padding: 15px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);">
-                  <div class="entry-meta" style="display: flex; justify-content: space-between; font-size: 14px; color: #7c3aed; margin-bottom: 10px;">
+                  <div class="entry-meta" style="display: flex; justify-content: space-between; font-size: 20px; color: #7c3aed; margin-bottom: 10px;">
                     <span>{{ entry.created_at }}</span>
-                    <button onclick="deleteEntry('{{ entry.id }}')" style="background: none; border: none; cursor: pointer; color: #b71c1c;">
+                    <button onclick="deleteEntry('{{ entry.id }}')" style="background: none; border: none; cursor: pointer; padding-top:10px; padding-left:10px;color: #b71c1c;">
                       <i class="ri-delete-bin-line"></i>
                     </button>
                   </div>
-                  <div class="entry-content" style="color: #2d2d2d;">{{ entry.content | safe }}</div>
+                  <div class="entry-content" style="color: #2d2d2d; font-size:18px;">{{ entry.content | safe }}</div>
                 </div>
               {% endfor %}
             </div>
