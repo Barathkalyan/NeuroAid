@@ -1,32 +1,63 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vibe - Tamil Music Recommendations</title>
-    <link rel="stylesheet" href="/styles/dashboard.css">
-    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NeuroAid - Vibe</title>
+  <!-- Remix Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css" />
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Link to external CSS -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}" />
 </head>
 <body>
-    <div class="container">
-        <nav class="sidebar">
-            <ul>
-                <li><a href="/dashboard.html" class="nav-link"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
-                <li><a href="/progress.html" class="nav-link"><i class="fas fa-chart-line"></i> Progress</a></li>
-                <li><a href="/vibe.html" class="nav-link active"><i class="fas fa-music"></i> Vibe</a></li>
-            </ul>
-        </nav>
-        <main class="main-content">
-            <header>
-                <h1>Vibe - Tamil Music Recommendations</h1>
-            </header>
-            <section class="music-recommendations-section">
-                <div id="tamil-music-recommendations" class="recommendations-content">
-                    Fetching Tamil music recommendations…
-                </div>
-            </section>
-        </main>
+  <div class="app-container">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="logo">
+        <i class="ri-brain-line"></i>
+        <h1>Neuro<span>Aid</span></h1>
+      </div>
+      <nav>
+        <a href="{{ url_for('index') }}"><i class="ri-home-5-line"></i> Home</a>
+        <a href="{{ url_for('journal') }}"><i class="ri-booklet-line"></i> Journal</a>
+        <a href="{{ url_for('progress') }}"><i class="ri-bar-chart-2-line"></i> Progress</a>
+        <a href="{{ url_for('vibe') }}" class="active"><i class="ri-music-2-line"></i> Vibe</a>
+        <a href="#"><i class="ri-settings-3-line"></i> Settings</a>
+        <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
+        <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
+      </nav>
     </div>
-    <script src="/scripts/vibe.js"></script>
+
+    <!-- Main Content -->
+    <div class="wrapper">
+      <main class="main-content">
+        <header>
+          <div class="search-bar">
+            <i class="ri-search-line"></i>
+            <input type="text" placeholder="Search..." />
+          </div>
+          <div class="profile">
+            <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile" />
+            <span>{{ session.get('user_email', 'User').split('@')[0] }}</span>
+            <i class="ri-arrow-down-s-line"></i>
+          </div>
+        </header>
+
+        <section class="music-recommendations-section">
+          <h2><i class="ri-music-2-line"></i> Vibe - Tamil Music Recommendations</h2>
+          <div id="tamil-music-recommendations" class="recommendations-content">
+            Fetching Tamil music recommendations…
+          </div>
+        </section>
+      </main>
+
+      <footer>
+        <span>© 2025 NeuroAid. Your mental health companion.</span>
+      </footer>
+    </div>
+  </div>
+  <script src="{{ url_for('static', filename='js/vibe.js') }}"></script>
 </body>
 </html>
