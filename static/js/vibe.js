@@ -63,31 +63,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // Function to populate mood selector
-    function populateMoodSelector(data) {
-        const moodSelect = document.getElementById('mood-day');
-        moodSelect.innerHTML = '<option value="">Select a day</option>';
-        data.labels.forEach((label, index) => {
-            const mood = data.data[index];
-            if (mood > 0) {
-                const option = document.createElement('option');
-                option.value = index;
-                option.textContent = `${label} (Mood: ${mood})`;
-                moodSelect.appendChild(option);
-            }
-        });
-
-        moodSelect.addEventListener('change', function () {
-            const selectedIndex = parseInt(this.value);
-            if (!isNaN(selectedIndex)) {
-                const selectedMood = data.data[selectedIndex];
-                currentGenre = mapMoodToGenre(selectedMood);
-                currentLimit = 7; // Reset limit when changing mood
-                fetchRecommendations(currentGenre, currentLimit);
-            }
-        });
-    }
-
     // Function to fetch recommendations
     function fetchRecommendations(genre, limit) {
         fetch(`https://itunes.apple.com/search?term=${genre}&media=music&limit=${limit}`)
@@ -114,9 +89,6 @@ document.addEventListener('DOMContentLoaded', function () {
         .then(data => {
             console.log('API Response:', data);
             moodData = data;
-
-            // Populate mood selector
-            populateMoodSelector(data);
 
             // Find the latest non-zero mood score
             let latestMood = 0;
