@@ -1,16 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>NeuroAid - Vibe</title>
     <!-- Remix Icons -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css" />
     <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+        rel="stylesheet"
+    />
     <!-- Link to external CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/vibe.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/vibe.css') }}" />
 </head>
 <body>
     <div class="app-container">
@@ -37,33 +40,31 @@
                 <header>
                     <div class="search-bar">
                         <i class="ri-search-line"></i>
-                        <input type="text" placeholder="Search...">
+                        <input type="text" placeholder="Search..." />
                     </div>
                     <div class="profile">
-                        <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile">
+                        <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile" />
                         <span>{{ session.get('user_email', 'User').split('@')[0] }}</span>
                         <i class="ri-arrow-down-s-line"></i>
                     </div>
                 </header>
 
                 <section class="music-recommendations-section">
-                    <h2><i class="ri-music-2-line"></i> Vibe -Mood based Music Recommendations</h2>
-                    <div class="mood-selector">
-                        <label for="mood-day">Select Mood from Day:</label>
-                        <select id="mood-day">
-                            <option value="">Select a day</option>
-                            <!-- Options will be populated by vibe.js -->
-                        </select>
-                    </div>
+                    <h2><i class="ri-music-2-line"></i> Vibe - Mood Based Music Recommendations</h2>
+
                     <div id="tamil-music-recommendations" class="recommendations-content">
                         Fetching Tamil music recommendations…
                     </div>
-                    <button id="load-more-btn" class="load-more-btn" style="display: none;">Load More</button>
+
+                    <button id="load-more-btn" class="load-more-btn" style="display: none;">
+                        Load More
+                    </button>
+
                     <div class="music-player">
                         <h3>Now Playing</h3>
                         <p id="now-playing">Nothing playing</p>
                         <audio id="audio-player" controls>
-                            <source id="audio-source" src="" type="audio/mpeg">
+                            <source id="audio-source" src="" type="audio/mpeg" />
                             Your browser does not support the audio element.
                         </audio>
                     </div>

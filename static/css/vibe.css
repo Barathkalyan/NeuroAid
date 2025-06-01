@@ -12,38 +12,13 @@
     color: #2b2b2b;
 }
 
-.mood-selector {
-    margin-bottom: 25px;
-    display: flex;
-    align-items: center;
-    gap: 15px;
-}
-
-.mood-selector label {
-    font-weight: 500;
-    font-size: 16px;
-    color: #333;
-}
-
-.mood-selector select {
-    padding: 10px 15px;
-    border-radius: 8px;
-    border: 1px solid #c7bbe4;
-    font-size: 16px;
-    background-color: #fff;
-    transition: border 0.3s;
-}
-
-.mood-selector select:focus {
-    border-color: #7c3aed;
-    outline: none;
-}
+/* Removed .mood-selector styles */
 
 .recommendations-content {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 25px;
-    margin-top: 30px;
+    margin-top: 30px; /* keep margin for spacing */
 }
 
 .song-card {
