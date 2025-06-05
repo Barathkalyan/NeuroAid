@@ -171,8 +171,6 @@ def analyze_journal_entry(text, supabase, user_id):
 def get_supabase():
     if 'supabase' not in g:
         g.supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
-    if 'access_token' in session:
-        g.supabase.headers['Authorization'] = f"Bearer {session['access_token']}"
     return g.supabase
 
 @app.teardown_appcontext
@@ -396,22 +394,17 @@ def login():
         if not email or not password:
             error = 'Email and password are required.'
             return render_template('login.html', error=error), 400
-
         supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
         try:
-            # Check if user exists in the users table
             user_response = supabase.table('users').select('id, email, password').eq('email', email).execute()
             if not user_response.data:
                 error = 'User not found.'
                 return render_template('login.html', error=error), 401
-
             user = user_response.data[0]
             stored_password = user['password'].encode('utf-8')
             if bcrypt.checkpw(password.encode('utf-8'), stored_password):
                 session['user'] = str(user['id'])
                 session['user_email'] = email
-                # Generate a dummy access token since we're not using Supabase Auth
-                session['access_token'] = str(uuid.uuid4())
                 session['last_activity'] = datetime.now(ZoneInfo("UTC")).isoformat()
                 logger.info(f"User {email} logged in successfully, user_id: {user['id']}")
                 return redirect(url_for('index'))
@@ -421,8 +414,7 @@ def login():
         except Exception as e:
             error = 'Unable to log in right now. Please try again later.'
             logger.error(f"Login error: {str(e)}")
-            return render_template('login.html', error=error), 401
-
+            return render_template('login.html', error=error), 500
     return render_template('login.html', error=error)
 
 @app.route('/signup', methods=['GET', 'POST'])
@@ -655,7 +647,6 @@ def logout():
         user_email = session.get('user_email', 'Unknown')
         session.pop('user', None)
         session.pop('user_email', None)
-        session.pop('access_token', None)
         session.pop('last_activity', None)
         logger.info(f"User {user_email} logged out.")
     return redirect(url_for('login'))

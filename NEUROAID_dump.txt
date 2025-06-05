@@ -1,0 +1,4750 @@
+# File: app.py
+```py
+from flask import Flask, render_template, request, redirect, url_for, session, g, jsonify
+from supabase import create_client, Client
+import bcrypt
+import logging
+import requests
+from datetime import datetime, timedelta
+import time
+from zoneinfo import ZoneInfo
+import uuid
+
+app = Flask(__name__)
+app.secret_key = 'your-secret-key'
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+SUPABASE_URL = 'https://kkzymljvdzbydqugbwuw.supabase.co'
+SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtrenltbGp2ZHpieWRxdWdid3V3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ5OTcyMzgsImV4cCI6MjA2MDU3MzIzOH0.d6Xb4PrfYlcilkLOGWbPIG2WZ2c2rocZZEKCojwWfgs'
+HF_API_KEY = "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"
+
+def query_huggingface(model: str, payload: dict, retries=3, backoff_factor=1):
+    headers = {"Authorization": f"Bearer {HF_API_KEY}"}
+    url = f"https://api-inference.huggingface.co/models/{model}"
+    for attempt in range(retries):
+        try:
+            response = requests.post(url, headers=headers, json=payload)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.HTTPError as e:
+            if response.status_code == 429:
+                wait_time = backoff_factor * (2 ** attempt)
+                logger.warning(f"Rate limit hit, retrying in {wait_time}s (attempt {attempt+1}/{retries})")
+                time.sleep(wait_time)
+                continue
+            logger.error(f"HTTPError calling model '{model}': {e}, Response: {response.text}")
+            return None
+        except Exception as e:
+            logger.error(f"Unexpected error calling model '{model}': {e}")
+            return None
+    logger.error(f"Failed to query model '{model}' after {retries} retries")
+    return None
+
+def simple_keyword_analysis(text):
+    text = text.lower()
+    emotions = []
+    if any(word in text for word in ['sad', 'unhappy', 'down', 'depressed']):
+        emotions.append({"label": "sadness", "score": 0.7})
+    if any(word in text for word in ['angry', 'mad', 'frustrated', 'annoyed']):
+        emotions.append({"label": "anger", "score": 0.7})
+    if any(word in text for word in ['happy', 'joyful', 'great', 'amazing']):
+        emotions.append({"label": "joy", "score": 0.7})
+    if any(word in text for word in ['anxious', 'nervous', 'worried', 'scared']):
+        emotions.append({"label": "anxiety", "score": 0.7})
+    if not emotions:
+        emotions.append({"label": "neutral", "score": 0.5})
+    return emotions
+
+def derive_mood_from_emotions(emotions):
+    if not emotions:
+        return 3, 0.5
+
+    positive_emotions = ['joy', 'love', 'gratitude', 'hope', 'pride', 'amusement', 'optimism']
+    negative_emotions = ['sadness', 'anger', 'fear', 'disgust', 'shame', 'frustration', 'anxiety']
+    neutral_emotions = ['neutral', 'confusion', 'surprise']
+
+    top_emotion = max(emotions, key=lambda x: x['score'])
+    emotion_label = top_emotion['label']
+    confidence = top_emotion['score']
+
+    if emotion_label in positive_emotions:
+        mood_score = 5 if confidence > 0.7 else 4
+    elif emotion_label in negative_emotions:
+        mood_score = 1 if confidence > 0.7 else 2
+    else:
+        mood_score = 3
+    return mood_score, confidence
+
+def get_recent_emotions(supabase, user_id, days=7):
+    start_date = (datetime.now(ZoneInfo("UTC")) - timedelta(days=days)).isoformat()
+    try:
+        query = supabase.table('journal_entries')\
+            .select('analysis->emotions')\
+            .eq('user_id', user_id)\
+            .gt('created_at', start_date)\
+            .limit(50)\
+            .execute()
+        all_emotions = []
+        for entry in query.data:
+            emotions = entry['emotions'] if 'emotions' in entry else []
+            all_emotions.extend([e['label'] for e in emotions if e['score'] > 0.3])
+        emotion_counts = {}
+        for emotion in all_emotions:
+            emotion_counts[emotion] = emotion_counts.get(emotion, 0) + 1
+        return emotion_counts
+    except Exception as e:
+        logger.error(f"Error fetching recent emotions: {str(e)}")
+        return {}
+
+def get_journaling_frequency(supabase, user_id, days=7):
+    start_date = (datetime.now(ZoneInfo("UTC")) - timedelta(days=days)).isoformat()
+    try:
+        entries = supabase.table('journal_entries')\
+            .select('created_at')\
+            .eq('user_id', user_id)\
+            .gt('created_at', start_date)\
+            .execute()
+        return len(entries.data)
+    except Exception as e:
+        logger.error(f"Error calculating journaling frequency: {str(e)}")
+        return 0
+
+def generate_suggestion(emotions, mood, supabase, user_id):
+    if not emotions:
+        return ["Try writing more to help me understand your feelings."]
+
+    top_emotions = sorted(emotions, key=lambda x: x['score'], reverse=True)[:2]
+    primary_emotion = top_emotions[0]['label']
+    primary_score = top_emotions[0]['score']
+    secondary_emotion = top_emotions[1]['label'] if len(top_emotions) > 1 else None
+
+    recent_emotions = get_recent_emotions(supabase, user_id)
+    journaling_freq = get_journaling_frequency(supabase, user_id)
+
+    tone = "I’m sorry to hear" if mood <= 2 else "I can see" if mood == 3 else "It’s great to hear"
+
+    suggestions = []
+
+    if primary_emotion in ['disappointment', 'sadness']:
+        suggestions.append(f"{tone} you’re feeling {primary_emotion.lower()}. Write about what’s been challenging.")
+        if secondary_emotion in ['anger', 'annoyance']:
+            suggestions.append(f"Try a quick stretch to channel that {secondary_emotion.lower()}.")
+    elif primary_emotion in ['anger', 'frustration', 'annoyance']:
+        suggestions.append(f"{tone} you’re feeling {primary_emotion.lower()}. Take a few deep breaths.")
+    elif primary_emotion in ['fear', 'anxiety']:
+        suggestions.append(f"{tone} you’re feeling {primary_emotion.lower()}. Focus on 5 things you can see.")
+    elif primary_emotion in ['joy', 'gratitude', 'hope', 'love']:
+        suggestions.append(f"{tone} you’re feeling {primary_emotion.lower()}! Do something you love.")
+    else:
+        suggestions.append(f"{tone} you’re feeling {primary_emotion.lower()}. Write more to explore.")
+
+    if journaling_freq < 3:
+        suggestions.append("Journal daily to connect with your emotions.")
+    return suggestions[:3]
+
+def analyze_journal_entry(text, supabase, user_id):
+    emotion_result = query_huggingface("SamLowe/roberta-base-go_emotions", {"inputs": text})
+
+    emotions = []
+    if emotion_result:
+        if isinstance(emotion_result, list) and len(emotion_result) > 0:
+            first = emotion_result[0]
+            if isinstance(first, list):
+                emotions = [{"label": e['label'], "score": e['score']} for e in first if isinstance(e, dict)]
+            elif isinstance(first, dict):
+                emotions = [{"label": first['label'], "score": first['score']}]
+    else:
+        logger.warning("Hugging Face API failed, using keyword analysis")
+        emotions = simple_keyword_analysis(text)
+
+    mood_score, confidence = derive_mood_from_emotions(emotions)
+    suggestions = generate_suggestion(emotions, mood_score, supabase, user_id)
+
+    return {
+        "mood": mood_score,
+        "emotions": emotions,
+        "suggestions": suggestions,
+        "confidence": confidence
+    }
+
+def get_supabase():
+    if 'supabase' not in g:
+        g.supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+    return g.supabase
+
+@app.teardown_appcontext
+def teardown_supabase(exception):
+    if 'supabase' in g:
+        g.pop('supabase')
+
+@app.before_request
+def make_session_permanent():
+    session.permanent = True
+    if 'user' in session and 'last_activity' in session:
+        last_activity = datetime.fromisoformat(session['last_activity'])
+        if (datetime.now(ZoneInfo("UTC")) - last_activity) > app.config['PERMANENT_SESSION_LIFETIME']:
+            session.pop('user', None)
+            session.pop('user_email', None)
+            session.pop('access_token', None)
+            session.pop('last_activity', None)
+            logger.info("Session expired, user logged out.")
+            return redirect(url_for('login'))
+    if 'user' in session:
+        session['last_activity'] = datetime.now(ZoneInfo("UTC")).isoformat()
+
+@app.route('/api/mood_data', methods=['GET'])
+def get_mood_data():
+    if 'user' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+    supabase = get_supabase()
+    user_id = session['user']
+    start_date = (datetime.now(ZoneInfo("UTC")) - timedelta(days=7)).isoformat()
+    try:
+        entries = supabase.table('journal_entries')\
+            .select('analysis, created_at')\
+            .eq('user_id', user_id)\
+            .gt('created_at', start_date)\
+            .order('created_at', desc=False)\
+            .execute()
+        logger.info(f"Fetched {len(entries.data)} journal entries for user {user_id}")
+
+        end_date = datetime.now(ZoneInfo("UTC")).replace(hour=23, minute=59, second=59, microsecond=999999)
+        current_date = (end_date - timedelta(days=6)).replace(hour=0, minute=0, second=0, microsecond=0)
+        labels = []
+        mood_data = []
+        confidence_data = []
+        date_map = {}
+
+        for i in range(7):
+            date_str = current_date.strftime('%Y-%m-%d')
+            labels.append(current_date.strftime('%b %d'))
+            date_map[date_str] = {'moods': [], 'confidences': []}
+            current_date += timedelta(days=1)
+
+        for entry in entries.data:
+            created_at = entry['created_at']
+            if '.' in created_at:
+                created_at = created_at.split('.')[0] + '+00:00'
+            else:
+                created_at = created_at.replace('Z', '+00:00')
+            date = datetime.fromisoformat(created_at).replace(tzinfo=ZoneInfo("UTC"))
+            date_str = date.strftime('%Y-%m-%d')
+            if date_str in date_map:
+                mood = entry['analysis'].get('mood', 3)
+                confidence = entry['analysis'].get('confidence', 0.0)
+                date_map[date_str]['moods'].append(mood)
+                date_map[date_str]['confidences'].append(confidence)
+                logger.info(f"Entry date: {date}, Mood: {mood}, Confidence: {confidence}")
+
+        for date_str in date_map:
+            moods = date_map[date_str]['moods']
+            confidences = date_map[date_str]['confidences']
+            avg_mood = sum(moods) / len(moods) if moods else 0
+            avg_confidence = sum(confidences) / len(confidences) if confidences else 0
+            mood_data.append(round(avg_mood, 2))
+            confidence_data.append(round(avg_confidence, 2))
+
+        if not any(mood_data):
+            labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+            mood_data = [3] * 7
+            confidence_data = [0] * 7
+
+        all_entries = supabase.table('journal_entries')\
+            .select('created_at')\
+            .eq('user_id', user_id)\
+            .order('created_at', desc=True)\
+            .execute()
+
+        streak = 0
+        current_date = datetime.now(ZoneInfo("UTC")).replace(hour=0, minute=0, second=0, microsecond=0)
+        entry_dates = set()
+
+        for entry in all_entries.data:
+            created_at = entry['created_at']
+            if '.' in created_at:
+                created_at = created_at.split('.')[0] + '+00:00'
+            else:
+                created_at = created_at.replace('Z', '+00:00')
+            entry_date = datetime.fromisoformat(created_at).replace(tzinfo=ZoneInfo("UTC"))
+            entry_date = entry_date.replace(hour=0, minute=0, second=0, microsecond=0)
+            entry_dates.add(entry_date)
+
+        while True:
+            if current_date in entry_dates:
+                streak += 1
+                current_date -= timedelta(days=1)
+            else:
+                break
+
+        logger.info(f"Calculated journal streak for user {user_id}: {streak} days")
+
+        return jsonify({
+            'labels': labels,
+            'data': mood_data,
+            'numEntries': len(entries.data),
+            'streak': streak,
+            'confidence': confidence_data
+        })
+    except Exception as e:
+        logger.error(f"Error fetching mood data: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/gratitude', methods=['GET', 'POST'])
+def handle_gratitude():
+    if 'user' not in session or 'access_token' not in session:
+        logger.warning("User not authenticated for /api/gratitude")
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    supabase = get_supabase()
+    user_id = session['user']
+
+    if request.method == 'POST':
+        try:
+            data = request.get_json()
+            thing1 = data.get('thing1')
+            thing2 = data.get('thing2')
+            thing3 = data.get('thing3')
+
+            if not thing1 or not thing2 or not thing3:
+                return jsonify({'success': False, 'error': 'All fields are required'}), 400
+
+            gratitude_entry = {
+                'user_id': user_id,
+                'thing1': thing1,
+                'thing2': thing2,
+                'thing3': thing3,
+                'created_at': datetime.now(ZoneInfo("UTC")).isoformat()
+            }
+
+            supabase.table('gratitude_entries').insert(gratitude_entry).execute()
+            logger.info(f"Gratitude entry saved for user_id: {user_id}")
+            return jsonify({'success': True}), 200
+        except Exception as e:
+            logger.error(f"Error saving gratitude entry: {str(e)}")
+            return jsonify({'success': False, 'error': str(e)}), 500
+
+    else:
+        try:
+            entries = supabase.table('gratitude_entries')\
+                .select('thing1, thing2, thing3, created_at')\
+                .eq('user_id', user_id)\
+                .order('created_at', desc=True)\
+                .execute()
+
+            formatted_entries = []
+            for entry in entries.data:
+                created_at_str = entry['created_at']
+                if '.' in created_at_str:
+                    created_at_str = created_at_str.split('.')[0] + '+00:00'
+                else:
+                    created_at_str = created_at_str.replace('Z', '+00:00')
+                entry_date = datetime.fromisoformat(created_at_str).replace(tzinfo=ZoneInfo("UTC"))
+                entry_date_ist = entry_date.astimezone(ZoneInfo("Asia/Kolkata"))
+                formatted_entries.append({
+                    'thing1': entry['thing1'],
+                    'thing2': entry['thing2'],
+                    'thing3': entry['thing3'],
+                    'date': entry_date_ist.strftime('%B %d, %Y')
+                })
+
+            all_entries = supabase.table('gratitude_entries')\
+                .select('created_at')\
+                .eq('user_id', user_id)\
+                .order('created_at', desc=True)\
+                .execute()
+
+            streak = 0
+            current_date = datetime.now(ZoneInfo("UTC")).replace(hour=0, minute=0, second=0, microsecond=0)
+            entry_dates = set()
+
+            for entry in all_entries.data:
+                created_at = entry['created_at']
+                if '.' in created_at:
+                    created_at = created_at.split('.')[0] + '+00:00'
+                else:
+                    created_at = created_at.replace('Z', '+00:00')
+                entry_date = datetime.fromisoformat(created_at).replace(tzinfo=ZoneInfo("UTC"))
+                entry_date = entry_date.replace(hour=0, minute=0, second=0, microsecond=0)
+                entry_dates.add(entry_date)
+
+            while True:
+                if current_date in entry_dates:
+                    streak += 1
+                    current_date -= timedelta(days=1)
+                else:
+                    break
+
+            logger.info(f"Calculated gratitude streak for user {user_id}: {streak} days")
+
+            return jsonify({
+                'entries': formatted_entries,
+                'streak': streak
+            })
+        except Exception as e:
+            logger.error(f"Error fetching gratitude entries: {str(e)}")
+            return jsonify({'error': str(e)}), 500
+
+@app.route('/', methods=['GET', 'POST'])
+def login():
+    error = None
+    if request.method == 'POST':
+        email = request.form.get('email')
+        password = request.form.get('password')
+        if not email or not password:
+            error = 'Email and password are required.'
+            return render_template('login.html', error=error), 400
+        supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+        try:
+            user_response = supabase.table('users').select('id, email, password').eq('email', email).execute()
+            if not user_response.data:
+                error = 'User not found.'
+                return render_template('login.html', error=error), 401
+            user = user_response.data[0]
+            stored_password = user['password'].encode('utf-8')
+            if bcrypt.checkpw(password.encode('utf-8'), stored_password):
+                session['user'] = str(user['id'])
+                session['user_email'] = email
+                session['last_activity'] = datetime.now(ZoneInfo("UTC")).isoformat()
+                logger.info(f"User {email} logged in successfully, user_id: {user['id']}")
+                return redirect(url_for('index'))
+            else:
+                error = 'Invalid credentials.'
+                return render_template('login.html', error=error), 401
+        except Exception as e:
+            error = 'Unable to log in right now. Please try again later.'
+            logger.error(f"Login error: {str(e)}")
+            return render_template('login.html', error=error), 500
+    return render_template('login.html', error=error)
+
+@app.route('/signup', methods=['GET', 'POST'])
+def signup():
+    error = None
+    if request.method == 'POST':
+        email = request.form.get('email')
+        password = request.form.get('password')
+        confirm_password = request.form.get('confirm_password')
+
+        if not email or not password or not confirm_password:
+            error = 'Email, password, and confirm password are required.'
+            return render_template('signup.html', error=error), 400
+
+        if password != confirm_password:
+            error = 'Passwords do not match!'
+            return render_template('signup.html', error=error), 400
+
+        supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+        try:
+            # Check if email already exists
+            existing_user = supabase.table('users').select('id').eq('email', email).execute()
+            if existing_user.data:
+                error = 'Email already exists.'
+                return render_template('signup.html', error=error), 400
+
+            # Generate a UUID for the user
+            user_id = str(uuid.uuid4())
+            hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+            user_data = {'id': user_id, 'email': email, 'password': hashed_password}
+            supabase.table('users').insert(user_data).execute()
+            logger.info(f"User {email} signed up successfully with user_id: {user_id}")
+            return redirect(url_for('login'))
+        except Exception as e:
+            error = 'Unable to sign up right now. Please try again later.'
+            logger.error(f"Signup error: {str(e)}")
+            return render_template('signup.html', error=error), 400
+
+    return render_template('signup.html', error=error)
+
+@app.route('/index')
+def index():
+    if 'user' not in session:
+        logger.info("User not logged in, redirecting to login.")
+        return redirect(url_for('login'))
+
+    supabase = get_supabase()
+    user_id = session['user']
+    logger.info(f"Fetching data for user_id: {user_id}")
+
+    utc_now = datetime.now(ZoneInfo("UTC"))
+    ist_now = utc_now.astimezone(ZoneInfo("Asia/Kolkata"))
+    logger.info(f"Current UTC time: {utc_now}, IST time: {ist_now}")
+
+    today_start = utc_now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+    today_end = utc_now.replace(hour=23, minute=59, second=59, microsecond=999999).isoformat()
+    logger.info(f"Today range (UTC): {today_start} to {today_end}")
+
+    suggestions = None
+    recent_entries_data = []
+
+    try:
+        latest_entry_query = supabase.table('journal_entries')\
+            .select('created_at, analysis')\
+            .eq('user_id', user_id)\
+            .order('created_at', desc=True)\
+            .limit(1)
+
+        logger.info(f"Executing query for latest entry: {latest_entry_query}")
+        latest_entry = latest_entry_query.execute()
+
+        if latest_entry.data:
+            logger.info(f"Latest entry: {latest_entry.data[0]}")
+            created_at_str = latest_entry.data[0]['created_at']
+            if '.' in created_at_str:
+                created_at_str = created_at_str.split('.')[0] + '+00:00'
+            else:
+                created_at_str = created_at_str.replace('Z', '+00:00')
+            entry_date = datetime.fromisoformat(created_at_str).replace(tzinfo=ZoneInfo("UTC"))
+            entry_date_ist = entry_date.astimezone(ZoneInfo("Asia/Kolkata"))
+            current_date_ist = ist_now.date()
+
+            logger.info(f"Entry date (IST): {entry_date_ist.date()}, Current date (IST): {current_date_ist}")
+
+            if entry_date_ist.date() == current_date_ist:
+                suggestions = latest_entry.data[0]['analysis'].get('suggestions', [])
+            else:
+                suggestions = ["Write a journal entry for today!"]
+        else:
+            suggestions = ["Write a journal entry to get suggestions!"]
+
+        recent_entries_query = supabase.table('journal_entries')\
+            .select('id, content, created_at')\
+            .eq('user_id', user_id)\
+            .order('created_at', desc=True)\
+            .limit(3)
+
+        logger.info(f"Executing query for recent entries: {recent_entries_query}")
+        recent_entries = recent_entries_query.execute()
+
+        recent_entries_data = recent_entries.data if recent_entries.data else []
+        entries_summary = [{'id': entry['id'], 'created_at': entry['created_at']} for entry in recent_entries_data]
+        logger.info(f"Recent entries fetched: {entries_summary}")
+        logger.debug(f"Full recent entries: {recent_entries_data}")
+
+        for entry in recent_entries_data:
+            created_at_str = entry['created_at']
+            if '.' in created_at_str:
+                created_at_str = created_at_str.split('.')[0] + '+00:00'
+            else:
+                created_at_str = created_at_str.replace('Z', '+00:00')
+            entry_date = datetime.fromisoformat(created_at_str).replace(tzinfo=ZoneInfo("UTC"))
+            entry_date_ist = entry_date.astimezone(ZoneInfo("Asia/Kolkata"))
+            entry['created_at'] = entry_date_ist.strftime('%B %d, %Y')
+            entry['content_snippet'] = (entry['content'][:50] + '…') if len(entry['content']) > 50 else entry['content']
+
+    except Exception as e:
+        logger.error(f"Error fetching data for index: {str(e)}")
+        suggestions = ["Unable to load suggestions. Try writing!"]
+        recent_entries_data = []
+
+    return render_template('index.html', suggestions=suggestions, recent_entries=recent_entries_data)
+
+@app.route('/journal', methods=['GET', 'POST'])
+def journal():
+    if 'user' not in session:
+        logger.info("User not logged in, redirecting to login.")
+        return redirect(url_for('login'))
+
+    supabase = get_supabase()
+    user_id = session['user']
+    current_date = datetime.now(ZoneInfo("UTC")).astimezone(ZoneInfo("Asia/Kolkata")).strftime('%B %d, %Y')
+
+    if request.method == 'POST':
+        content = request.form.get('content')
+        if content:
+            try:
+                analysis = analyze_journal_entry(content, supabase, user_id)
+
+                journal_data = {
+                    'user_id': user_id,
+                    'content': content,
+                    'created_at': datetime.now(ZoneInfo("UTC")).isoformat(),
+                    'analysis': analysis
+                }
+
+                supabase.table('journal_entries').insert(journal_data).execute()
+                logger.info(f"Journal entry saved for user_id: {user_id}")
+                return redirect(url_for('journal'))
+            except Exception as e:
+                logger.error(f"Journal save error: {str(e)}")
+                return render_template('Journal.html', error="Failed to save entry.", current_date=current_date)
+
+    try:
+        entries = supabase.table('journal_entries')\
+            .select('id, content, created_at')\
+            .eq('user_id', user_id)\
+            .order('created_at', desc=True)\
+            .execute()
+
+        for entry in entries.data:
+            created_at_str = entry['created_at']
+            if '.' in created_at_str:
+                created_at_str = created_at_str.split('.')[0] + '+00:00'
+            else:
+                created_at_str = created_at_str.replace('Z', '+00:00')
+            entry_date = datetime.fromisoformat(created_at_str).replace(tzinfo=ZoneInfo("UTC"))
+            entry_date_ist = entry_date.astimezone(ZoneInfo("Asia/Kolkata"))
+            entry['created_at'] = entry_date_ist.strftime('%Y-%m-%d %H:%M:%S')
+
+        return render_template('Journal.html', entries=entries.data if entries.data else [], current_date=current_date)
+    except Exception as e:
+        logger.error(f"Journal fetch error: {str(e)}")
+        return render_template('Journal.html', error="Failed to load entries.", current_date=current_date)
+
+@app.route('/delete_entry/<entry_id>', methods=['DELETE'])
+def delete_entry(entry_id):
+    if 'user' not in session:
+        logger.info("User not logged in, redirecting to login.")
+        return "Unauthorized", 401
+    
+    supabase = get_supabase()
+    user_id = session['user']
+
+    try:
+        response = supabase.table('journal_entries').select('*').eq('id', entry_id).execute()
+        if not response.data or response.data[0]['user_id'] != user_id:
+            return "Forbidden", 403
+        
+        supabase.table('journal_entries').delete().eq('id', entry_id).execute()
+        logger.info(f"Entry {entry_id} deleted by user {user_id}.")
+        return "Deleted", 200
+    except Exception as e:
+        logger.error(f"Delete error: {str(e)}")
+        return "Unable to delete entry.", 500
+    
+@app.route('/progress')
+def progress():
+    if 'user' not in session:
+        logger.info("User not logged in, redirecting to login.")
+        return redirect(url_for('login'))
+    return render_template('progress.html')
+
+@app.route('/vibe')
+def vibe():
+    if 'user' not in session:
+        logger.info("User not logged in, redirecting to login.")
+        return redirect(url_for('login'))
+    return render_template('vibe.html')
+
+@app.route('/gratitude')
+def gratitude():
+    if 'user' not in session:
+        logger.info("User not logged in, redirecting to login.")
+        return redirect(url_for('login'))
+
+    return render_template('gratitude.html')
+
+@app.route('/profile')
+def profile():
+    if 'user' not in session:
+        logger.info("User not logged in, redirecting to login.")
+        return redirect(url_for('login'))
+
+    return render_template('profile.html')
+
+@app.route('/logout')
+def logout():
+    if 'user' in session:
+        user_email = session.get('user_email', 'Unknown')
+        session.pop('user', None)
+        session.pop('user_email', None)
+        session.pop('last_activity', None)
+        logger.info(f"User {user_email} logged out.")
+    return redirect(url_for('login'))
+
+if __name__ == '__main__':
+    app.run(debug=True, host='0.0.0.0', port=5000)
+```
+
+# File: dump all files.py
+```py
+
+
+import os
+
+# Extensions to include
+extensions = [".html", ".js", ".css", ".py", ".md"]
+output_file = "NEUROAID_dump.txt"
+
+with open(output_file, "w", encoding="utf-8") as out:
+    for root, _, files in os.walk("."):
+        for file in files:
+            if any(file.endswith(ext) for ext in extensions):
+                filepath = os.path.join(root, file)
+                rel_path = os.path.relpath(filepath, ".").replace("\\", "/")
+                ext = os.path.splitext(file)[1].lstrip(".")
+                try:
+                    with open(filepath, "r", encoding="utf-8") as f:
+                        content = f.read()
+                except Exception as e:
+                    content = f"[Error reading file: {e}]"
+
+                out.write(f"# File: {rel_path}\n")
+                out.write(f"```{ext}\n{content}\n```\n\n")
+
+print(f"✅ Combined content saved to: {output_file}")
+
+```
+
+# File: flask_storage.py
+```py
+from gotrue import SyncSupportedStorage
+from flask import session
+
+class FlaskSessionStorage(SyncSupportedStorage):
+    def __init__(self):
+        pass
+
+    def get_item(self, key: str) -> str | None:
+        return session.get(key)
+
+    def set_item(self, key: str, value: str) -> None:
+        session[key] = value
+
+    def remove_item(self, key: str) -> None:
+        session.pop(key, None)
+```
+
+# File: README.md
+```md
+Your mental health matters!
+
+```
+
+# File: example quill/journal.html
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>NeuroAid Journal</title>
+
+  <!-- Quill CSS -->
+  <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet" />
+<style>
+  body {
+  font-family: 'Poppins', sans-serif;
+  padding: 2rem;
+  background-color: #f3f4f6;
+}
+
+h1, p {
+  color: #2D2D2D;
+}
+
+#editor {
+  height: 300px;
+  background-color: #F4F0FA;
+  border: 1px solid #7A7A8C;
+  padding: 1rem;
+  border-radius: 8px;
+}
+
+.save-btn {
+  margin-top: 1rem;
+  padding: 10px 20px;
+  background-color: #7c3aed;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.3s ease;
+}
+
+.save-btn:hover {
+  background-color: #D8C4E6;
+}
+</style>
+</head>
+<body>
+
+  <h1>📝 Your Daily Journal</h1>
+  <p>Write freely and reflect on your day.</p>
+
+  <!-- Editor Container -->
+  <div id="editor"></div>
+
+  <!-- Save Button -->
+  <button class="save-btn" onclick="saveJournal()">Save Entry</button>
+
+  <!-- Quill JS -->
+  <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
+
+  <!-- Quill Init -->
+  <script>
+    const quill = new Quill('#editor', {
+      theme: 'snow'
+    });
+
+    function saveJournal() {
+      const content = quill.root.innerHTML;
+      console.log("Journal Content:", content);
+      alert("Journal saved (check console)");
+      // Later: send `content` to Supabase or your backend here
+    }
+  </script>
+
+</body>
+</html>
+
+
+```
+
+# File: static/css/dashboard.css
+```css
+:root {
+  --primary: #7c3aed;
+  --secondary: #f9faff;
+  --accent: #d4bfff;
+  --glass-bg: rgba(255, 255, 255, 0.9);
+  --glass-border: rgba(200, 200, 200, 0.3);
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+  --header-bg: linear-gradient(90deg, #a78bfa 0%, #c084fc 100%);
+  --text-primary: #1f2937;
+  --text-secondary: #6b7280;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Inter', sans-serif;
+}
+
+body {
+  min-height: 100vh;
+  background: #f3f4f6;
+  display: flex;
+  flex-direction: column;
+}
+
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.container {
+  display: flex;
+}
+
+.sidebar {
+  width: 260px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(10px);
+  border-right: 1px solid var(--glass-border);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
+  z-index: 1000;
+  transition: all 0.3s ease;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo i {
+  font-size: 2rem;
+  color: var(--primary);
+}
+
+.logo h1 {
+  font-size: 2.3rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.logo h1 span {
+  color: var(--primary);
+}
+
+.sidebar nav {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sidebar nav a {
+  color: var(--text-primary);
+  text-decoration: none;
+  font-size: 1.3rem;
+  font-weight: 500;
+  padding: 12px 16px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  transition: all 0.3s ease;
+}
+
+.sidebar nav a:hover,
+.sidebar nav a.active {
+  background: var(--primary);
+  color: #fff;
+}
+
+.main-content {
+  margin-left: 260px;
+  flex: 1;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+}
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  background: var(--header-bg);
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--glass-border);
+  margin-bottom: 24px;
+}
+
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: rgba(255, 255, 255, 0.3);
+  padding: 14px 20px;
+  border-radius: 10px;
+  width: 450px;
+}
+
+.search-bar i {
+  color: #fff;
+  font-size: 1.5rem;
+}
+
+.search-bar input {
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-size: 1.2rem;
+  outline: none;
+  width: 100%;
+}
+
+.search-bar input::placeholder {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 1.2rem;
+}
+
+.profile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.profile img {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  object-fit: cover;
+}
+
+.profile span {
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.profile i {
+  color: #fff;
+  font-size: 1.2rem;
+}
+
+.dashboard {
+  flex: 1;
+}
+
+.dashboard h2 {
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 24px;
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
+}
+
+.card {
+  background: var(--glass-bg);
+  border-radius: 16px;
+  padding: 24px;
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1);
+}
+
+.card-icon {
+  font-size: 2.2rem;
+  color: var(--primary);
+  background: var(--secondary);
+  border-radius: 12px;
+  padding: 12px;
+  min-width: 48px;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.card-content h3 {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.card-content p {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+
+.card-button {
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.card-button a {
+  color: #fff;
+  text-decoration: none;
+}
+
+.card-button:hover {
+  background: #6d28d9;
+}
+
+.card.welcome .card-icon { background: #f5f3ff; color: #7c3aed; }
+.card.journal .card-icon { background: #f5f3ff; color: #8b5cf6; }
+.card.mood .card-icon { background: #f5f3ff; color: #a78bfa; }
+.card.tips .card-icon { background: #f5f3ff; color: #c084fc; }
+
+footer {
+  text-align: center;
+  padding: 20px;
+  background: var(--header-bg);
+  color: var(--text-primary);
+  font-size: 1.2rem;
+  backdrop-filter: blur(4px);
+  border-top: 1px solid var(--glass-border);
+  margin-top: auto;
+  width: 100%;
+}
+
+.quick-actions {
+  display: flex;
+  gap: 35px;
+}
+
+.action-button {
+  background-color: #7c3aed;
+  color: white;
+  padding: 25px 30px;
+  font-size: 18px;
+  border-radius: 10px;
+  text-decoration: none;
+  font-weight: 700;
+  transition: background-color 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.action-button:hover {
+  background-color: #310c6d;
+  transform: translateY(-3px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Stats section */
+.stats-section {
+  margin-bottom: 32px;
+}
+
+.stats-section h2 {
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.stats-section h2 i {
+  color: var(--primary);
+  font-size: 2rem;
+}
+
+.stats-boxes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
+  width: 100%;
+}
+
+.stat-box {
+  background: var(--glass-bg);
+  border-radius: 16px;
+  padding: 24px;
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.stat-box:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1);
+}
+
+.stat-box i {
+  font-size: 2.2rem;
+  color: var(--primary);
+  background: var(--secondary);
+  border-radius: 12px;
+  padding: 12px;
+  min-width: 48px;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stat-box h3 {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.stat-box p {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* Chart section */
+.chart-section {
+  margin-bottom: 32px;
+}
+
+.chart-section h2 {
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.chart-section h2 i {
+  color: var(--primary);
+  font-size: 2rem;
+}
+
+.chart-card {
+  background: var(--glass-bg);
+  border-radius: 16px;
+  padding: 10px; /* Reduced padding to prevent cropping */
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow);
+  width: 100%;
+  min-height: 670px; /* Ensure enough height for the chart */
+  overflow: visible; /* Prevent cropping */
+}
+
+.chart-card canvas {
+  width: 100% !important;
+  max-width: 900px;
+  height: 650px !important;
+  margin: 0 auto;
+}
+
+/* Insights section */
+.insights-section {
+  margin-bottom: 32px;
+}
+
+.insights-section h2 {
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.insights-section h2 i {
+  color: var(--primary);
+  font-size: 2rem;
+}
+
+.insights-content {
+  background: var(--glass-bg);
+  border-radius: 16px;
+  padding: 24px;
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow);
+  font-size: 1rem;
+  color: var(--text-primary);
+  line-height: 1.5;
+  width: 100%;
+}
+
+/* Responsive Styles */
+@media (max-width: 900px) {
+  .sidebar {
+    width: 80px;
+    align-items: center;
+  }
+
+  .sidebar .logo h1 {
+    display: none;
+  }
+
+  .sidebar nav a {
+    justify-content: center;
+    padding: 12px;
+  }
+
+  .sidebar nav a span {
+    display: none;
+  }
+
+  .main-content {
+    margin-left: 80px;
+  }
+
+  .search-bar {
+    width: 300px;
+  }
+
+  .stats-boxes {
+    grid-template-columns: 1fr;
+  }
+
+  .chart-card {
+    min-height: 670px;
+  }
+
+  .chart-card canvas {
+    max-width: 100%;
+    height: 400px !important; /* Adjust for smaller screens */
+  }
+}
+
+@media (max-width: 600px) {
+  .sidebar {
+    width: 100%;
+    height: auto;
+    position: static;
+    flex-direction: row;
+    justify-content: space-between;
+    padding: 16px;
+  }
+
+  .sidebar nav {
+    flex-direction: row;
+    gap: 8px;
+  }
+
+  .main-content {
+    margin-left: 0;
+    padding: 16px;
+  }
+
+  .card-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .stats-section h2,
+  .chart-section h2,
+  .insights-section h2 {
+    font-size: 1.6rem;
+  }
+
+  .stat-box,
+  .chart-card,
+  .insights-content {
+    padding: 16px;
+  }
+
+  .search-bar {
+    width: 100%;
+    padding: 10px 16px;
+  }
+
+  .search-bar i {
+    font-size: 1.2rem;
+  }
+
+  .search-bar input,
+  .search-bar input::placeholder {
+    font-size: 1rem;
+  }
+
+  .chart-card {
+    min-height: 450px;
+  }
+
+  .chart-card canvas {
+    height: 300px !important; /* Further adjust for very small screens */
+  }
+}
+```
+
+# File: static/css/gratitude.css
+```css
+.gratitude-section {
+            margin-top: 20px;
+        }
+        .gratitude-form {
+            background-color: #e8e1fa;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            margin-bottom: 30px;
+        }
+        .gratitude-form h3 {
+            color: #2d2d2d;
+            margin-bottom: 15px;
+            font-size: 24px;
+        }
+        .gratitude-form label {
+            display: block;
+            color: #666;
+            font-size: 16px;
+            margin-bottom: 5px;
+        }
+        .gratitude-form textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #c7bbe4;
+            border-radius: 5px;
+            font-size: 16px;
+            resize: vertical;
+            margin-bottom: 15px;
+        }
+        .gratitude-form button {
+            background-color: #7c3aed;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        .gratitude-form button:hover {
+            background-color: #5b21b6;
+        }
+        .suggestions {
+            margin-top: 10px;
+            color: #666;
+            font-style: italic;
+            font-size: 14px;
+        }
+        .streak-counter {
+            background-color: #ffffff;
+            border: 1px solid #c7bbe4;
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.07);
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .streak-counter i {
+            color: #7c3aed;
+            font-size: 24px;
+        }
+        .streak-counter p {
+            margin: 0;
+            color: #202020;
+            font-size: 18px;
+        }
+        .timeline {
+            margin-top: 20px;
+        }
+        .timeline-entry {
+            background-color: #ffffff;
+            border: 1px solid #c7bbe4;
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.07);
+            margin-bottom: 10px;
+        }
+        .timeline-entry .date {
+            font-size: 16px;
+            color: #7c3aed;
+            margin-bottom: 5px;
+        }
+        .timeline-entry .entry-content p {
+            margin: 5px 0;
+            color: #202020;
+            font-size: 16px;
+        }
+```
+
+# File: static/css/journal.css
+```css
+body {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  display: flex;
+  background-color: #f5f5f5;
+}
+
+.journal-section {
+  width: 1400px;
+  margin: 0 auto;
+  background-color: #ffffff;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.journal-header {
+  margin-bottom: 30px;
+}
+
+.journal-header h2 {
+  color: #2d2d2d;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 32px;
+}
+
+.journal-header p {
+  color: #666;
+  margin-bottom: 15px;
+  font-size: 25px;
+}
+
+.journal-meta {
+   align-items: center;
+  justify-content: space-between;
+  color: #7c3aed;
+  font-size: 20px;
+  font-weight: 500;
+  background-color: #f4f0fa;
+  padding: 8px 12px;
+  border-radius: 5px;
+}
+
+#editor {
+  height: 600px;
+  width:100%;
+  font-size: 23px;
+  background-color: #f4f0fa;
+  border: 1px solid #7a7a8c;
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.ql-toolbar.ql-snow {
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+  border-color: #7a7a8c;
+  background-color: #fff;
+  padding: 8px;
+}
+
+.ql-container.ql-snow {
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
+  border-color: #7a7a8c;
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+}
+
+.ql-editor {
+  background-color: #f4f0fa;
+  color: #2d2d2d;
+}
+
+.journal-actions {
+  margin-top: 20px;
+  text-align: right;
+
+}
+
+.save-btn {
+  padding: 12px 24px;
+  background-color: #7c3aed;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 20px;
+  transition: background-color 0.3s ease;
+}
+
+.save-btn:hover {
+  background-color: #6b21a8;
+}
+
+.delete-entry-btn {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background-color: #ef4444;
+  color: white;
+  padding: 5px 10px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  z-index: 10;  
+}
+
+.entry-card {
+  position: relative;
+  background-color: #f4f0fa;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 15px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+```
+
+# File: static/css/profile.css
+```css
+.profile-section {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.profile-header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.profile-header h2 {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.profile-header p {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+}
+
+.progress-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.progress-circle {
+  position: relative;
+  width: 100px;
+  height: 100px;
+}
+
+.progress-ring__circle {
+  transition: stroke-dashoffset 0.35s;
+  transform: rotate(-90deg);
+  transform-origin: 50% 50%;
+}
+
+.progress-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--primary);
+}
+
+.card {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.85));
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding: 20px 24px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.card-header h3 {
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.status-indicator {
+  font-size: 0.9rem;
+  font-weight: 500;
+  padding: 6px 12px;
+  border-radius: 12px;
+  min-width: 140px;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid var(--glass-border);
+}
+
+.status-indicator.complete {
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+.status-indicator.incomplete {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.profile-overview {
+  padding: 24px;
+}
+
+.profile-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 40px;
+}
+
+.profile-picture {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.profile-picture img {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--glass-border);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.edit-button {
+  background: linear-gradient(145deg, #7c3aed, #6d28d9);
+  color: #fff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.2s;
+}
+
+.edit-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.3);
+}
+
+.form-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.form-field {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  width: 100%;
+}
+
+.form-field label {
+  width: 160px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #374151;
+  line-height: 1.5;
+}
+
+.input-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 48px; /* Ensures consistent height for alignment */
+}
+
+.form-field input,
+.form-field select {
+  flex: 1;
+  padding: 12px 16px;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 4px rgba(0, 0, 0, 0.05);
+  transition: box-shadow 0.2s, background 0.2s;
+  min-height: 48px; /* Consistent height for inputs and selects */
+  box-sizing: border-box;
+}
+
+.form-field input:focus,
+.form-field select:focus {
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.2), 0 2px 6px rgba(0, 0, 0, 0.1);
+  outline: none;
+}
+
+.form-field input[readonly] {
+  background: #f3f4f6;
+  cursor: not-allowed;
+}
+
+.edit-field-btn {
+  background: linear-gradient(145deg, #7c3aed, #6d28d9);
+  color: #fff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.2s;
+  height: 40px; /* Match input height for alignment */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.edit-field-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.3);
+}
+
+.personal-details,
+.mental-health-goals {
+  padding: 24px;
+}
+
+.checkbox-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  width: 100%;
+}
+
+.checkbox-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.7);
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--glass-border);
+  transition: background 0.2s, box-shadow 0.2s;
+  min-width: 200px; /* Ensures consistent width for alignment */
+}
+
+.checkbox-option:hover {
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+}
+
+.checkbox-option input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--primary);
+  margin: 0; /* Remove default margin for better alignment */
+}
+
+.checkbox-option label {
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  font-weight: 500;
+  width: auto;
+  line-height: 1.5;
+}
+
+.form-field select {
+  appearance: none;
+  background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24"><path fill="%23374151" d="M7 10l5 5 5-5z"/></svg>') no-repeat right 16px center;
+  background-size: 12px;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin-top: 20px;
+  width: 100%;
+}
+
+.save-btn {
+  background: linear-gradient(145deg, #7c3aed, #6d28d9);
+  color: #fff;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 20px;
+  border-radius: 8px;
+  font-size: 1.2rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.2s;
+  height: 58px; /* Match input height for alignment */
+  align-self: center;
+}
+
+.save-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.3);
+}
+
+.privacy-security {
+  padding: 24px;
+}
+
+.action-group {
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+  width: 100%;
+  align-items: center;
+}
+
+.action-btn {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.9), rgba(240, 240, 240, 0.9));
+  color: var(--text-primary);
+  border: 1px solid var(--glass-border);
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.2s;
+  width: 100%;
+  max-width: 300px; /* Consistent width for alignment */
+  height: 48px; /* Match other buttons for alignment */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.action-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.action-btn.delete {
+  background: linear-gradient(145deg, #fee2e2, #fecaca);
+  color: #ef4444;
+  border-color: #ef4444;
+}
+
+.action-btn.delete:hover {
+  background: #ef4444;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+}
+
+.cta-message {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.85));
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.cta-message p {
+  font-size: 1rem;
+  color: var(--text-primary);
+}
+
+@media (max-width: 900px) {
+  .profile-content {
+    flex-direction: column;
+    align-items: center;
+    gap: 32px;
+  }
+
+  .form-field {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .form-field label {
+    width: auto;
+    font-size: 0.95rem;
+  }
+
+  .form-field input,
+  .form-field select,
+  .input-container {
+    width: 100%;
+    min-height: 44px; /* Slightly smaller for mobile */
+  }
+
+  .edit-field-btn,
+  .save-btn {
+    height: 44px; /* Match mobile input height */
+    width: 100%;
+    max-width: 120px; /* Prevent buttons from being too wide */
+  }
+
+  .personal-details,
+  .mental-health-goals,
+  .privacy-security {
+    padding: 20px;
+  }
+
+  .checkbox-container {
+    flex-direction: column;
+    gap: 16px;
+    align-items: flex-start;
+  }
+
+  .checkbox-option {
+    width: 100%;
+    max-width: 300px; /* Consistent width on mobile */
+  }
+
+  .form-actions {
+    justify-content: center;
+  }
+
+  .action-group {
+    align-items: center;
+  }
+
+  .action-btn {
+    max-width: 100%; /* Full width on mobile for better alignment */
+  }
+
+  .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 16px 20px;
+  }
+
+  .status-indicator {
+    min-width: auto;
+    width: fit-content;
+    padding: 4px 10px;
+  }
+}
+
+@media (max-width: 600px) {
+  .profile-picture img {
+    width: 100px;
+    height: 100px;
+  }
+
+  .profile-header h2 {
+    font-size: 1.6rem;
+  }
+
+  .card-header h3 {
+    font-size: 1.2rem;
+  }
+
+  .form-field input,
+  .form-field select {
+    font-size: 0.95rem;
+    padding: 10px 14px;
+    min-height: 40px;
+  }
+
+  .edit-field-btn,
+  .save-btn,
+  .action-btn {
+    font-size: 0.9rem;
+    padding: 8px 16px;
+    height: 40px;
+  }
+
+  .status-indicator {
+    font-size: 0.85rem;
+  }
+
+  .checkbox-option {
+    padding: 8px 14px;
+  }
+}
+```
+
+# File: static/css/progress.css
+```css
+/* CSS Variables for consistency */
+:root {
+  --primary: #7c3aed;
+  --secondary: #f9faff;
+  --accent: #d4bfff;
+  --glass-bg: rgba(255, 255, 255, 0.9);
+  --glass-border: rgba(200, 200, 200, 0.3);
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+  --header-bg: linear-gradient(90deg, #a78bfa 0%, #c084fc 100%);
+  --text-primary: #1f2937;
+  --text-secondary: #6b7280;
+}
+
+/* General reset */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Inter', sans-serif;
+}
+
+/* Body styling */
+body {
+  background: var(--secondary);
+  display: flex;
+  min-height: 100vh;
+}
+
+/* App container */
+.app-container {
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+}
+
+/* Sidebar */
+.sidebar {
+  width: 260px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(10px);
+  border-right: 1px solid var(--glass-border);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  position: fixed;
+  height: 100vh;
+  z-index: 100;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo i {
+  font-size: 2rem;
+  color: var(--primary);
+}
+
+.logo h1 {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.logo h1 span {
+  color: var(--primary);
+}
+
+.sidebar nav {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sidebar nav a {
+  color: var(--text-primary);
+  text-decoration: none;
+  font-size: 1rem;
+  font-weight: 500;
+  padding: 12px 16px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: background 0.3s, color 0.3s;
+}
+
+.sidebar nav a:hover,
+.sidebar nav a.active {
+  background: var(--primary);
+  color: #fff;
+}
+
+/* Wrapper for content */
+.wrapper {
+  flex: 1;
+  margin-left: 260px;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* Main content */
+.main-content {
+  flex: 1;
+  padding: 24px;
+  width: 1200px;
+  width: 100%;
+  margin: 0 auto; 
+}
+
+/* Header */
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  background: var(--header-bg);
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--glass-border);
+  margin-bottom: 24px;
+}
+
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: rgba(255, 255, 255, 0.3);
+  padding: 14px 20px;
+  border-radius: 10px;
+  width: 450px;
+  max-width: 100%;
+}
+
+.search-bar i {
+  color: #fff;
+  font-size: 1.5rem;
+}
+
+.search-bar input {
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-size: 1.2rem;
+  outline: none;
+  width: 100%;
+}
+
+.search-bar input::placeholder {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 1.2rem;
+}
+
+.profile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.profile img {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  object-fit: cover;
+}
+
+.profile span {
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.profile i {
+  color: #fff;
+  font-size: 1.2rem;
+}
+
+/* Stats section */
+.stats-section {
+  margin-bottom: 32px;
+}
+
+.stats-section h2 {
+  font-size: 32px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.stats-section h2 i {
+  color: var(--primary);
+  font-size: 2.2rem;
+}
+
+.stats-boxes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 30px;
+  width: 100%; }
+
+.stat-box {
+  background: var(--glass-bg);
+  border-radius: 16px;
+  height: 120px;
+  padding: 24px;
+  border: 5px solid var(--glass-border);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.stat-box:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1);
+}
+
+.stat-box i {
+  font-size: 2.2rem;
+  color: var(--primary);
+  background: var(--secondary);
+  border-radius: 12px;
+  padding: 12px;
+  min-width: 48px;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stat-box h3 {
+  font-size: 25px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.stat-box p {
+  font-size: 20px;
+  color: var(--text-secondary);
+  font-weight: 500;
+  line-height: 1.5;
+  letter-spacing: 1px;
+}
+
+/* Chart section */
+.chart-section {
+  margin-bottom: 32px;
+}
+
+.chart-section h2 {
+  font-size: 32px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.chart-section h2 i {
+  color: var(--primary);
+  font-size: 2rem;
+}
+
+.chart-card {
+  background: var(--glass-bg);
+  border-radius: 16px;
+  padding: 24px;
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  width: 100%; /* Ensure chart takes full width */
+  height:600px;
+}
+
+.chart-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 10px 12px 40px rgba(0, 0, 0, 0.1);
+}
+
+/* Insights section */
+.insights-section {
+  margin-bottom: 32px;
+}
+
+.insights-section h2 {
+  font-size: 30px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.insights-section h2 i {
+  color: var(--primary);
+  font-size: 2rem;
+}
+
+.insights-content {
+  background: var(--glass-bg);
+  border-radius: 16px;
+  padding: 24px;
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow);
+  font-size: 1rem;
+  color: var(--text-primary);
+  line-height: 1.5;
+  width: 100%; /* Ensure insights takes full width */
+}
+
+/* Footer */
+footer {
+  text-align: center;
+  padding: 20px;
+  background: var(--glass-bg);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  backdrop-filter: blur(4px);
+  border-top: 1px solid var(--glass-border);
+  margin-top: auto;
+  width: 100%;
+}
+/* Responsive design */
+@media (max-width: 900px) {
+  .sidebar {
+    width: 80px;
+    align-items: center;
+  }
+  .sidebar .logo h1 {
+    display: none;
+  }
+  .sidebar nav a {
+    justify-content: center;
+    padding: 12px;
+  }
+  .sidebar nav a span {
+    display: none;
+  }
+  .wrapper {
+    margin-left: 80px;
+  }
+  .main-content {
+    padding: 16px;
+  }
+  .search-bar {
+    width: 300px;
+  }
+  .stats-boxes {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 600px) {
+  .sidebar {
+    width: 100%;
+    height: auto;
+    position: static;
+    flex-direction: row;
+    justify-content: space-between;
+    padding: 16px;
+  }
+  .sidebar nav {
+    flex-direction: row;
+    gap: 8px;
+  }
+  .wrapper {
+    margin-left: 0;
+  }
+  .main-content {
+    padding: 16px;
+  }
+  .stats-section h2,
+  .chart-section h2,
+  .insights-section h2 {
+    font-size: 1.6rem;
+  }
+
+  .stat-box,
+  .chart-card,
+  .insights-content {
+    padding: 16px;
+  }
+
+  .search-bar {
+    width: 100%;
+    padding: 10px 16px;
+  }
+
+  .search-bar i {
+    font-size: 1.2rem;
+  }
+
+  .search-bar input,
+  .search-bar input::placeholder {
+    font-size: 1rem;
+  }
+}
+
+.sidebar nav a {
+  color: var(--text-primary);
+  text-decoration: none;
+  font-size: 1.3rem;
+  font-weight: 500;
+  padding: 12px 16px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  transition: all 0.3s ease;
+}
+```
+
+# File: static/css/signup.css
+```css
+:root {
+  /* Color scheme variables for easy theme management */
+  --lavender: #e6d0ec;
+  --purple: #b27dd3;
+  --light-bg: #f9f6fc;
+  --dark: #2c2c2c;
+  --muted-gray: #78768b;
+  --mint: #daf7f5;
+  --gradient: linear-gradient(135deg, #e6d0ec, #c4a3d8);
+}
+
+/* General reset and box-sizing settings */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Poppins', sans-serif;
+}
+
+/* Body styling to set the gradient background and centering of content */
+body {
+  background: var(--gradient); 
+  min-height: 100vh; 
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 30px; 
+}
+
+/* Main login container with flex layout */
+.login-container {
+  width: 1200px;
+  height: 700px;
+  display: flex;
+  background: var(--light-bg); 
+  border-radius: 30px; 
+  box-shadow: 0 40px 60px rgba(0, 0, 0, 0.15); 
+  overflow: hidden; 
+  animation: fadeIn 1s ease forwards; 
+}
+
+/* Branding section, left part of the page */
+.branding {
+  flex: 1; 
+  background: var(--purple);
+  color: white;
+  padding: 60px; 
+  display: flex; 
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  clip-path: polygon(0% 0, 100% 0, 85% 100%, 0% 100%); 
+}
+
+/* Login box where the form resides */
+.login-box {
+  flex: 1.2; 
+  padding: 80px 60px; 
+  display: flex;
+  flex-direction: column; 
+  justify-content: center;
+}
+
+/* Main heading style */
+.login-box h1 {
+  text-align: center;
+  margin-bottom: 100px; /* Space below the heading */
+  font-size: 5rem;
+  font-weight: 600;
+  letter-spacing: 1px;
+  animation: slideIn 1s ease forwards; 
+}
+
+/* Specific style for the span in the heading */
+.login-box h1 span {
+  color: red;
+}
+
+/* Tagline styling */
+.login-box p {
+  font-size: 1.5rem;
+  text-align: center;
+  position: relative;
+  bottom: 75px;
+  opacity: 0.9;
+  animation: fadeIn 1.2s ease forwards; 
+}
+
+/* Subheading style for 'Login' */
+.login-box h2 {
+  font-size: 2.5rem;
+  font-weight: 600;
+  text-align: center;
+  position: relative;
+  bottom: 55px;
+  margin-bottom: 40px;
+  color: var(--dark);
+}
+
+/* Form container styling */
+form {
+  position: relative;
+  bottom: 60px; 
+  display: flex;
+  flex-direction: column; 
+  gap: 24px; /* Space between inputs */
+}
+
+/* input field */
+.input-group {
+  position: relative; 
+}
+
+.input-group input {
+  width: 100%; 
+  padding: 16px 14px; 
+  border-radius: 14px;
+  border: 1.5px solid var(--muted-gray); 
+  background: transparent; 
+  color: var(--dark); 
+  font-size: 1rem;
+  transition: border-color 0.3s ease, background 0.3s ease; 
+}
+
+/* Focused input field styling */
+.input-group input:focus {
+  border-color: var(--purple); 
+  background-color: #f5effb; 
+}
+
+/* Label styling for inputs */
+.input-group label {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted-gray);
+  background: var(--light-bg); 
+  padding: 0 6px;
+  transition: all 0.25s ease;
+  pointer-events: none; 
+}
+
+/* When the input is focused or filled, adjust the label position */
+.input-group input:focus + label,
+.input-group input:not(:placeholder-shown) + label {
+  top: -10px;
+  left: 12px;
+  font-size: 0.8rem;
+  color: var(--purple); 
+}
+
+/*submit button */
+button {
+  padding: 16px;
+  border: none;
+  background: var(--dark); 
+  color: white;
+  font-size: 1rem;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: background 0.3s ease, transform 0.2s ease; 
+}
+
+/* Button hover effect */
+button:hover {
+  background-color: var(--muted-gray); 
+  transform: translateY(-2px);
+}
+
+/* Link to sign-up page styling */
+.signup-link {
+  margin-top: 20px;
+  text-align: center;
+  font-size: 1rem;
+  color: var(--muted-gray);
+  position: relative;
+  bottom: 50px;
+}
+
+/* Styling for the sign-up link */
+.signup-link a {
+  color: #000;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+/* sign-up link on hover */
+.signup-link a:hover {
+  text-decoration: underline;
+}
+
+.login-link {
+  margin-top: 20px;
+  text-align: center;
+  font-size: 1rem;
+  color: var(--muted-gray);
+  position: relative;
+  bottom: 50px;
+}
+
+/* Styling for the sign-up link */
+.login-link a {
+  color: #000;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+/* sign-up link on hover */
+.login-link a:hover {
+  text-decoration: underline;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  0% { opacity: 0; transform: scale(0.96); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes slideIn {
+  from { transform: translateY(-20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* Responsive styling for smaller screens */
+@media (max-width: 1000px) {
+  
+  .login-container {
+      flex-direction: column;
+      height: auto;
+  }
+
+  
+  .branding {
+      clip-path: none;
+      border-radius: 30px 30px 0 0;
+  }
+
+
+  .login-box {
+      padding: 60px 30px;
+  }
+}
+
+```
+
+# File: static/css/vibe.css
+```css
+.music-recommendations-section {
+    margin-top: 30px;
+    padding: 30px;
+    background-color: #f5f3ff;
+    border-radius: 16px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
+}
+
+.music-recommendations-section h2 {
+    font-size: 32px;
+    margin-bottom: 20px;
+    color: #2b2b2b;
+}
+
+/* Removed .mood-selector styles */
+
+.recommendations-content {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 25px;
+    margin-top: 30px; /* keep margin for spacing */
+}
+
+.song-card {
+    background-color: #fff;
+    border: 1px solid #e0dcf5;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.04);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    transition: transform 0.2s;
+}
+
+.song-card:hover {
+    transform: translateY(-4px);
+}
+
+.song-card p {
+    margin: 0;
+    color: #222;
+    font-size: 16px;
+    line-height: 1.4;
+}
+
+.play-btn {
+    align-self: flex-start;
+    background-color: #7c3aed;
+    color: white;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: background-color 0.3s;
+}
+
+.play-btn:hover {
+    background-color: #5b21b6;
+}
+
+.music-player {
+    margin-top: 40px;
+    padding: 25px;
+    background: linear-gradient(135deg, #e3d7fd, #c9b6ff);
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(124, 58, 237, 0.1);
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    align-items: center;
+    text-align: center;
+}
+
+.music-player h3 {
+    margin: 0;
+    font-size: 20px;
+    color: #322f3d;
+}
+
+#now-playing {
+    font-size: 16px;
+    color: #4b445a;
+    font-weight: 500;
+}
+
+#audio-player {
+    width: 100%;
+    max-width: 500px;
+    margin-top: 10px;
+    border-radius: 8px;
+    outline: none;
+    background-color: #fff;
+}
+
+.load-more-btn {
+    margin: 30px auto 0;
+    display: block;
+    background-color: #7c3aed;
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 600;
+    transition: background-color 0.3s;
+}
+
+.load-more-btn:hover {
+    background-color: #5b21b6;
+}
+
+```
+
+# File: static/js/gratitude.js
+```js
+document.addEventListener('DOMContentLoaded', function () {
+    const gratitudeForm = document.getElementById('gratitude-form');
+    const gratitudeTimeline = document.getElementById('gratitude-timeline');
+    const streakElement = document.getElementById('gratitude-streak');
+
+    // Function to fetch and display gratitude entries
+    function fetchGratitudeEntries() {
+        fetch('/api/gratitude')
+            .then(response => response.json())
+            .then(data => {
+                console.log('Gratitude Entries:', data.entries);
+                console.log('Gratitude Streak:', data.streak);
+
+                // Update streak
+                streakElement.textContent = `${data.streak} Days`;
+
+                // Display entries in timeline
+                if (data.entries.length === 0) {
+                    gratitudeTimeline.innerHTML = '<p>No gratitude entries yet. Start by recording three good things today!</p>';
+                    return;
+                }
+
+                const timelineHTML = data.entries.map(entry => `
+                    <div class="timeline-entry">
+                        <div class="date">${entry.date}</div>
+                        <div class="entry-content">
+                            <p><strong>1. What made you smile:</strong> ${entry.thing1}</p>
+                            <p><strong>2. What you’re thankful for:</strong> ${entry.thing2}</p>
+                            <p><strong>3. What went well:</strong> ${entry.thing3}</p>
+                        </div>
+                    </div>
+                `).join('');
+                gratitudeTimeline.innerHTML = timelineHTML;
+            })
+            .catch(error => {
+                console.error('Error fetching gratitude entries:', error);
+                gratitudeTimeline.innerHTML = '<p>Unable to load gratitude entries. Please try again later.</p>';
+            });
+    }
+
+    // Submit new gratitude entry
+    gratitudeForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        const thing1 = document.getElementById('thing1').value.trim();
+        const thing2 = document.getElementById('thing2').value.trim();
+        const thing3 = document.getElementById('thing3').value.trim();
+
+        if (!thing1 || !thing2 || !thing3) {
+            alert('Please fill in all three fields.');
+            return;
+        }
+
+        const entry = { thing1, thing2, thing3 };
+
+        fetch('/api/gratitude', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(entry)
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    gratitudeForm.reset();
+                    fetchGratitudeEntries(); // Refresh timeline and streak
+                } else {
+                    alert('Failed to save gratitude entry. Please try again.');
+                }
+            })
+            .catch(error => {
+                console.error('Error saving gratitude entry:', error);
+                alert('Failed to save gratitude entry. Please try again.');
+            });
+    });
+
+    // Initial fetch of gratitude entries
+    fetchGratitudeEntries();
+});
+```
+
+# File: static/js/journal.js
+```js
+document.addEventListener('DOMContentLoaded', () => {
+  const quill = new Quill('#editor', {
+    theme: 'snow',
+    placeholder: 'Write your thoughts here...',
+    modules: {
+      toolbar: [
+        [{ 'header': [1, 2, false] }],
+        ['bold', 'italic', 'underline'],
+        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+        ['link'],
+        ['clean']
+      ]
+    }
+  });
+
+  const wordCountElement = document.querySelector('.word-count');
+  const journalForm = document.getElementById('journal-form');
+  const journalContentInput = document.getElementById('journal-content');
+
+  quill.on('text-change', () => {
+    const text = quill.getText().trim();
+    const wordCount = text ? text.split(/\s+/).length : 0;
+    wordCountElement.textContent = `${wordCount} words`;
+  });
+
+    // DELETE ENTRY BUTTONS
+  document.querySelectorAll('.delete-entry-btn').forEach(button => {
+    button.addEventListener('click', async (event) => {
+      const entryId = event.target.getAttribute('data-id');
+      if (confirm('Are you sure you want to delete this journal entry?')) {
+        try {
+          const response = await fetch(`/delete_entry/${entryId}`, {
+            method: 'DELETE',
+          });
+
+          if (response.ok) {
+            // Remove the entry card from DOM
+            const card = event.target.closest('.entry-card');
+            card.remove();
+          } else {
+            alert('Failed to delete entry.');
+          }
+        } catch (err) {
+          console.error('Error deleting entry:', err);
+          alert('Something went wrong.');
+        }
+      }
+    });
+  });
+
+
+  journalForm.addEventListener('submit', (event) => {
+    journalContentInput.value = quill.root.innerHTML;
+  });
+});
+```
+
+# File: static/js/profile.js
+```js
+document.addEventListener('DOMContentLoaded', () => {
+  // Load profile data from localStorage
+  let profileData = JSON.parse(localStorage.getItem('profileData')) || {
+    name: 'John Doe',
+    email: 'john.doe@example.com',
+    username: '@johndoe',
+    age: '',
+    gender: '',
+    location: '',
+    language: '',
+    primaryGoal: '',
+    frequency: '',
+    activities: [],
+    profilePic: 'https://randomuser.me/api/portraits/men/32.jpg'
+  };
+
+  // Initialize UI
+  const initializeUI = () => {
+    document.getElementById('name-input').value = profileData.name;
+    document.getElementById('email-input').value = profileData.email;
+    document.getElementById('username-input').value = profileData.username;
+    document.getElementById('age-input').value = profileData.age;
+    document.getElementById('gender-input').value = profileData.gender;
+    document.getElementById('location-input').value = profileData.location;
+    document.getElementById('language-input').value = profileData.language;
+    document.getElementById('primary-goal').value = profileData.primaryGoal;
+    document.getElementById('frequency').value = profileData.frequency;
+
+    const activitiesCheckboxes = document.querySelectorAll('input[name="activities"]');
+    activitiesCheckboxes.forEach(checkbox => {
+      checkbox.checked = profileData.activities.includes(checkbox.value);
+    });
+
+    const profilePic = document.getElementById('profile-pic');
+    const headerProfilePic = document.getElementById('header-profile-pic');
+    profilePic.src = profileData.profilePic;
+    headerProfilePic.src = profileData.profilePic;
+
+    updateProfileCompletion();
+  };
+
+  // Update profile completion status
+  const updateProfileCompletion = () => {
+    const percentage = calculateProfileCompletion(profileData);
+    updateProgressBar(percentage);
+
+    // Update status indicators
+    const personalDetailsStatus = document.querySelector('.personal-details .status-indicator');
+    const goalsStatus = document.querySelector('.mental-health-goals .status-indicator');
+    const ctaMessage = document.querySelector('.cta-message p');
+
+    const personalDetailsFilled = profileData.age || profileData.gender || profileData.location || profileData.language;
+    personalDetailsStatus.textContent = personalDetailsFilled ? 'Personal Details: Complete' : 'Personal Details: Not Started';
+    personalDetailsStatus.classList.toggle('complete', personalDetailsFilled);
+    personalDetailsStatus.classList.toggle('incomplete', !personalDetailsFilled);
+
+    const goalsFilled = profileData.primaryGoal || profileData.frequency || profileData.activities.length > 0;
+    goalsStatus.textContent = goalsFilled ? 'Goals: Complete' : 'Goals: Not Started';
+    goalsStatus.classList.toggle('complete', goalsFilled);
+    goalsStatus.classList.toggle('incomplete', !goalsFilled);
+
+    if (percentage < 100) {
+      ctaMessage.textContent = 'Complete your profile to unlock personalized features! Add your mental health goals to continue.';
+    } else {
+      ctaMessage.textContent = 'Great job! Your profile is fully complete. Enjoy a personalized NeuroAid experience.';
+    }
+  };
+
+  // Edit Profile Fields
+  const editFieldButtons = document.querySelectorAll('.edit-field-btn');
+  editFieldButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      const field = button.dataset.field;
+      const input = document.getElementById(`${field}-input`);
+      const isEditing = !input.readOnly;
+
+      if (isEditing) {
+        input.readOnly = true;
+        button.textContent = 'Edit';
+        profileData[field] = input.value;
+        localStorage.setItem('profileData', JSON.stringify(profileData));
+        updateProfileCompletion();
+      } else {
+        input.readOnly = false;
+        input.focus();
+        button.textContent = 'Save';
+      }
+    });
+  });
+
+  // Profile Picture Upload
+  const editPictureBtn = document.getElementById('edit-picture-btn');
+  const profilePicInput = document.getElementById('profile-pic-input');
+  editPictureBtn.addEventListener('click', () => {
+    profilePicInput.click();
+  });
+
+  profilePicInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        profileData.profilePic = event.target.result;
+        document.getElementById('profile-pic').src = profileData.profilePic;
+        document.getElementById('header-profile-pic').src = profileData.profilePic;
+        localStorage.setItem('profileData', JSON.stringify(profileData));
+      };
+      reader.readAsDataURL(file);
+    }
+  });
+
+  // Save Personal Details
+  const savePersonalDetailsBtn = document.getElementById('save-personal-details');
+  savePersonalDetailsBtn.addEventListener('click', () => {
+    profileData.age = document.getElementById('age-input').value;
+    profileData.gender = document.getElementById('gender-input').value;
+    profileData.location = document.getElementById('location-input').value;
+    profileData.language = document.getElementById('language-input').value;
+    localStorage.setItem('profileData', JSON.stringify(profileData));
+    updateProfileCompletion();
+  });
+
+  // Save Mental Health Goals
+  const saveGoalsBtn = document.getElementById('save-goals');
+  saveGoalsBtn.addEventListener('click', () => {
+    profileData.primaryGoal = document.getElementById('primary-goal').value;
+    profileData.frequency = document.getElementById('frequency').value;
+    const activitiesCheckboxes = document.querySelectorAll('input[name="activities"]:checked');
+    profileData.activities = Array.from(activitiesCheckboxes).map(checkbox => checkbox.value);
+    localStorage.setItem('profileData', JSON.stringify(profileData));
+    updateProfileCompletion();
+  });
+
+  // Privacy & Security Actions (Placeholder Functionality)
+  document.getElementById('change-password-btn').addEventListener('click', () => {
+    alert('Change Password functionality coming soon!');
+  });
+
+  document.getElementById('export-data-btn').addEventListener('click', () => {
+    alert('Export Data functionality coming soon!');
+  });
+
+  document.getElementById('delete-account-btn').addEventListener('click', () => {
+    if (confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
+      localStorage.removeItem('profileData');
+      alert('Account deleted successfully.');
+      window.location.href = 'index.html';
+    }
+  });
+
+  // Initialize the UI on page load
+  initializeUI();
+});
+```
+
+# File: static/js/progress.js
+```js
+document.addEventListener('DOMContentLoaded', function () {
+    // Mood Chart Canvas
+    const moodCanvas = document.getElementById('moodChart');
+    moodCanvas.width = 900;
+    moodCanvas.height = 650;
+
+    // Confidence Chart Canvas
+    const confidenceCanvas = document.getElementById('confidenceChart');
+    confidenceCanvas.width = 900;
+    confidenceCanvas.height = 650;
+
+    fetch('/api/mood_data')
+        .then(response => response.json())
+        .then(data => {
+            console.log('API Response:', data);
+
+            // Mood Chart (Area Chart using Line with Fill)
+            const moodCtx = moodCanvas.getContext('2d');
+            const moodLineGradient = moodCtx.createLinearGradient(0, 0, 0, 650);
+            moodLineGradient.addColorStop(0, '#FF6EC7'); // Neon pink
+            moodLineGradient.addColorStop(1, '#7879F1'); // Neon purple
+            const moodFillGradient = moodCtx.createLinearGradient(0, 0, 0, 650);
+            moodFillGradient.addColorStop(0, 'rgba(230, 230, 250, 0.5)'); // Light violet
+            moodFillGradient.addColorStop(1, 'rgba(200, 200, 240, 0.1)'); // Slightly darker violet
+
+            const moodChart = new Chart(moodCtx, {
+                type: 'line',
+                data: {
+                    labels: data.labels,
+                    datasets: [{
+                        label: 'Mood',
+                        data: data.data,
+                        borderColor: moodLineGradient,
+                        borderWidth: 3,
+                        fill: true,
+                        backgroundColor: moodFillGradient,
+                        tension: 0.4,
+                        pointBackgroundColor: '#FFFFFF',
+                        pointBorderColor: '#7879F1',
+                        pointBorderWidth: 2,
+                        pointRadius: 5,
+                        pointHoverRadius: 8,
+                        pointHoverBackgroundColor: '#FF6EC7',
+                        pointHoverBorderColor: '#FFFFFF',
+                        pointHoverBorderWidth: 3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 5,
+                            min: 0,
+                            ticks: {
+                                stepSize: 1,
+                                color: '#000000',
+                                font: {
+                                    family: "'Poppins', sans-serif",
+                                    size: 17
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.1)',
+                            },
+                            title: {
+                                display: true,
+                                text: 'Mood Score',
+                                color: '#000000',
+                                font: {
+                                    family: "'Poppins', sans-serif",
+                                    size: 20
+                                },
+                                padding: 5
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                color: '#000000',
+                                font: {
+                                    family: "'Poppins', sans-serif",
+                                    size: 17
+                                }
+                            },
+                            grid: {
+                                display: false
+                            },
+                            title: {
+                                display: true,
+                                text: 'Day',
+                                color: '#000000',
+                                font: {
+                                    family: "'Poppins', sans-serif",
+                                    size: 16,
+                                    weight: 'bold'
+                                },
+                                padding: 10
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            labels: {
+                                font: {
+                                    family: "'Poppins', sans-serif",
+                                    size: 14
+                                },
+                                color: '#000000'
+                            }
+                        },
+                        tooltip: {
+                            enabled: false
+                        }
+                    },
+                    animation: {
+                        duration: 1500,
+                        easing: 'easeOutCubic'
+                    },
+                    elements: {
+                        line: {
+                            shadowColor: 'rgba(255, 255, 255, 0.3)',
+                            shadowBlur: 10,
+                            shadowOffsetX: 0,
+                            shadowOffsetY: 0
+                        }
+                    },
+                    onClick: (event, elements) => {
+                        if (elements.length > 0) {
+                            const element = elements[0];
+                            const day = data.labels[element.index];
+                            alert(`Day: ${day}`);
+                        }
+                    }
+                }
+            });
+
+            // Confidence Chart (Bar Chart)
+            const confidenceCtx = confidenceCanvas.getContext('2d');
+            const confidenceBarGradient = confidenceCtx.createLinearGradient(0, 0, 0, 650);
+            confidenceBarGradient.addColorStop(0, '#00BFFF'); // Deep sky blue
+            confidenceBarGradient.addColorStop(1, '#1E90FF'); // Dodger blue
+
+            const confidenceChart = new Chart(confidenceCtx, {
+                type: 'bar',
+                data: {
+                    labels: data.labels,
+                    datasets: [{
+                        label: 'Confidence',
+                        data: data.confidence,
+                        backgroundColor: confidenceBarGradient,
+                        borderColor: '#FFFFFF',
+                        borderWidth: 1,
+                        borderRadius: 5, // Rounded corners for bars
+                        barThickness: 40, // Thinner bars
+                        categoryPercentage: 0.5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 1,
+                            min: 0,
+                            ticks: {
+                                stepSize: 0.2,
+                                color: '#000000',
+                                font: {
+                                    family: "'Poppins', sans-serif",
+                                    size: 17
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.1)',
+                            },
+                            title: {
+                                display: true,
+                                text: 'Confidence Score',
+                                color: '#000000',
+                                font: {
+                                    family: "'Poppins', sans-serif",
+                                    size: 20
+                                },
+                                padding: 5
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                color: '#000000',
+                                font: {
+                                    family: "'Poppins', sans-serif",
+                                    size: 17
+                                }
+                            },
+                            grid: {
+                                display: false
+                            },
+                            title: {
+                                display: true,
+                                text: 'Day',
+                                color: '#000000',
+                                font: {
+                                    family: "'Poppins', sans-serif",
+                                    size: 16,
+                                    weight: 'bold'
+                                },
+                                padding: 10
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            labels: {
+                                font: {
+                                    family: "'Poppins', sans-serif",
+                                    size: 14
+                                },
+                                color: '#000000'
+                            }
+                        },
+                        tooltip: {
+                            enabled: false
+                        }
+                    },
+                    animation: {
+                        duration: 1500,
+                        easing: 'easeOutCubic'
+                    },
+                    onClick: (event, elements) => {
+                        if (elements.length > 0) {
+                            const element = elements[0];
+                            const day = data.labels[element.index];
+                            alert(`Day: ${day}`);
+                        }
+                    }
+                }
+            });
+
+            // Update number of entries
+            const numEntriesElement = document.getElementById('entries-count');
+            if (numEntriesElement) {
+                numEntriesElement.textContent = `${data.numEntries} entries`;
+                console.log('Number of entries updated:', data.numEntries);
+            } else {
+                console.error('Number of entries element not found. ID: entries-count');
+            }
+
+            // Update streak
+            const streakElement = document.getElementById('streak-value');
+            if (streakElement) {
+                streakElement.textContent = `${data.streak} Days`;
+                console.log('Streak updated:', data.streak);
+            } else {
+                console.error('Streak element not found. ID: streak-value');
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching mood data:', error);
+
+            // Fallback Mood Chart
+            const moodCtx = moodCanvas.getContext('2d');
+            const moodLineGradient = moodCtx.createLinearGradient(0, 0, 0, 650);
+            moodLineGradient.addColorStop(0, '#FF6EC7');
+            moodLineGradient.addColorStop(1, '#7879F1');
+            const moodFillGradient = moodCtx.createLinearGradient(0, 0, 0, 650);
+            moodFillGradient.addColorStop(0, 'rgba(230, 230, 250, 0.5)');
+            moodFillGradient.addColorStop(1, 'rgba(200, 200, 240, 0.1)');
+
+            new Chart(moodCtx, {
+                type: 'line',
+                data: {
+                    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                    datasets: [{
+                        label: 'Mood',
+                        data: [3, 3, 3, 3, 3, 3, 3],
+                        borderColor: moodLineGradient,
+                        borderWidth: 3,
+                        fill: true,
+                        backgroundColor: moodFillGradient,
+                        tension: 0.4,
+                        pointBackgroundColor: '#FFFFFF',
+                        pointBorderColor: '#7879F1',
+                        pointBorderWidth: 2,
+                        pointRadius: 5,
+                        pointHoverRadius: 8,
+                        pointHoverBackgroundColor: '#FF6EC7',
+                        pointHoverBorderColor: '#FFFFFF',
+                        pointHoverBorderWidth: 3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 5,
+                            min: 0,
+                            ticks: {
+                                stepSize: 1,
+                                color: '#000000',
+                                font: {
+                                    family: "'Poppins', sans-serif",
+                                    size: 17
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.1)',
+                            },
+                            title: {
+                                display: true,
+                                text: 'Mood Score',
+                                color: '#000000',
+                                font: {
+                                    family: "'Poppins', sans-serif",
+                                    size: 20
+                                },
+                                padding: 5
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                color: '#000000',
+                                font: {
+                                    family: "'Poppins', sans-serif",
+                                    size: 17
+                                }
+                            },
+                            grid: {
+                                display: false
+                            },
+                            title: {
+                                display: true,
+                                text: 'Day',
+                                color: '#000000',
+                                font: {
+                                    family: "'Poppins', sans-serif",
+                                    size: 16,
+                                    weight: 'bold'
+                                },
+                                padding: 10
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            labels: {
+                                font: {
+                                    family: "'Poppins', sans-serif",
+                                    size: 14
+                                },
+                                color: '#000000'
+                            }
+                        },
+                        tooltip: {
+                            enabled: false
+                        }
+                    },
+                    animation: {
+                        duration: 1500,
+                        easing: 'easeOutCubic'
+                    },
+                    elements: {
+                        line: {
+                            shadowColor: 'rgba(255, 255, 255, 0.3)',
+                            shadowBlur: 10,
+                            shadowOffsetX: 0,
+                            shadowOffsetY: 0
+                        }
+                    },
+                    onClick: (event, elements) => {
+                        if (elements.length > 0) {
+                            const element = elements[0];
+                            const day = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][element.index];
+                            alert(`Day: ${day}`);
+                        }
+                    }
+                }
+            });
+
+            // Fallback Confidence Chart
+            const confidenceCtx = confidenceCanvas.getContext('2d');
+            const confidenceBarGradient = confidenceCtx.createLinearGradient(0, 0, 0, 650);
+            confidenceBarGradient.addColorStop(0, '#00BFFF');
+            confidenceBarGradient.addColorStop(1, '#1E90FF');
+
+            new Chart(confidenceCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                    datasets: [{
+                        label: 'Confidence',
+                        data: [0, 0, 0, 0, 0, 0, 0],
+                        backgroundColor: confidenceBarGradient,
+                        borderColor: '#FFFFFF',
+                        borderWidth: 1,
+                        borderRadius: 5,
+                        barThickness: 20
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 1,
+                            min: 0,
+                            ticks: {
+                                stepSize: 0.2,
+                                color: '#000000',
+                                font: {
+                                    family: "'Poppins', sans-serif",
+                                    size: 17
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.1)',
+                            },
+                            title: {
+                                display: true,
+                                text: 'Confidence Score',
+                                color: '#000000',
+                                font: {
+                                    family: "'Poppins', sans-serif",
+                                    size: 20
+                                },
+                                padding: 5
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                color: '#000000',
+                                font: {
+                                    family: "'Poppins', sans-serif",
+                                    size: 17
+                                }
+                            },
+                            grid: {
+                                display: false
+                            },
+                            title: {
+                                display: true,
+                                text: 'Day',
+                                color: '#000000',
+                                font: {
+                                    family: "'Poppins', sans-serif",
+                                    size: 16,
+                                    weight: 'bold'
+                                },
+                                padding: 10
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            labels: {
+                                font: {
+                                    family: "'Poppins', sans-serif",
+                                    size: 14
+                                },
+                                color: '#000000'
+                            }
+                        },
+                        tooltip: {
+                            enabled: false
+                        }
+                    },
+                    animation: {
+                        duration: 1500,
+                        easing: 'easeOutCubic'
+                    },
+                    onClick: (event, elements) => {
+                        if (elements.length > 0) {
+                            const element = elements[0];
+                            const day = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][element.index];
+                            alert(`Day: ${day}`);
+                        }
+                    }
+                }
+            });
+
+            // Fallback for number of entries and streak
+            const numEntriesElement = document.getElementById('entries-count');
+            if (numEntriesElement) {
+                numEntriesElement.textContent = '0 entries';
+            }
+
+            const streakElement = document.getElementById('streak-value');
+            if (streakElement) {
+                streakElement.textContent = '0 Days';
+            }
+        });
+});
+```
+
+# File: static/js/utils.js
+```js
+const calculateProfileCompletion = (profileData) => {
+  const totalFields = 7; 
+  let filledFields = 0;
+
+  // Profile Overview
+  if (profileData.name) filledFields++;
+  if (profileData.email) filledFields++;
+  if (profileData.username) filledFields++;
+
+  // Personal Details
+  if (profileData.age) filledFields++;
+  if (profileData.gender) filledFields++;
+  if (profileData.location) filledFields++;
+  if (profileData.language) filledFields++;
+
+  // Mental Health Goals
+  if (profileData.primaryGoal) filledFields++;
+  if (profileData.frequency) filledFields++;
+  if (profileData.activities && profileData.activities.length > 0) filledFields++;
+
+  const percentage = Math.round((filledFields / totalFields) * 100);
+  return percentage;
+};
+
+const updateProgressBar = (percentage) => {
+  const circle = document.querySelector('.progress-ring__circle');
+  const radius = circle.r.baseVal.value; // Now 44px as per the updated SVG
+  const circumference = 2 * Math.PI * radius;
+
+  circle.style.strokeDasharray = `${circumference} ${circumference}`;
+  circle.style.strokeDashoffset = circumference;
+
+  const offset = circumference - (percentage / 100) * circumference;
+  circle.style.strokeDashoffset = offset;
+
+  const progressText = document.querySelector('.progress-text');
+  progressText.textContent = `${percentage}% Complete`;
+};
+```
+
+# File: static/js/vibe.js
+```js
+document.addEventListener('DOMContentLoaded', function () {
+    let currentLimit = 7; // Initial number of recommendations
+    let currentGenre = '';
+    let moodData = [];
+
+    // Function to map mood score to Tamil genre
+    function mapMoodToGenre(moodScore) {
+        if (moodScore >= 4) return 'tamil pop'; // Happy/Energetic
+        else if (moodScore >= 2) return 'tamil acoustic'; // Neutral/Calm
+        else return 'tamil ballad'; // Sad/Neutral
+    }
+
+    // Function to update the recommendations section
+    function updateRecommendations(songs) {
+        const recommendationsElement = document.getElementById('tamil-music-recommendations');
+        if (recommendationsElement) {
+            if (songs.length === 0) {
+                recommendationsElement.innerHTML = 'No recommendations available.';
+                document.getElementById('load-more-btn').style.display = 'none';
+                return;
+            }
+            const songList = songs.map(song => `
+                <div class="song-card">
+                    <p><strong>Song:</strong> ${song.trackName}</p>
+                    <p><strong>Artist:</strong> ${song.artistName}</p>
+                    ${song.previewUrl ? `<button class="play-btn" data-preview-url="${song.previewUrl}">Play Preview</button>` : '<p>No preview available.</p>'}
+                </div>
+            `).join('');
+            recommendationsElement.innerHTML = songList;
+            console.log('Recommendations updated:', songs);
+            document.getElementById('load-more-btn').style.display = songs.length >= currentLimit ? 'block' : 'none';
+            setupMusicPlayer();
+        } else {
+            console.error('Recommendations element not found. ID: tamil-music-recommendations');
+        }
+    }
+
+    // Function to set up music player functionality
+    function setupMusicPlayer() {
+        const playButtons = document.querySelectorAll('.play-btn');
+        const audioPlayer = document.getElementById('audio-player');
+        const audioSource = document.getElementById('audio-source');
+        const nowPlaying = document.getElementById('now-playing');
+
+        playButtons.forEach(button => {
+            button.addEventListener('click', function () {
+                const previewUrl = this.getAttribute('data-preview-url');
+                audioSource.src = previewUrl;
+                audioPlayer.load();
+                audioPlayer.play().catch(error => {
+                    console.error('Error playing audio:', error);
+                    nowPlaying.textContent = 'Error playing preview';
+                });
+                const songCard = this.closest('.song-card');
+                const songName = songCard.querySelector('p:first-child').textContent.replace('Song: ', '');
+                const artistName = songCard.querySelector('p:nth-child(2)').textContent.replace('Artist: ', '');
+                nowPlaying.textContent = `${songName} by ${artistName}`;
+            });
+        });
+
+        audioPlayer.addEventListener('ended', () => {
+            nowPlaying.textContent = 'Nothing playing';
+        });
+    }
+
+    // Function to fetch recommendations
+    function fetchRecommendations(genre, limit) {
+        fetch(`https://itunes.apple.com/search?term=${genre}&media=music&limit=${limit}`)
+            .then(response => response.json())
+            .then(musicData => {
+                const songs = musicData.results.map(song => ({
+                    trackName: song.trackName,
+                    artistName: song.artistName,
+                    previewUrl: song.previewUrl
+                }));
+                updateRecommendations(songs);
+            })
+            .catch(error => {
+                console.error('Error fetching music data:', error);
+                const recommendationsElement = document.getElementById('tamil-music-recommendations');
+                recommendationsElement.innerHTML = 'Unable to fetch Tamil songs. Try listening to some upbeat Tamil pop by Anirudh Ravichander!';
+                document.getElementById('load-more-btn').style.display = 'none';
+            });
+    }
+
+    // Fetch mood data and recommend songs
+    fetch('/api/mood_data')
+        .then(response => response.json())
+        .then(data => {
+            console.log('API Response:', data);
+            moodData = data;
+
+            // Find the latest non-zero mood score
+            let latestMood = 0;
+            for (let i = data.data.length - 1; i >= 0; i--) {
+                if (data.data[i] > 0) {
+                    latestMood = data.data[i];
+                    break;
+                }
+            }
+
+            // If no mood data, show a message
+            if (latestMood === 0) {
+                updateRecommendations([]);
+                const recommendationsElement = document.getElementById('tamil-music-recommendations');
+                recommendationsElement.innerHTML = 'Log your mood to get Tamil music recommendations!';
+                document.getElementById('load-more-btn').style.display = 'none';
+                return;
+            }
+
+            // Map mood to genre and fetch recommendations
+            currentGenre = mapMoodToGenre(latestMood);
+            console.log('Mood:', latestMood, 'Genre:', currentGenre);
+            fetchRecommendations(currentGenre, currentLimit);
+        })
+        .catch(error => {
+            console.error('Error fetching mood data:', error);
+            const recommendationsElement = document.getElementById('tamil-music-recommendations');
+            recommendationsElement.innerHTML = 'Log your mood to get Tamil music recommendations!';
+            document.getElementById('load-more-btn').style.display = 'none';
+        });
+
+    // Load More button functionality
+    document.getElementById('load-more-btn').addEventListener('click', function () {
+        currentLimit += 7; // Fetch 7 more songs
+        fetchRecommendations(currentGenre, currentLimit);
+    });
+});
+
+```
+
+# File: templates/gratitude.html
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeuroAid - Gratitude Journal</title>
+    <!-- Remix Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Link to external CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/gratitude.css') }}">
+ 
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="logo">
+                <i class="ri-brain-line"></i>
+                <h1>Neuro<span>Aid</span></h1>
+            </div>
+            <nav>
+                <a href="{{ url_for('index') }}"><i class="ri-home-5-line"></i> Home</a>
+                <a href="{{ url_for('journal') }}"><i class="ri-booklet-line"></i> Journal</a>
+                <a href="{{ url_for('progress') }}"><i class="ri-bar-chart-2-line"></i> Progress</a>
+                <a href="{{ url_for('vibe') }}"><i class="ri-music-2-line"></i> Vibe</a>
+                <a href="{{ url_for('gratitude') }}" class="active"><i class="ri-heart-line"></i> Gratitude</a>
+                <a href="#"><i class="ri-settings-3-line"></i> Settings</a>
+                <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
+                <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
+            </nav>
+        </div>
+
+        <!-- Main Content -->
+        <div class="wrapper">
+            <main class="main-content">
+                <header>
+                    <div class="search-bar">
+                        <i class="ri-search-line"></i>
+                        <input type="text" placeholder="Search...">
+                    </div>
+                    <div class="profile">
+                        <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile">
+                        <span>{{ session.get('user_email', 'User').split('@')[0] }}</span>
+                        <i class="ri-arrow-down-s-line"></i>
+                    </div>
+                </header>
+
+                <section class="gratitude-section">
+                    <h2><i class="ri-heart-line"></i> Gratitude Journal</h2>
+                    <div class="gratitude-form">
+                        <h3>Record Three Good Things Today</h3>
+                        <form id="gratitude-form">
+                            <label for="thing1">1. What made you smile today?</label>
+                            <textarea id="thing1" name="thing1" rows="2" placeholder="E.g., A kind word from a friend..."></textarea>
+                            <label for="thing2">2. What are you thankful for today?</label>
+                            <textarea id="thing2" name="thing2" rows="2" placeholder="E.g., A sunny morning walk..."></textarea>
+                            <label for="thing3">3. What went well today?</label>
+                            <textarea id="thing3" name="thing3" rows="2" placeholder="E.g., Finished a task early..."></textarea>
+                            <button type="submit">Save Entry</button>
+                            <p class="suggestions">Not sure what to write? How about a small win, like enjoying a warm cup of tea?</p>
+                        </form>
+                    </div>
+
+                    <div class="streak-counter">
+                        <i class="ri-calendar-line"></i>
+                        <p><strong>Gratitude Streak:</strong> <span id="gratitude-streak">0 Days</span></p>
+                    </div>
+
+                    <div class="timeline">
+                        <h3>Your Positivity Log</h3>
+                        <div id="gratitude-timeline">
+                            <!-- Timeline entries will be populated by gratitude.js -->
+                        </div>
+                    </div>
+                </section>
+            </main>
+
+            <footer>
+                <span>© 2025 NeuroAid. Your mental health companion.</span>
+            </footer>
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='js/gratitude.js') }}"></script>
+</body>
+</html>
+```
+
+# File: templates/index.html
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>NeuroAid - Home</title>
+  <!-- Remix Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css" />
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Link to external CSS -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}" />
+</head>
+<body>
+  <div class="sidebar">
+    <div class="logo">
+      <i class="ri-brain-line"></i>
+      <h1>Neuro<span>Aid</span></h1>
+    </div>
+    <nav>
+      <a href="{{ url_for('index') }}" class="active"><i class="ri-home-5-line"></i> Home</a>
+      <a href="{{ url_for('journal') }}"><i class="ri-booklet-line"></i> Journal</a>
+      <a href="{{ url_for('progress') }}"><i class="ri-bar-chart-2-line"></i> Progress</a>
+      <a href="{{ url_for('vibe') }}"><i class="ri-music-2-line"></i> Vibe</a>
+      <a href="{{ url_for('gratitude') }}"><i class="ri-heart-line"></i> Gratitude</a>
+      <a href="#"><i class="ri-settings-3-line"></i> Settings</a>
+      <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
+      <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
+    </nav>
+  </div>
+
+  <div class="wrapper">
+    <main class="main-content">
+      <header>
+        <div class="search-bar">
+          <i class="ri-search-line"></i>
+          <input type="text" placeholder="Search..." />
+        </div>
+        <div class="profile">
+          <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile" />
+          <span>{{ session.get('user_email', 'User').split('@')[0] }}</span>
+          <i class="ri-arrow-down-s-line"></i>
+        </div>
+      </header>
+
+      <section class="home-section">
+        <div class="welcome-message" style="margin-bottom: 30px;">
+          <h2 style="color: #2d2d2d; font-size:42px;"><i class="ri-home-5-line"></i> Welcome to NeuroAid</h2>
+          <p style="color: #666; font-size:25px; margin-top:15px;">Your companion for mental health and self-reflection.</p>
+        </div>
+
+        <!-- Today's Suggestions Widget -->
+        <div class="suggestions-card debug-suggestions" style="background-color: #e8e1fa; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); margin-bottom: 30px;">
+          <h3 style="color: #2d2d2d; margin-bottom: 15px; font-size:30px;"><i class="ri-lightbulb-line"></i> Today's Suggestions</h3>
+          {% if suggestions is defined and suggestions %}
+            <ul style="list-style-type: disc; padding-left: 20px; margin-top:25px; color: #2d2d2d; font-size: 22px;">
+              {% for suggestion in suggestions %}
+                <li style="margin-bottom: 10px;list-style-type: disc; display:flex; gap:15px; margin-top:15px;">{{ suggestion }}</li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <p style="color: #666; margin-bottom: 10px;list-style-type: disc; display:flex; gap:15px; margin-top:15px;">No suggestions available. Write a journal entry to get started!</p>
+          {% endif %}
+        </div>
+
+        <!-- Recent Reflections Section -->
+        <div class="recent-reflections debug-reflections" style="margin-bottom: 30px;">
+          <h3 style="color: #2d2d2d; margin-bottom: 15px; font-size:30px;"><i class="ri-booklet-line"></i> Recent Reflections</h3>
+          {% if recent_entries is defined and recent_entries %}
+            {% for entry in recent_entries %}
+              <div class="entry-preview" style="background-color: #ffffff; border: 1px solid #c7bbe4; border-radius: 10px; padding: 15px;  margin-bottom: 10px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.07);">
+                <div class="entry-meta" style="font-size: 20px; color: #7c3aed; margin-bottom: 5px;">
+                  {{ entry.created_at }}
+                </div>
+                <div class="entry-snippet" style="color: #202020; font-size: 18px; margin-bottom: 15px; margin-top:15px;">
+                  {{ entry.content_snippet | safe }}
+                </div>
+                <a href="{{ url_for('journal') }}" style="color: #7c3aed; font-size: 18px; text-decoration: none; font-weight: 500;">
+                  Read More
+                </a>
+              </div>
+            {% endfor %}
+          {% else %}
+            <p style="color: #666;">
+              No recent entries. <a href="{{ url_for('journal') }}" style="color: #7c3aed; text-decoration: none;">Start journaling today!</a>
+            </p>
+          {% endif %}
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="quick-actions">
+          <a href="{{ url_for('journal') }}" class="action-button">Write a Journal Entry</a>
+          <a href="{{ url_for('progress') }}" class="action-button">View Progress</a>
+        </div>
+
+      </section>
+    </main>
+
+    <footer>
+      <span>© 2025 NeuroAid. Your mental health companion.</span>
+    </footer>
+  </div>
+</body>
+</html>
+```
+
+# File: templates/Journal.html
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>NeuroAid - Journal</title>
+  <!-- Remix Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css" />
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Quill CSS -->
+  <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet" />
+  <!-- Link to external CSS -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/journal.css') }}" />
+  <!-- Link to JavaScript -->
+  <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
+  <script src="{{ url_for('static', filename='js/journal.js') }}" defer></script>
+  <script>
+    async function deleteEntry(entryId) {
+      if (confirm("Are you sure you want to delete this journal entry?")) {
+        try {
+          const response = await fetch(`/delete_entry/${entryId}`, {
+            method: 'DELETE',
+          });
+          if (response.ok) {
+            // Remove the entry card from the DOM
+            document.getElementById(`entry-${entryId}`).remove();
+            alert("Journal entry deleted successfully!");
+          } else {
+            alert("Failed to delete journal entry. Please try again.");
+          }
+        } catch (error) {
+          console.error("Error deleting entry:", error);
+          alert("An error occurred while deleting the entry. Please try again.");
+        }
+      }
+    }
+  </script>
+</head>
+<body>
+  <div class="sidebar">
+    <div class="logo">
+      <i class="ri-brain-line"></i>
+      <h1>Neuro<span>Aid</span></h1>
+    </div>
+    <nav>
+      <a href="{{ url_for('index') }}"><i class="ri-home-5-line"></i> Home</a>
+      <a href="{{ url_for('journal') }}" class="active"><i class="ri-booklet-line"></i> Journal</a>
+      <a href="{{ url_for('progress') }}" ><i class="ri-bar-chart-2-line"></i> Progress</a>
+      <a href="#"><i class="ri-settings-3-line"></i> Settings</a>
+      <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
+      <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
+    </nav>
+  </div>
+
+  <div class="wrapper">
+    <main class="main-content">
+      <header>
+        <div class="search-bar">
+          <i class="ri-search-line"></i>
+          <input type="text" placeholder="Search journals..." />
+        </div>
+        <div class="profile">
+          <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile" />
+          <span>{{ session.get('user_email', 'User').split('@')[0] }}</span>
+          <i class="ri-arrow-down-s-line"></i>
+        </div>
+      </header>
+
+      <section class="journal-section">
+        {% if error %}
+          <div class="error-message" style="color: #b71c1c; background-color: #ffebee; padding: 10px; border-radius: 5px; margin-bottom: 20px;">
+            {{ error }}
+          </div>
+        {% endif %}
+        <div class="journal-header">
+          <h2><i class="ri-booklet-line"></i> Your Daily Journal</h2>
+          <p>Write freely and reflect on your day to boost self-awareness.</p>
+          <div class="journal-meta">
+            <span class="date">{{ current_date }}</span>
+            <span class="word-count">0 words</span>
+          </div>
+        </div>
+
+        <!-- Editor Container -->
+        <form id="journal-form" method="POST" action="{{ url_for('journal') }}">
+          <div id="editor"></div>
+          <input type="hidden" name="content" id="journal-content">
+            <div class="journal-actions">
+            <button type="submit" class="save-btn">Save Entry</button>
+            </div>
+        </form>
+
+        <!-- Display Saved Entries -->
+        {% if entries %}
+          <div class="entries-section">
+            <h3 style="color: #2d2d2d; margin-top: 40px; margin-bottom: 20px; font-size:28px;">Your Journal Entries</h3>
+            <div class="entries-list">
+              {% for entry in entries %}
+                <div class="entry-card" id="entry-{{ entry.id }}" style="background-color: #f4f0fa; padding: 15px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);">
+                  <div class="entry-meta" style="display: flex; justify-content: space-between; font-size: 20px; color: #7c3aed; margin-bottom: 10px;">
+                    <span>{{ entry.created_at }}</span>
+                    <button onclick="deleteEntry('{{ entry.id }}')" style="background: none; border: none; cursor: pointer; padding-top:10px; padding-left:10px;color: #b71c1c;">
+                      <i class="ri-delete-bin-line"></i>
+                    </button>
+                  </div>
+                  <div class="entry-content" style="color: #2d2d2d; font-size:18px;">{{ entry.content | safe }}</div>
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+        {% endif %}
+      </section>
+    </main>
+
+    <footer>
+      <span>© 2025 NeuroAid. Your mental health companion.</span>
+    </footer>
+  </div>
+</body>
+</html>
+```
+
+# File: templates/login.html
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NeuroAid - Login</title>
+
+  <!-- Link to CSS file -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/signup.css') }}" />
+
+  <!-- Google Fonts link to use the 'Poppins' font family -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+  
+  <!-- Main container for the login page -->
+  <div class="login-container">
+    <!-- Branding section left side -->
+    <div class="branding">
+      <!-- Branding content to be added (img) -->
+    </div>
+
+    <!-- Login box containing the form right side -->
+    <div class="login-box">
+      <h1>Neuro<span>Aid</span></h1>
+      <p>"Your personal mental health companion"</p>
+      <h2>Login</h2>
+
+      <!-- Display error message if login fails -->
+      {% if error %}
+        <p style="color: red; text-align: center;">{{ error }}</p>
+      {% endif %}
+
+      <!-- Login form -->
+      <form id="login-form" method="POST" action="{{ url_for('login') }}">
+        <!-- Input field for the username -->
+        <div class="input-group">
+          <input type="text" name="email" id="email" required placeholder=" " />
+          <label for="email">Email</label>
+        </div>
+
+        <!-- Input field for the password -->
+        <div class="input-group">
+          <input type="password" name="password" id="password" required placeholder=" " />
+          <label for="password">Password</label>
+        </div>
+
+        <!-- Login button -->
+        <button type="submit">Login</button>
+      </form>
+
+      <!-- Link to sign up page -->
+      <div class="signup-link">
+        Don't have an account? <a href="/signup">Sign up!</a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+```
+
+# File: templates/profile.html
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>NeuroAid - Profile</title>
+  <!-- Remix Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css" />
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Link to external CSS -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/profile.css') }}" />
+  <!-- Link to JavaScript -->
+  <script src="{{ url_for('static', filename='js/utils.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/profile.js') }}" defer></script>
+</head>
+<body>
+  <div class="sidebar">
+    <div class="logo">
+      <i class="ri-brain-line"></i>
+      <h1>Neuro<span>Aid</span></h1>
+    </div>
+    <nav>
+      <a href="{{ url_for('index') }}"><i class="ri-home-5-line"></i> Home</a>
+      <a href="{{ url_for('journal') }}"><i class="ri-booklet-line"></i> Journal</a>
+      <a href="{{ url_for('progress') }}" ><i class="ri-bar-chart-2-line"></i> Progress</a>
+      <a href="#"><i class="ri-settings-3-line"></i> Settings</a>
+      <a href="{{ url_for('profile') }}" class="active"><i class="ri-user-line"></i> Profile</a>
+      <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
+    </nav>
+  </div>
+
+  <div class="wrapper">
+    <main class="main-content">
+      <header>
+        <div class="search-bar">
+          <i class="ri-search-line"></i>
+          <input type="text" placeholder="Search features, journals..." />
+        </div>
+        <div class="profile">
+          <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile" id="header-profile-pic" />
+          <span>{{ session.get('user_email', 'User').split('@')[0] }}</span>
+          <i class="ri-arrow-down-s-line"></i>
+        </div>
+      </header>
+
+      <section class="profile-section">
+        <div class="profile-header">
+          <h2>Your Profile</h2>
+          <p>Complete your profile to personalize your NeuroAid experience and get the most out of your mental health journey.</p>
+          <div class="progress-container">
+            <div class="progress-circle">
+              <svg class="progress-ring" width="100" height="100">
+                <circle class="progress-ring__circle" stroke="#7c3aed" stroke-width="8" fill="transparent" r="44" cx="50" cy="50"/>
+              </svg>
+              <span class="progress-text">0% Complete</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Profile Overview -->
+        <div class="card profile-overview">
+          <div class="card-header">
+            <h3>Profile Overview</h3>
+            <p class="status-indicator complete">Basic Info: Complete</p>
+          </div>
+          <div class="profile-content">
+            <div class="profile-picture">
+              <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile Picture" id="profile-pic" />
+              <button class="edit-button" id="edit-picture-btn">Upload Photo</button>
+              <input type="file" id="profile-pic-input" accept="image/*" style="display: none;" />
+            </div>
+            <div class="form-container">
+              <div class="form-field">
+                <label for="name-input">Name</label>
+                <div class="input-container">
+                  <input type="text" id="name-input" value="John Doe" readonly aria-label="Name" />
+                  <button class="edit-field-btn" data-field="name">Edit</button>
+                </div>
+              </div>
+              <div class="form-field">
+                <label for="email-input">Email</label>
+                <div class="input-container">
+                  <input type="email" id="email-input" value="{{ session.get('user_email', 'john.doe@example.com') }}" readonly aria-label="Email" />
+                  <button class="edit-field-btn" data-field="email">Edit</button>
+                </div>
+              </div>
+              <div class="form-field">
+                <label for="username-input">Username</label>
+                <div class="input-container">
+                  <input type="text" id="username-input" value="@johndoe" readonly aria-label="Username" />
+                  <button class="edit-field-btn" data-field="username">Edit</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Personal Details -->
+        <div class="card personal-details">
+          <div class="card-header">
+            <h3>Personal Details</h3>
+            <p class="status-indicator incomplete">Personal Details: Not Started</p>
+          </div>
+          <div class="form-container">
+            <div class="form-field">
+              <label for="age-input">Age (Optional)</label>
+              <div class="input-container">
+                <input type="number" id="age-input" placeholder="Enter your age" aria-label="Age" />
+              </div>
+            </div>
+            <div class="form-field">
+              <label for="gender-input">Gender</label>
+              <div class="input-container">
+                <select id="gender-input" aria-label="Gender">
+                  <option value="">Select Gender</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="non-binary">Non-binary</option>
+                  <option value="prefer-not-to-say">Prefer not to say</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-field">
+              <label for="location-input">Location (Optional)</label>
+              <div class="input-container">
+                <input type="text" id="location-input" placeholder="Enter your city/country" aria-label="Location" />
+              </div>
+            </div>
+            <div class="form-field">
+              <label for="language-input">Preferred Language</label>
+              <div class="input-container">
+                <select id="language-input" aria-label="Preferred Language">
+                  <option value="">Select Language</option>
+                  <option value="english">English</option>
+                  <option value="spanish">Spanish</option>
+                  <option value="french">French</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-actions">
+              <button class="save-btn" id="save-personal-details">Save</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mental Health Goals -->
+        <div class="card mental-health-goals">
+          <div class="card-header">
+            <h3>Your Mental Health Goals</h3>
+            <p class="status-indicator incomplete">Goals: Not Started</p>
+          </div>
+          <div class="form-container">
+            <div class="form-field">
+              <label for="primary-goal">Primary Goal</label>
+              <div class="input-container">
+                <select id="primary-goal" aria-label="Primary Goal">
+                  <option value="">Select Goal</option>
+                  <option value="reduce-stress">Reduce Stress</option>
+                  <option value="improve-sleep">Improve Sleep</option>
+                  <option value="manage-anxiety">Manage Anxiety</option>
+                  <option value="build-mindfulness">Build Mindfulness</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-field">
+              <label for="frequency">Engagement Frequency</label>
+              <div class="input-container">
+                <select id="frequency" aria-label="Engagement Frequency">
+                  <option value="">Select Frequency</option>
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="biweekly">Bi-weekly</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-field">
+              <label>Preferred Activities</label>
+              <div class="checkbox-container">
+                <div class="checkbox-option">
+                  <input type="checkbox" id="journaling" name="activities" value="journaling" aria-label="Journaling" />
+                  <label for="journaling">Journaling</label>
+                </div>
+                <div class="checkbox-option">
+                  <input type="checkbox" id="mood-tracking" name="activities" value="mood-tracking" aria-label="Mood Tracking" />
+                  <label for="mood-tracking">Mood Tracking</label>
+                </div>
+                <div class="checkbox-option">
+                  <input type="checkbox" id="mindfulness" name="activities" value="mindfulness" aria-label="Mindfulness Exercises" />
+                  <label for="mindfulness">Mindfulness Exercises</label>
+                </div>
+              </div>
+            </div>
+            <div class="form-actions">
+              <button class="save-btn" id="save-goals">Save</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Privacy & Security -->
+        <div class="card privacy-security">
+          <div class="card-header">
+            <h3>Privacy & Security</h3>
+          </div>
+          <div class="action-group">
+            <button class="action-btn" id="change-password-btn">Change Password</button>
+            <button class="action-btn" id="export-data-btn">Export Data</button>
+            <button class="action-btn delete" id="delete-account-btn">Delete Account</button>
+          </div>
+        </div>
+
+        <!-- Call-to-Action -->
+        <div class="cta-message">
+          <p>Complete your profile to unlock personalized features! Add your mental health goals to continue.</p>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <span>© 2025 NeuroAid. Your mental health companion.</span>
+    </footer>
+  </div>
+</body>
+</html>
+```
+
+# File: templates/progress.html
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>NeuroAid - Progress</title>
+  <!-- Remix Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css" />
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Link to external CSS -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/progress.css') }}" />
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Link to JavaScript -->
+  <script src="{{ url_for('static', filename='js/progress.js') }}" defer></script>
+</head>
+<body>
+  <div class="app-container">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="logo">
+        <i class="ri-brain-line"></i>
+        <h1>Neuro<span>Aid</span></h1>
+      </div>
+      <nav>
+        <a href="{{ url_for('index') }}"><i class="ri-home-5-line"></i> Home</a>
+        <a href="{{ url_for('journal') }}"><i class="ri-booklet-line"></i> Journal</a>
+        <a href="{{ url_for('progress') }}" class="active"><i class="ri-bar-chart-2-line"></i> Progress</a>
+        <a href="{{ url_for('vibe') }}"><i class="ri-music-2-line"></i> Vibe</a>
+        <a href="{{ url_for('gratitude') }}"><i class="ri-heart-line"></i> Gratitude</a>
+        <a href="#"><i class="ri-settings-3-line"></i> Settings</a>
+        <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
+        <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
+      </nav>
+    </div>
+
+    <!-- Main Content -->
+    <div class="wrapper">
+      <main class="main-content">
+        <header>
+          <div class="search-bar">
+            <i class="ri-search-line"></i>
+            <input type="text" placeholder="Search progress..." />
+          </div>
+          <div class="profile">
+            <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile" id="header-profile-pic" />
+            <span>{{ session.get('user_email', 'User').split('@')[0] }}</span>
+            <i class="ri-arrow-down-s-line"></i>
+          </div>
+        </header>
+
+        <section class="stats-section">
+          <h2><i class="ri-bar-chart-2-line"></i> Your Progress</h2>
+          <div class="stats-boxes">
+            <div class="stat-box">
+              <i class="ri-calendar-line"></i>
+              <div>
+                <h3>Journaling Streak</h3>
+                <p><strong id="streak-value">7 Days</strong></p>
+              </div>
+            </div>
+            <div class="stat-box">
+              <i class="ri-booklet-line"></i>
+              <div>
+                <h3>Total Entries</h3>
+                <p><strong id="entries-count">10 entries</strong></p>
+              </div>
+            </div>
+            <div class="stat-box">
+              <i class="ri-emotion-happy-line"></i>
+              <div>
+                <h3>Average Mood</h3>
+                <p><strong>Positive</strong></p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="chart-section">
+          <h2><i class="ri-line-chart-line"></i> Mood Over Time</h2>
+          <div class="chart-card">
+            <canvas id="moodChart"></canvas>
+          </div>
+        </section>
+
+        <section class="chart-section">
+          <h2><i class="ri-line-chart-line"></i> Confidence Over Time</h2>
+          <div class="chart-card">
+            <canvas id="confidenceChart"></canvas>
+          </div>
+        </section>
+
+        <section class="insights-section">
+          <h2><i class="ri-lightbulb-line"></i> AI Insights</h2>
+          <div class="insights-content">
+            You're becoming more positive over time. Keep journaling daily to maintain your streak!
+          </div>
+        </section>
+      </main>
+
+      <footer>
+        <span>© 2025 NeuroAid. Your mental health companion.</span>
+      </footer>
+    </div>
+  </div>
+</body>
+</html>
+```
+
+# File: templates/signup.html
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NeuroAid - Sign Up</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/signup.css') }}" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- Main container for the login page -->
+  <div class="login-container">
+    <div class="branding">
+    </div>
+    <div class="login-box">
+      <h1>Neuro<span>Aid</span></h1>
+      <p>"Your personal mental health companion"</p>
+      <h2>Signup</h2>
+
+      <!-- Display error message if signup fails -->
+      {% if error %}
+        <p style="color: red; text-align: center;">{{ error }}</p>
+      {% endif %}
+
+      <!-- Signup form -->
+      <form id="signup-form" method="POST" action="{{ url_for('signup') }}">
+        <div class="input-group">
+          <input type="text" name="email" id="email" required placeholder=" " />
+          <label for="email">Email</label>
+        </div>
+        <!-- Input field for the password -->
+        <div class="input-group">
+          <input type="password" name="password" id="password" required placeholder=" " />
+          <label for="password">Password</label>
+        </div>
+        <div class="input-group">
+          <input type="password" name="confirm_password" id="confirm-password" required placeholder=" " />
+          <label for="confirm-password">Confirm Password</label>
+        </div>
+
+        <button type="submit">Signup</button>
+      </form>
+      <div class="login-link">
+        Already have an account? <a href="{{ url_for('login') }}">Login!</a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+```
+
+# File: templates/vibe.html
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeuroAid - Vibe</title>
+    <!-- Remix Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Link to external CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <style>
+        .music-recommendations-section {
+            margin-top: 20px;
+        }
+        .recommendations-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .song-card {
+            background-color: #ffffff;
+            border: 1px solid #c7bbe4;
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.07);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .song-card p {
+            margin: 0;
+            color: #202020;
+            font-size: 16px;
+        }
+        .play-btn {
+            background-color: #7c3aed;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+        .play-btn:hover {
+            background-color: #5b21b6;
+        }
+        .music-player {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #e8e1fa;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        }
+        .mood-selector {
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .mood-selector select {
+            padding: 8px;
+            border-radius: 5px;
+            border: 1px solid #c7bbe4;
+            font-size: 16px;
+        }
+        .load-more-btn {
+            margin-top: 20px;
+            background-color: #7c3aed;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        .load-more-btn:hover {
+            background-color: #5b21b6;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="logo">
+                <i class="ri-brain-line"></i>
+                <h1>Neuro<span>Aid</span></h1>
+            </div>
+            <nav>
+                <a href="{{ url_for('index') }}"><i class="ri-home-5-line"></i> Home</a>
+                <a href="{{ url_for('journal') }}"><i class="ri-booklet-line"></i> Journal</a>
+                <a href="{{ url_for('progress') }}"><i class="ri-bar-chart-2-line"></i> Progress</a>
+                <a href="{{ url_for('vibe') }}" class="active"><i class="ri-music-2-line"></i> Vibe</a>
+                <a href="{{ url_for('gratitude') }}"><i class="ri-heart-line"></i> Gratitude</a>
+                <a href="#"><i class="ri-settings-3-line"></i> Settings</a>
+                <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
+                <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
+            </nav>
+        </div>
+
+        <!-- Main Content -->
+        <div class="wrapper">
+            <main class="main-content">
+                <header>
+                    <div class="search-bar">
+                        <i class="ri-search-line"></i>
+                        <input type="text" placeholder="Search...">
+                    </div>
+                    <div class="profile">
+                        <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile">
+                        <span>{{ session.get('user_email', 'User').split('@')[0] }}</span>
+                        <i class="ri-arrow-down-s-line"></i>
+                    </div>
+                </header>
+
+                <section class="music-recommendations-section">
+                    <h2><i class="ri-music-2-line"></i> Vibe - Tamil Music Recommendations</h2>
+                    <div class="mood-selector">
+                        <label for="mood-day">Select Mood from Day:</label>
+                        <select id="mood-day">
+                            <option value="">Select a day</option>
+                            <!-- Options will be populated by vibe.js -->
+                        </select>
+                    </div>
+                    <div id="tamil-music-recommendations" class="recommendations-content">
+                        Fetching Tamil music recommendations…
+                    </div>
+                    <button id="load-more-btn" class="load-more-btn" style="display: none;">Load More</button>
+                    <div class="music-player">
+                        <h3>Now Playing</h3>
+                        <p id="now-playing">Nothing playing</p>
+                        <audio id="audio-player" controls>
+                            <source id="audio-source" src="" type="audio/mpeg">
+                            Your browser does not support the audio element.
+                        </audio>
+                    </div>
+                </section>
+            </main>
+
+            <footer>
+                <span>© 2025 NeuroAid. Your mental health companion.</span>
+            </footer>
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='js/vibe.js') }}"></script>
+</body>
+</html>
+```
+
