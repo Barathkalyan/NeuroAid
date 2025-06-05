@@ -9,6 +9,7 @@ from zoneinfo import ZoneInfo
 
 app = Flask(__name__)
 app.secret_key = 'your-secret-key'
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -178,6 +179,21 @@ def teardown_supabase(exception):
     if 'supabase' in g:
         g.pop('supabase')
 
+@app.before_request
+def make_session_permanent():
+    session.permanent = True
+    if 'user' in session and 'last_activity' in session:
+        last_activity = datetime.fromisoformat(session['last_activity'])
+        if (datetime.now(ZoneInfo("UTC")) - last_activity) > app.config['PERMANENT_SESSION_LIFETIME']:
+            session.pop('user', None)
+            session.pop('user_email', None)
+            session.pop('access_token', None)
+            session.pop('last_activity', None)
+            logger.info("Session expired, user logged out.")
+            return redirect(url_for('login'))
+    if 'user' in session:
+        session['last_activity'] = datetime.now(ZoneInfo("UTC")).isoformat()
+
 @app.route('/api/mood_data', methods=['GET'])
 def get_mood_data():
     if 'user' not in session:
@@ -278,6 +294,7 @@ def get_mood_data():
 @app.route('/api/gratitude', methods=['GET', 'POST'])
 def handle_gratitude():
     if 'user' not in session or 'access_token' not in session:
+        logger.warning("User not authenticated for /api/gratitude")
         return jsonify({'error': 'Unauthorized'}), 401
 
     supabase = get_supabase()
@@ -377,7 +394,7 @@ def login():
         password = request.form.get('password')
         if not email or not password:
             error = 'Email and password are required.'
-            return render_template('login.html', error=error)
+            return render_template('login.html', error=error), 400
 
         supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
         try:
@@ -395,15 +412,19 @@ def login():
                     session['user'] = user_id
                     session['user_email'] = email
                     session['access_token'] = access_token
+                    session['last_activity'] = datetime.now(ZoneInfo("UTC")).isoformat()
                     logger.info(f"User {email} logged in successfully, user_id: {user_id}")
                     return redirect(url_for('index'))
                 else:
                     error = 'User not found in database.'
+                    return render_template('login.html', error=error), 401
             else:
                 error = 'Invalid credentials.'
+                return render_template('login.html', error=error), 401
         except Exception as e:
-            error = 'Unable to log in right now. Please try again later.'
+            error = str(e) if "Invalid login credentials" in str(e) else 'Unable to log in right now. Please try again later.'
             logger.error(f"Login error: {str(e)}")
+            return render_template('login.html', error=error), 401
 
     return render_template('login.html', error=error)
 
@@ -417,11 +438,11 @@ def signup():
 
         if not email or not password or not confirm_password:
             error = 'Email, password, and confirm password are required.'
-            return render_template('signup.html', error=error)
+            return render_template('signup.html', error=error), 400
 
         if password != confirm_password:
             error = 'Passwords do not match!'
-            return render_template('signup.html', error=error)
+            return render_template('signup.html', error=error), 400
 
         supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
         try:
@@ -439,19 +460,21 @@ def signup():
                 return redirect(url_for('login'))
             else:
                 error = 'Failed to sign up. Please try again.'
+                return render_template('signup.html', error=error), 400
         except Exception as e:
             if "duplicate key value" in str(e).lower():
                 error = 'Email already exists.'
             else:
                 error = 'Unable to sign up right now. Please try again later.'
             logger.error(f"Signup error: {str(e)}")
-            return render_template('signup.html', error=error)
+            return render_template('signup.html', error=error), 400
 
     return render_template('signup.html', error=error)
 
 @app.route('/index')
 def index():
     if 'user' not in session:
+        logger.info("User not logged in, redirecting to login.")
         return redirect(url_for('login'))
 
     supabase = get_supabase()
@@ -534,6 +557,7 @@ def index():
 @app.route('/journal', methods=['GET', 'POST'])
 def journal():
     if 'user' not in session:
+        logger.info("User not logged in, redirecting to login.")
         return redirect(url_for('login'))
 
     supabase = get_supabase()
@@ -585,6 +609,7 @@ def journal():
 @app.route('/delete_entry/<entry_id>', methods=['DELETE'])
 def delete_entry(entry_id):
     if 'user' not in session:
+        logger.info("User not logged in, redirecting to login.")
         return "Unauthorized", 401
     
     supabase = get_supabase()
@@ -605,25 +630,29 @@ def delete_entry(entry_id):
 @app.route('/progress')
 def progress():
     if 'user' not in session:
+        logger.info("User not logged in, redirecting to login.")
         return redirect(url_for('login'))
     return render_template('progress.html')
 
 @app.route('/vibe')
 def vibe():
     if 'user' not in session:
+        logger.info("User not logged in, redirecting to login.")
         return redirect(url_for('login'))
     return render_template('vibe.html')
 
 @app.route('/gratitude')
 def gratitude():
     if 'user' not in session:
-        return redirect('/')
+        logger.info("User not logged in, redirecting to login.")
+        return redirect(url_for('login'))
 
     return render_template('gratitude.html')
 
 @app.route('/profile')
 def profile():
     if 'user' not in session:
+        logger.info("User not logged in, redirecting to login.")
         return redirect(url_for('login'))
 
     return render_template('profile.html')
@@ -640,6 +669,7 @@ def logout():
         session.pop('user', None)
         session.pop('user_email', None)
         session.pop('access_token', None)
+        session.pop('last_activity', None)
         logger.info(f"User {user_email} logged out.")
     return redirect(url_for('login'))
 
