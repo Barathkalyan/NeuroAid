@@ -1,0 +1,90 @@
+.gratitude-section {
+            margin-top: 20px;
+        }
+        .gratitude-form {
+            background-color: #e8e1fa;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            margin-bottom: 30px;
+        }
+        .gratitude-form h3 {
+            color: #2d2d2d;
+            margin-bottom: 15px;
+            font-size: 24px;
+        }
+        .gratitude-form label {
+            display: block;
+            color: #666;
+            font-size: 16px;
+            margin-bottom: 5px;
+        }
+        .gratitude-form textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #c7bbe4;
+            border-radius: 5px;
+            font-size: 16px;
+            resize: vertical;
+            margin-bottom: 15px;
+        }
+        .gratitude-form button {
+            background-color: #7c3aed;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        .gratitude-form button:hover {
+            background-color: #5b21b6;
+        }
+        .suggestions {
+            margin-top: 10px;
+            color: #666;
+            font-style: italic;
+            font-size: 14px;
+        }
+        .streak-counter {
+            background-color: #ffffff;
+            border: 1px solid #c7bbe4;
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.07);
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .streak-counter i {
+            color: #7c3aed;
+            font-size: 24px;
+        }
+        .streak-counter p {
+            margin: 0;
+            color: #202020;
+            font-size: 18px;
+        }
+        .timeline {
+            margin-top: 20px;
+        }
+        .timeline-entry {
+            background-color: #ffffff;
+            border: 1px solid #c7bbe4;
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.07);
+            margin-bottom: 10px;
+        }
+        .timeline-entry .date {
+            font-size: 16px;
+            color: #7c3aed;
+            margin-bottom: 5px;
+        }
+        .timeline-entry .entry-content p {
+            margin: 5px 0;
+            color: #202020;
+            font-size: 16px;
+        }
