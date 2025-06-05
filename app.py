@@ -59,7 +59,7 @@ def derive_mood_from_emotions(emotions):
         return 3, 0.5
 
     positive_emotions = ['joy', 'love', 'gratitude', 'hope', 'pride', 'amusement', 'optimism']
-    negative_emotions = ['sadness', 'anger', 'fear', 'disgust', 'shame', 'frustration', 'anxiety', 'disappointment', 'annoyance', 'disapproval']
+    negative_emotions = ['sadness', 'anger', 'fear', 'disgust', 'shame', 'frustration', 'anxiety']
     neutral_emotions = ['neutral', 'confusion', 'surprise']
 
     top_emotion = max(emotions, key=lambda x: x['score'])
@@ -110,7 +110,7 @@ def get_journaling_frequency(supabase, user_id, days=7):
 
 def generate_suggestion(emotions, mood, supabase, user_id):
     if not emotions:
-        return ["I’m here for you! Try writing a bit more to help me understand how you’re feeling."]
+        return ["Try writing more to help me understand your feelings."]
 
     top_emotions = sorted(emotions, key=lambda x: x['score'], reverse=True)[:2]
     primary_emotion = top_emotions[0]['label']
@@ -125,48 +125,20 @@ def generate_suggestion(emotions, mood, supabase, user_id):
     suggestions = []
 
     if primary_emotion in ['disappointment', 'sadness']:
-        suggestions.append(f"{tone} you’re feeling {primary_emotion.lower()}. Maybe take a moment to write about what’s been challenging—it can help process those feelings.")
-        if secondary_emotion in ['sadness', 'disappointment'] and primary_emotion != secondary_emotion:
-            suggestions.append("It sounds like a mix of emotions. How about a gentle self-care activity, like listening to calming music or taking a warm shower?")
-        elif secondary_emotion in ['anger', 'annoyance']:
-            suggestions.append(f"With some {secondary_emotion.lower()} mixed in, you might find it helpful to channel that energy—maybe try a quick stretch or write down what’s frustrating you.")
-        else:
-            suggestions.append("Disappointment can be tough. How about doing something small that brings you comfort, like sipping a warm drink?")
+        suggestions.append(f"{tone} you’re feeling {primary_emotion.lower()}. Write about what’s been challenging.")
+        if secondary_emotion in ['anger', 'annoyance']:
+            suggestions.append(f"Try a quick stretch to channel that {secondary_emotion.lower()}.")
     elif primary_emotion in ['anger', 'frustration', 'annoyance']:
-        suggestions.append(f"{tone} you’re feeling {primary_emotion.lower()}. Let’s channel that energy—maybe take a few deep breaths or go for a quick walk to clear your mind.")
-        if secondary_emotion in ['sadness', 'disappointment']:
-            suggestions.append(f"I also sense some {secondary_emotion.lower()}. Writing about what’s upsetting you might help you feel lighter—want to try it?")
-        else:
-            suggestions.append("Sometimes putting your thoughts on paper can help. How about writing what’s been on your mind?")
+        suggestions.append(f"{tone} you’re feeling {primary_emotion.lower()}. Take a few deep breaths.")
     elif primary_emotion in ['fear', 'anxiety']:
-        suggestions.append(f"{tone} you’re feeling {primary_emotion.lower()}. A grounding exercise might help—try focusing on 5 things you can see around you right now.")
-        if secondary_emotion in ['sadness', 'disappointment']:
-            suggestions.append(f"With some {secondary_emotion.lower()} there too, maybe a comforting activity like wrapping up in a blanket could help soothe you.")
-        else:
-            suggestions.append("You’ve got this! Writing about what’s making you anxious might help untangle your thoughts.")
+        suggestions.append(f"{tone} you’re feeling {primary_emotion.lower()}. Focus on 5 things you can see.")
     elif primary_emotion in ['joy', 'gratitude', 'hope', 'love']:
-        suggestions.append(f"{tone} you’re feeling {primary_emotion.lower()}! That’s so wonderful—keep it up by doing something you love, like enjoying a hobby or chatting with a friend.")
-        suggestions.append("Let’s celebrate this moment! Why not share this feeling with someone close to you?")
+        suggestions.append(f"{tone} you’re feeling {primary_emotion.lower()}! Do something you love.")
     else:
-        suggestions.append(f"{tone} you’re feeling a bit {primary_emotion.lower()}. Let’s explore that—maybe write about what’s on your mind to dig a little deeper.")
-        suggestions.append("Taking a moment to breathe and reflect might help. Want to try it?")
-
-    if recent_emotions:
-        most_common_emotion = max(recent_emotions, key=recent_emotions.get)
-        if recent_emotions[most_common_emotion] >= 3:
-            if most_common_emotion in ['disappointment', 'sadness', 'anxiety', 'fear']:
-                suggestions.append(f"I’ve noticed you’ve been feeling {most_common_emotion.lower()} a lot lately. It might help to talk to a trusted friend or try a new activity to lift your spirits.")
-            elif most_common_emotion in ['joy', 'gratitude']:
-                suggestions.append(f"You’ve been feeling {most_common_emotion.lower()} quite often lately—amazing! Keep nurturing those positive vibes.")
+        suggestions.append(f"{tone} you’re feeling {primary_emotion.lower()}. Write more to explore.")
 
     if journaling_freq < 3:
-        suggestions.append("You haven’t journaled much this week. Setting a small daily goal to write a few lines might help you feel more connected to your emotions.")
-    elif journaling_freq > 10:
-        suggestions.append("You’ve been journaling a lot lately—great job! Maybe take a moment to reflect on your entries and see if there’s a pattern in how you’re feeling.")
-
-    if mood <= 2:
-        suggestions.append("I’m here for you, and I believe things can get better. Tomorrow might bring a fresh perspective—hang in there!")
-
+        suggestions.append("Journal daily to connect with your emotions.")
     return suggestions[:3]
 
 def analyze_journal_entry(text, supabase, user_id):
@@ -181,7 +153,7 @@ def analyze_journal_entry(text, supabase, user_id):
             elif isinstance(first, dict):
                 emotions = [{"label": first['label'], "score": first['score']}]
     else:
-        logger.warning("Hugging Face API failed, falling back to keyword analysis")
+        logger.warning("Hugging Face API failed, using keyword analysis")
         emotions = simple_keyword_analysis(text)
 
     mood_score, confidence = derive_mood_from_emotions(emotions)
@@ -197,6 +169,8 @@ def analyze_journal_entry(text, supabase, user_id):
 def get_supabase():
     if 'supabase' not in g:
         g.supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+    if 'access_token' in session:
+        g.supabase.headers['Authorization'] = f"Bearer {session['access_token']}"
     return g.supabase
 
 @app.teardown_appcontext
@@ -207,61 +181,47 @@ def teardown_supabase(exception):
 @app.route('/api/mood_data', methods=['GET'])
 def get_mood_data():
     if 'user' not in session:
-        logger.warning("User not in session, returning Unauthorized.")
         return jsonify({'error': 'Unauthorized'}), 401
     supabase = get_supabase()
     user_id = session['user']
     start_date = (datetime.now(ZoneInfo("UTC")) - timedelta(days=7)).isoformat()
     try:
-        # Fetch entries for the last 7 days
         entries = supabase.table('journal_entries')\
             .select('analysis, created_at')\
             .eq('user_id', user_id)\
             .gt('created_at', start_date)\
             .order('created_at', desc=False)\
             .execute()
-        num_entries = len(entries.data)
-        logger.info(f"Fetched {num_entries} journal entries for user {user_id}")
+        logger.info(f"Fetched {len(entries.data)} journal entries for user {user_id}")
 
-        # Initialize lists for the last 7 days
         end_date = datetime.now(ZoneInfo("UTC")).replace(hour=23, minute=59, second=59, microsecond=999999)
         current_date = (end_date - timedelta(days=6)).replace(hour=0, minute=0, second=0, microsecond=0)
         labels = []
         mood_data = []
         confidence_data = []
-        date_map = {}  # To store entries by normalized date
+        date_map = {}
 
-        # Create labels and initialize data for the last 7 days
         for i in range(7):
             date_str = current_date.strftime('%Y-%m-%d')
-            labels.append(current_date.strftime('%b %d'))  # e.g., "May 26"
+            labels.append(current_date.strftime('%b %d'))
             date_map[date_str] = {'moods': [], 'confidences': []}
             current_date += timedelta(days=1)
 
-        # Process entries to group by day
         for entry in entries.data:
             created_at = entry['created_at']
-            try:
-                if '.' in created_at:
-                    created_at = created_at.split('.')[0] + '+00:00'
-                else:
-                    created_at = created_at.replace('Z', '+00:00')
-                date = datetime.fromisoformat(created_at).replace(tzinfo=ZoneInfo("UTC"))
-                date_str = date.strftime('%Y-%m-%d')
-                if date_str in date_map:
-                    mood = entry['analysis'].get('mood', 3)  # Default to 3 if mood is missing
-                    confidence = entry['analysis'].get('confidence', 0.0)  # Default to 0 if confidence is missing
-                    date_map[date_str]['moods'].append(mood)
-                    date_map[date_str]['confidences'].append(confidence)
-                    logger.info(f"Entry date: {date}, Mood: {mood}, Confidence: {confidence}")
-            except ValueError as e:
-                logger.error(f"Error parsing created_at: {created_at}, Error: {str(e)}")
-                continue
-            except KeyError as e:
-                logger.error(f"Error accessing analysis fields in entry: {entry}, Error: {str(e)}")
-                continue
+            if '.' in created_at:
+                created_at = created_at.split('.')[0] + '+00:00'
+            else:
+                created_at = created_at.replace('Z', '+00:00')
+            date = datetime.fromisoformat(created_at).replace(tzinfo=ZoneInfo("UTC"))
+            date_str = date.strftime('%Y-%m-%d')
+            if date_str in date_map:
+                mood = entry['analysis'].get('mood', 3)
+                confidence = entry['analysis'].get('confidence', 0.0)
+                date_map[date_str]['moods'].append(mood)
+                date_map[date_str]['confidences'].append(confidence)
+                logger.info(f"Entry date: {date}, Mood: {mood}, Confidence: {confidence}")
 
-        # Calculate average mood and confidence for each day
         for date_str in date_map:
             moods = date_map[date_str]['moods']
             confidences = date_map[date_str]['confidences']
@@ -270,14 +230,11 @@ def get_mood_data():
             mood_data.append(round(avg_mood, 2))
             confidence_data.append(round(avg_confidence, 2))
 
-        # Fallback if no entries
         if not any(mood_data):
-            logger.warning(f"No valid entries found for user {user_id} in the last 7 days")
             labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
             mood_data = [3] * 7
             confidence_data = [0] * 7
 
-        # Calculate streak for journal entries
         all_entries = supabase.table('journal_entries')\
             .select('created_at')\
             .eq('user_id', user_id)\
@@ -290,17 +247,13 @@ def get_mood_data():
 
         for entry in all_entries.data:
             created_at = entry['created_at']
-            try:
-                if '.' in created_at:
-                    created_at = created_at.split('.')[0] + '+00:00'
-                else:
-                    created_at = created_at.replace('Z', '+00:00')
-                entry_date = datetime.fromisoformat(created_at).replace(tzinfo=ZoneInfo("UTC"))
-                entry_date = entry_date.replace(hour=0, minute=0, second=0, microsecond=0)
-                entry_dates.add(entry_date)
-            except ValueError as e:
-                logger.error(f"Error parsing created_at for streak: {created_at}, Error: {str(e)}")
-                continue
+            if '.' in created_at:
+                created_at = created_at.split('.')[0] + '+00:00'
+            else:
+                created_at = created_at.replace('Z', '+00:00')
+            entry_date = datetime.fromisoformat(created_at).replace(tzinfo=ZoneInfo("UTC"))
+            entry_date = entry_date.replace(hour=0, minute=0, second=0, microsecond=0)
+            entry_dates.add(entry_date)
 
         while True:
             if current_date in entry_dates:
@@ -314,7 +267,7 @@ def get_mood_data():
         return jsonify({
             'labels': labels,
             'data': mood_data,
-            'numEntries': num_entries,
+            'numEntries': len(entries.data),
             'streak': streak,
             'confidence': confidence_data
         })
@@ -324,15 +277,13 @@ def get_mood_data():
 
 @app.route('/api/gratitude', methods=['GET', 'POST'])
 def handle_gratitude():
-    if 'user' not in session:
-        logger.warning("User not in session, returning Unauthorized.")
+    if 'user' not in session or 'access_token' not in session:
         return jsonify({'error': 'Unauthorized'}), 401
 
     supabase = get_supabase()
     user_id = session['user']
 
     if request.method == 'POST':
-        # Save a new gratitude entry
         try:
             data = request.get_json()
             thing1 = data.get('thing1')
@@ -358,9 +309,7 @@ def handle_gratitude():
             return jsonify({'success': False, 'error': str(e)}), 500
 
     else:
-        # Fetch gratitude entries and calculate streak
         try:
-            # Fetch all gratitude entries for the user
             entries = supabase.table('gratitude_entries')\
                 .select('thing1, thing2, thing3, created_at')\
                 .eq('user_id', user_id)\
@@ -370,24 +319,19 @@ def handle_gratitude():
             formatted_entries = []
             for entry in entries.data:
                 created_at_str = entry['created_at']
-                try:
-                    if '.' in created_at_str:
-                        created_at_str = created_at_str.split('.')[0] + '+00:00'
-                    else:
-                        created_at_str = created_at_str.replace('Z', '+00:00')
-                    entry_date = datetime.fromisoformat(created_at_str).replace(tzinfo=ZoneInfo("UTC"))
-                    entry_date_ist = entry_date.astimezone(ZoneInfo("Asia/Kolkata"))
-                    formatted_entries.append({
-                        'thing1': entry['thing1'],
-                        'thing2': entry['thing2'],
-                        'thing3': entry['thing3'],
-                        'date': entry_date_ist.strftime('%B %d, %Y')
-                    })
-                except ValueError as e:
-                    logger.error(f"Error parsing created_at for gratitude entry: {created_at_str}, Error: {str(e)}")
-                    continue
+                if '.' in created_at_str:
+                    created_at_str = created_at_str.split('.')[0] + '+00:00'
+                else:
+                    created_at_str = created_at_str.replace('Z', '+00:00')
+                entry_date = datetime.fromisoformat(created_at_str).replace(tzinfo=ZoneInfo("UTC"))
+                entry_date_ist = entry_date.astimezone(ZoneInfo("Asia/Kolkata"))
+                formatted_entries.append({
+                    'thing1': entry['thing1'],
+                    'thing2': entry['thing2'],
+                    'thing3': entry['thing3'],
+                    'date': entry_date_ist.strftime('%B %d, %Y')
+                })
 
-            # Calculate gratitude streak
             all_entries = supabase.table('gratitude_entries')\
                 .select('created_at')\
                 .eq('user_id', user_id)\
@@ -400,17 +344,13 @@ def handle_gratitude():
 
             for entry in all_entries.data:
                 created_at = entry['created_at']
-                try:
-                    if '.' in created_at:
-                        created_at = created_at.split('.')[0] + '+00:00'
-                    else:
-                        created_at = created_at.replace('Z', '+00:00')
-                    entry_date = datetime.fromisoformat(created_at).replace(tzinfo=ZoneInfo("UTC"))
-                    entry_date = entry_date.replace(hour=0, minute=0, second=0, microsecond=0)
-                    entry_dates.add(entry_date)
-                except ValueError as e:
-                    logger.error(f"Error parsing created_at for gratitude streak: {created_at}, Error: {str(e)}")
-                    continue
+                if '.' in created_at:
+                    created_at = created_at.split('.')[0] + '+00:00'
+                else:
+                    created_at = created_at.replace('Z', '+00:00')
+                entry_date = datetime.fromisoformat(created_at).replace(tzinfo=ZoneInfo("UTC"))
+                entry_date = entry_date.replace(hour=0, minute=0, second=0, microsecond=0)
+                entry_dates.add(entry_date)
 
             while True:
                 if current_date in entry_dates:
@@ -439,19 +379,26 @@ def login():
             error = 'Email and password are required.'
             return render_template('login.html', error=error)
 
-        supabase = get_supabase()
+        supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
         try:
-            response = supabase.table('users').select('*').eq('email', email).execute()
-            if response.data and len(response.data) > 0:
-                user = response.data[0]
-                logger.info(f"User found: {user['id']}, {user['email']}")
-                if bcrypt.checkpw(password.encode('utf-8'), user['password'].encode('utf-8')):
-                    session['user'] = str(user['id'])
-                    session['user_email'] = user['email']
-                    logger.info(f"User {user['email']} logged in successfully, user_id: {session['user']}")
+            auth_response = supabase.auth.sign_in_with_password({
+                'email': email,
+                'password': password
+            })
+            user = auth_response.user
+            access_token = auth_response.session.access_token
+
+            if user:
+                db_response = supabase.table('users').select('id').eq('email', email).execute()
+                if db_response.data and len(db_response.data) > 0:
+                    user_id = str(db_response.data[0]['id'])
+                    session['user'] = user_id
+                    session['user_email'] = email
+                    session['access_token'] = access_token
+                    logger.info(f"User {email} logged in successfully, user_id: {user_id}")
                     return redirect(url_for('index'))
                 else:
-                    error = 'Invalid credentials.'
+                    error = 'User not found in database.'
             else:
                 error = 'Invalid credentials.'
         except Exception as e:
@@ -476,18 +423,22 @@ def signup():
             error = 'Passwords do not match!'
             return render_template('signup.html', error=error)
 
-        supabase = get_supabase()
+        supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
         try:
-            response = supabase.table('users').select('email').eq('email', email).execute()
-            if response.data and len(response.data) > 0:
-                error = 'Email already exists.'
-                return render_template('signup.html', error=error)
+            auth_response = supabase.auth.sign_up({
+                'email': email,
+                'password': password
+            })
+            user = auth_response.user
 
-            hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-            user_data = {'email': email, 'password': hashed_password}
-            response = supabase.table('users').insert(user_data).execute()
-            logger.info(f"User {email} signed up successfully.")
-            return redirect(url_for('login'))
+            if user:
+                hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                user_data = {'id': user.id, 'email': email, 'password': hashed_password}
+                supabase.table('users').insert(user_data).execute()
+                logger.info(f"User {email} signed up successfully.")
+                return redirect(url_for('login'))
+            else:
+                error = 'Failed to sign up. Please try again.'
         except Exception as e:
             if "duplicate key value" in str(e).lower():
                 error = 'Email already exists.'
@@ -501,7 +452,6 @@ def signup():
 @app.route('/index')
 def index():
     if 'user' not in session:
-        logger.warning("User not in session, redirecting to login.")
         return redirect(url_for('login'))
 
     supabase = get_supabase()
@@ -532,34 +482,22 @@ def index():
         if latest_entry.data:
             logger.info(f"Latest entry: {latest_entry.data[0]}")
             created_at_str = latest_entry.data[0]['created_at']
-            try:
-                if '.' in created_at_str:
-                    created_at_str = created_at_str.split('.')[0] + '+00:00'
-                else:
-                    created_at_str = created_at_str.replace('Z', '+00:00')
-                entry_date = datetime.fromisoformat(created_at_str).replace(tzinfo=ZoneInfo("UTC"))
-            except ValueError as e:
-                logger.error(f"Error parsing created_at: {created_at_str}, Error: {str(e)}")
-                entry_date = None
-
-            if entry_date:
-                entry_date_ist = entry_date.astimezone(ZoneInfo("Asia/Kolkata"))
-                current_date_ist = ist_now.date()
-
-                logger.info(f"Entry date (IST): {entry_date_ist.date()}, Current date (IST): {current_date_ist}")
-
-                if entry_date_ist.date() == current_date_ist:
-                    suggestions = latest_entry.data[0]['analysis'].get('suggestions', [])
-                    logger.info(f"Suggestions found: {suggestions}")
-                else:
-                    suggestions = ["Write a journal entry for today to get personalized suggestions!"]
-                    logger.info("No entry for today, prompting user to write a new entry.")
+            if '.' in created_at_str:
+                created_at_str = created_at_str.split('.')[0] + '+00:00'
             else:
-                suggestions = ["Unable to parse entry date. Please try writing a new journal entry!"]
-                logger.info("Failed to parse entry date for suggestions.")
+                created_at_str = created_at_str.replace('Z', '+00:00')
+            entry_date = datetime.fromisoformat(created_at_str).replace(tzinfo=ZoneInfo("UTC"))
+            entry_date_ist = entry_date.astimezone(ZoneInfo("Asia/Kolkata"))
+            current_date_ist = ist_now.date()
+
+            logger.info(f"Entry date (IST): {entry_date_ist.date()}, Current date (IST): {current_date_ist}")
+
+            if entry_date_ist.date() == current_date_ist:
+                suggestions = latest_entry.data[0]['analysis'].get('suggestions', [])
+            else:
+                suggestions = ["Write a journal entry for today!"]
         else:
-            suggestions = ["Write a journal entry to get personalized suggestions!"]
-            logger.info("No journal entries found for user.")
+            suggestions = ["Write a journal entry to get suggestions!"]
 
         recent_entries_query = supabase.table('journal_entries')\
             .select('id, content, created_at')\
@@ -571,26 +509,24 @@ def index():
         recent_entries = recent_entries_query.execute()
 
         recent_entries_data = recent_entries.data if recent_entries.data else []
-        logger.info(f"Recent entries fetched: {recent_entries_data}")
+        entries_summary = [{'id': entry['id'], 'created_at': entry['created_at']} for entry in recent_entries_data]
+        logger.info(f"Recent entries fetched: {entries_summary}")
+        logger.debug(f"Full recent entries: {recent_entries_data}")
 
         for entry in recent_entries_data:
             created_at_str = entry['created_at']
-            try:
-                if '.' in created_at_str:
-                    created_at_str = created_at_str.split('.')[0] + '+00:00'
-                else:
-                    created_at_str = created_at_str.replace('Z', '+00:00')
-                entry_date = datetime.fromisoformat(created_at_str).replace(tzinfo=ZoneInfo("UTC"))
-                entry_date_ist = entry_date.astimezone(ZoneInfo("Asia/Kolkata"))
-                entry['created_at'] = entry_date_ist.strftime('%B %d, %Y')
-            except ValueError as e:
-                logger.error(f"Error parsing created_at for recent entry: {created_at_str}, Error: {str(e)}")
-                entry['created_at'] = "Unknown Date"
+            if '.' in created_at_str:
+                created_at_str = created_at_str.split('.')[0] + '+00:00'
+            else:
+                created_at_str = created_at_str.replace('Z', '+00:00')
+            entry_date = datetime.fromisoformat(created_at_str).replace(tzinfo=ZoneInfo("UTC"))
+            entry_date_ist = entry_date.astimezone(ZoneInfo("Asia/Kolkata"))
+            entry['created_at'] = entry_date_ist.strftime('%B %d, %Y')
             entry['content_snippet'] = (entry['content'][:50] + '…') if len(entry['content']) > 50 else entry['content']
 
     except Exception as e:
         logger.error(f"Error fetching data for index: {str(e)}")
-        suggestions = ["Unable to load suggestions right now. Try writing a journal entry!"]
+        suggestions = ["Unable to load suggestions. Try writing!"]
         recent_entries_data = []
 
     return render_template('index.html', suggestions=suggestions, recent_entries=recent_entries_data)
@@ -598,7 +534,6 @@ def index():
 @app.route('/journal', methods=['GET', 'POST'])
 def journal():
     if 'user' not in session:
-        logger.warning("User not in session, redirecting to login.")
         return redirect(url_for('login'))
 
     supabase = get_supabase()
@@ -623,7 +558,7 @@ def journal():
                 return redirect(url_for('journal'))
             except Exception as e:
                 logger.error(f"Journal save error: {str(e)}")
-                return render_template('Journal.html', error="Failed to save journal entry. Please try again later.", current_date=current_date)
+                return render_template('Journal.html', error="Failed to save entry.", current_date=current_date)
 
     try:
         entries = supabase.table('journal_entries')\
@@ -634,27 +569,22 @@ def journal():
 
         for entry in entries.data:
             created_at_str = entry['created_at']
-            try:
-                if '.' in created_at_str:
-                    created_at_str = created_at_str.split('.')[0] + '+00:00'
-                else:
-                    created_at_str = created_at_str.replace('Z', '+00:00')
-                entry_date = datetime.fromisoformat(created_at_str).replace(tzinfo=ZoneInfo("UTC"))
-                entry_date_ist = entry_date.astimezone(ZoneInfo("Asia/Kolkata"))
-                entry['created_at'] = entry_date_ist.strftime('%Y-%m-%d %H:%M:%S')
-            except ValueError as e:
-                logger.error(f"Error parsing created_at in journal: {created_at_str}, Error: {str(e)}")
-                entry['created_at'] = "Unknown Date"
+            if '.' in created_at_str:
+                created_at_str = created_at_str.split('.')[0] + '+00:00'
+            else:
+                created_at_str = created_at_str.replace('Z', '+00:00')
+            entry_date = datetime.fromisoformat(created_at_str).replace(tzinfo=ZoneInfo("UTC"))
+            entry_date_ist = entry_date.astimezone(ZoneInfo("Asia/Kolkata"))
+            entry['created_at'] = entry_date_ist.strftime('%Y-%m-%d %H:%M:%S')
 
         return render_template('Journal.html', entries=entries.data if entries.data else [], current_date=current_date)
     except Exception as e:
         logger.error(f"Journal fetch error: {str(e)}")
-        return render_template('Journal.html', error="Failed to load journal entries. Please try again later.", current_date=current_date)
+        return render_template('Journal.html', error="Failed to load entries.", current_date=current_date)
 
 @app.route('/delete_entry/<entry_id>', methods=['DELETE'])
 def delete_entry(entry_id):
     if 'user' not in session:
-        logger.warning("User not in session, returning Unauthorized.")
         return "Unauthorized", 401
     
     supabase = get_supabase()
@@ -663,7 +593,6 @@ def delete_entry(entry_id):
     try:
         response = supabase.table('journal_entries').select('*').eq('id', entry_id).execute()
         if not response.data or response.data[0]['user_id'] != user_id:
-            logger.warning(f"User {user_id} attempted to delete entry {entry_id} - Forbidden.")
             return "Forbidden", 403
         
         supabase.table('journal_entries').delete().eq('id', entry_id).execute()
@@ -671,42 +600,47 @@ def delete_entry(entry_id):
         return "Deleted", 200
     except Exception as e:
         logger.error(f"Delete error: {str(e)}")
-        return "Unable to delete entry. Please try again later.", 500
+        return "Unable to delete entry.", 500
     
 @app.route('/progress')
 def progress():
     if 'user' not in session:
-        logger.warning("User not in session, redirecting to login.")
         return redirect(url_for('login'))
     return render_template('progress.html')
 
 @app.route('/vibe')
 def vibe():
     if 'user' not in session:
-        logger.warning("User not in session, redirecting to login.")
         return redirect(url_for('login'))
     return render_template('vibe.html')
 
 @app.route('/gratitude')
 def gratitude():
     if 'user' not in session:
-        logger.warning("User not in session, redirecting to login.")
-        return redirect(url_for('login'))
+        return redirect('/')
+
     return render_template('gratitude.html')
 
 @app.route('/profile')
 def profile():
     if 'user' not in session:
-        logger.warning("User not in session, redirecting to login.")
         return redirect(url_for('login'))
+
     return render_template('profile.html')
 
 @app.route('/logout')
 def logout():
-    user_email = session.get('user_email', 'Unknown')
-    session.pop('user', None)
-    session.pop('user_email', None)
-    logger.info(f"User {user_email} logged out.")
+    if 'user' in session:
+        supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+        try:
+            supabase.auth.sign_out()
+        except Exception as e:
+            logger.warning(f"Error signing out from Supabase: {str(e)}")
+        user_email = session.get('user_email', 'Unknown')
+        session.pop('user', None)
+        session.pop('user_email', None)
+        session.pop('access_token', None)
+        logger.info(f"User {user_email} logged out.")
     return redirect(url_for('login'))
 
 if __name__ == '__main__':
