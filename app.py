@@ -6,6 +6,7 @@ import requests
 from datetime import datetime, timedelta
 import time
 from zoneinfo import ZoneInfo
+import uuid
 
 app = Flask(__name__)
 app.secret_key = 'your-secret-key'
@@ -398,31 +399,27 @@ def login():
 
         supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
         try:
-            auth_response = supabase.auth.sign_in_with_password({
-                'email': email,
-                'password': password
-            })
-            user = auth_response.user
-            access_token = auth_response.session.access_token
+            # Check if user exists in the users table
+            user_response = supabase.table('users').select('id, email, password').eq('email', email).execute()
+            if not user_response.data:
+                error = 'User not found.'
+                return render_template('login.html', error=error), 401
 
-            if user:
-                db_response = supabase.table('users').select('id').eq('email', email).execute()
-                if db_response.data and len(db_response.data) > 0:
-                    user_id = str(db_response.data[0]['id'])
-                    session['user'] = user_id
-                    session['user_email'] = email
-                    session['access_token'] = access_token
-                    session['last_activity'] = datetime.now(ZoneInfo("UTC")).isoformat()
-                    logger.info(f"User {email} logged in successfully, user_id: {user_id}")
-                    return redirect(url_for('index'))
-                else:
-                    error = 'User not found in database.'
-                    return render_template('login.html', error=error), 401
+            user = user_response.data[0]
+            stored_password = user['password'].encode('utf-8')
+            if bcrypt.checkpw(password.encode('utf-8'), stored_password):
+                session['user'] = str(user['id'])
+                session['user_email'] = email
+                # Generate a dummy access token since we're not using Supabase Auth
+                session['access_token'] = str(uuid.uuid4())
+                session['last_activity'] = datetime.now(ZoneInfo("UTC")).isoformat()
+                logger.info(f"User {email} logged in successfully, user_id: {user['id']}")
+                return redirect(url_for('index'))
             else:
                 error = 'Invalid credentials.'
                 return render_template('login.html', error=error), 401
         except Exception as e:
-            error = str(e) if "Invalid login credentials" in str(e) else 'Unable to log in right now. Please try again later.'
+            error = 'Unable to log in right now. Please try again later.'
             logger.error(f"Login error: {str(e)}")
             return render_template('login.html', error=error), 401
 
@@ -446,26 +443,21 @@ def signup():
 
         supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
         try:
-            auth_response = supabase.auth.sign_up({
-                'email': email,
-                'password': password
-            })
-            user = auth_response.user
-
-            if user:
-                hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-                user_data = {'id': user.id, 'email': email, 'password': hashed_password}
-                supabase.table('users').insert(user_data).execute()
-                logger.info(f"User {email} signed up successfully.")
-                return redirect(url_for('login'))
-            else:
-                error = 'Failed to sign up. Please try again.'
-                return render_template('signup.html', error=error), 400
-        except Exception as e:
-            if "duplicate key value" in str(e).lower():
+            # Check if email already exists
+            existing_user = supabase.table('users').select('id').eq('email', email).execute()
+            if existing_user.data:
                 error = 'Email already exists.'
-            else:
-                error = 'Unable to sign up right now. Please try again later.'
+                return render_template('signup.html', error=error), 400
+
+            # Generate a UUID for the user
+            user_id = str(uuid.uuid4())
+            hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+            user_data = {'id': user_id, 'email': email, 'password': hashed_password}
+            supabase.table('users').insert(user_data).execute()
+            logger.info(f"User {email} signed up successfully with user_id: {user_id}")
+            return redirect(url_for('login'))
+        except Exception as e:
+            error = 'Unable to sign up right now. Please try again later.'
             logger.error(f"Signup error: {str(e)}")
             return render_template('signup.html', error=error), 400
 
@@ -660,11 +652,6 @@ def profile():
 @app.route('/logout')
 def logout():
     if 'user' in session:
-        supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
-        try:
-            supabase.auth.sign_out()
-        except Exception as e:
-            logger.warning(f"Error signing out from Supabase: {str(e)}")
         user_email = session.get('user_email', 'Unknown')
         session.pop('user', None)
         session.pop('user_email', None)
