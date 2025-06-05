@@ -277,7 +277,7 @@ def get_mood_data():
             mood_data = [3] * 7
             confidence_data = [0] * 7
 
-        # Calculate streak
+        # Calculate streak for journal entries
         all_entries = supabase.table('journal_entries')\
             .select('created_at')\
             .eq('user_id', user_id)\
@@ -309,7 +309,7 @@ def get_mood_data():
             else:
                 break
 
-        logger.info(f"Calculated streak for user {user_id}: {streak} days")
+        logger.info(f"Calculated journal streak for user {user_id}: {streak} days")
 
         return jsonify({
             'labels': labels,
@@ -321,6 +321,113 @@ def get_mood_data():
     except Exception as e:
         logger.error(f"Error fetching mood data: {str(e)}")
         return jsonify({'error': str(e)}), 500
+
+@app.route('/api/gratitude', methods=['GET', 'POST'])
+def handle_gratitude():
+    if 'user' not in session:
+        logger.warning("User not in session, returning Unauthorized.")
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    supabase = get_supabase()
+    user_id = session['user']
+
+    if request.method == 'POST':
+        # Save a new gratitude entry
+        try:
+            data = request.get_json()
+            thing1 = data.get('thing1')
+            thing2 = data.get('thing2')
+            thing3 = data.get('thing3')
+
+            if not thing1 or not thing2 or not thing3:
+                return jsonify({'success': False, 'error': 'All fields are required'}), 400
+
+            gratitude_entry = {
+                'user_id': user_id,
+                'thing1': thing1,
+                'thing2': thing2,
+                'thing3': thing3,
+                'created_at': datetime.now(ZoneInfo("UTC")).isoformat()
+            }
+
+            supabase.table('gratitude_entries').insert(gratitude_entry).execute()
+            logger.info(f"Gratitude entry saved for user_id: {user_id}")
+            return jsonify({'success': True}), 200
+        except Exception as e:
+            logger.error(f"Error saving gratitude entry: {str(e)}")
+            return jsonify({'success': False, 'error': str(e)}), 500
+
+    else:
+        # Fetch gratitude entries and calculate streak
+        try:
+            # Fetch all gratitude entries for the user
+            entries = supabase.table('gratitude_entries')\
+                .select('thing1, thing2, thing3, created_at')\
+                .eq('user_id', user_id)\
+                .order('created_at', desc=True)\
+                .execute()
+
+            formatted_entries = []
+            for entry in entries.data:
+                created_at_str = entry['created_at']
+                try:
+                    if '.' in created_at_str:
+                        created_at_str = created_at_str.split('.')[0] + '+00:00'
+                    else:
+                        created_at_str = created_at_str.replace('Z', '+00:00')
+                    entry_date = datetime.fromisoformat(created_at_str).replace(tzinfo=ZoneInfo("UTC"))
+                    entry_date_ist = entry_date.astimezone(ZoneInfo("Asia/Kolkata"))
+                    formatted_entries.append({
+                        'thing1': entry['thing1'],
+                        'thing2': entry['thing2'],
+                        'thing3': entry['thing3'],
+                        'date': entry_date_ist.strftime('%B %d, %Y')
+                    })
+                except ValueError as e:
+                    logger.error(f"Error parsing created_at for gratitude entry: {created_at_str}, Error: {str(e)}")
+                    continue
+
+            # Calculate gratitude streak
+            all_entries = supabase.table('gratitude_entries')\
+                .select('created_at')\
+                .eq('user_id', user_id)\
+                .order('created_at', desc=True)\
+                .execute()
+
+            streak = 0
+            current_date = datetime.now(ZoneInfo("UTC")).replace(hour=0, minute=0, second=0, microsecond=0)
+            entry_dates = set()
+
+            for entry in all_entries.data:
+                created_at = entry['created_at']
+                try:
+                    if '.' in created_at:
+                        created_at = created_at.split('.')[0] + '+00:00'
+                    else:
+                        created_at = created_at.replace('Z', '+00:00')
+                    entry_date = datetime.fromisoformat(created_at).replace(tzinfo=ZoneInfo("UTC"))
+                    entry_date = entry_date.replace(hour=0, minute=0, second=0, microsecond=0)
+                    entry_dates.add(entry_date)
+                except ValueError as e:
+                    logger.error(f"Error parsing created_at for gratitude streak: {created_at}, Error: {str(e)}")
+                    continue
+
+            while True:
+                if current_date in entry_dates:
+                    streak += 1
+                    current_date -= timedelta(days=1)
+                else:
+                    break
+
+            logger.info(f"Calculated gratitude streak for user {user_id}: {streak} days")
+
+            return jsonify({
+                'entries': formatted_entries,
+                'streak': streak
+            })
+        except Exception as e:
+            logger.error(f"Error fetching gratitude entries: {str(e)}")
+            return jsonify({'error': str(e)}), 500
 
 @app.route('/', methods=['GET', 'POST'])
 def login():
@@ -579,6 +686,13 @@ def vibe():
         logger.warning("User not in session, redirecting to login.")
         return redirect(url_for('login'))
     return render_template('vibe.html')
+
+@app.route('/gratitude')
+def gratitude():
+    if 'user' not in session:
+        logger.warning("User not in session, redirecting to login.")
+        return redirect(url_for('login'))
+    return render_template('gratitude.html')
 
 @app.route('/profile')
 def profile():
