@@ -1,19 +1,87 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NeuroAid - Vibe</title>
     <!-- Remix Icons -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css">
     <!-- Google Fonts -->
-    <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
-        rel="stylesheet"
-    />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- Link to external CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}" />
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/vibe.css') }}" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <style>
+        .music-recommendations-section {
+            margin-top: 20px;
+        }
+        .recommendations-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .song-card {
+            background-color: #ffffff;
+            border: 1px solid #c7bbe4;
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.07);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .song-card p {
+            margin: 0;
+            color: #202020;
+            font-size: 16px;
+        }
+        .play-btn {
+            background-color: #7c3aed;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+        .play-btn:hover {
+            background-color: #5b21b6;
+        }
+        .music-player {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #e8e1fa;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        }
+        .mood-selector {
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .mood-selector select {
+            padding: 8px;
+            border-radius: 5px;
+            border: 1px solid #c7bbe4;
+            font-size: 16px;
+        }
+        .load-more-btn {
+            margin-top: 20px;
+            background-color: #7c3aed;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        .load-more-btn:hover {
+            background-color: #5b21b6;
+        }
+    </style>
 </head>
 <body>
     <div class="app-container">
@@ -28,6 +96,7 @@
                 <a href="{{ url_for('journal') }}"><i class="ri-booklet-line"></i> Journal</a>
                 <a href="{{ url_for('progress') }}"><i class="ri-bar-chart-2-line"></i> Progress</a>
                 <a href="{{ url_for('vibe') }}" class="active"><i class="ri-music-2-line"></i> Vibe</a>
+                <a href="{{ url_for('gratitude') }}"><i class="ri-heart-line"></i> Gratitude</a>
                 <a href="#"><i class="ri-settings-3-line"></i> Settings</a>
                 <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
                 <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
@@ -40,31 +109,33 @@
                 <header>
                     <div class="search-bar">
                         <i class="ri-search-line"></i>
-                        <input type="text" placeholder="Search..." />
+                        <input type="text" placeholder="Search...">
                     </div>
                     <div class="profile">
-                        <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile" />
+                        <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile">
                         <span>{{ session.get('user_email', 'User').split('@')[0] }}</span>
                         <i class="ri-arrow-down-s-line"></i>
                     </div>
                 </header>
 
                 <section class="music-recommendations-section">
-                    <h2><i class="ri-music-2-line"></i> Vibe - Mood Based Music Recommendations</h2>
-
+                    <h2><i class="ri-music-2-line"></i> Vibe - Tamil Music Recommendations</h2>
+                    <div class="mood-selector">
+                        <label for="mood-day">Select Mood from Day:</label>
+                        <select id="mood-day">
+                            <option value="">Select a day</option>
+                            <!-- Options will be populated by vibe.js -->
+                        </select>
+                    </div>
                     <div id="tamil-music-recommendations" class="recommendations-content">
                         Fetching Tamil music recommendations…
                     </div>
-
-                    <button id="load-more-btn" class="load-more-btn" style="display: none;">
-                        Load More
-                    </button>
-
+                    <button id="load-more-btn" class="load-more-btn" style="display: none;">Load More</button>
                     <div class="music-player">
                         <h3>Now Playing</h3>
                         <p id="now-playing">Nothing playing</p>
                         <audio id="audio-player" controls>
-                            <source id="audio-source" src="" type="audio/mpeg" />
+                            <source id="audio-source" src="" type="audio/mpeg">
                             Your browser does not support the audio element.
                         </audio>
                     </div>
