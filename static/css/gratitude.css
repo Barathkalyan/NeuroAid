@@ -1,6 +1,10 @@
 .gratitude-section {
             margin-top: 20px;
         }
+.gratitude-section h2{
+    font-size: 32px;
+    margin-bottom: 20px;
+}
         .gratitude-form {
             background-color: #e8e1fa;
             padding: 20px;
