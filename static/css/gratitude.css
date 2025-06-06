@@ -43,11 +43,11 @@
             transition: background-color 0.3s;
         }
         .gratitude-form button:hover {
-            background-color: #5b21b6;
+            background-color: #370980;
         }
         .suggestions {
             margin-top: 10px;
-            color: #666;
+            color: #3d3939;
             font-style: italic;
             font-size: 14px;
         }
@@ -73,6 +73,10 @@
         }
         .timeline {
             margin-top: 20px;
+        }
+
+        .timeline h3{
+            font-size: 28px;
         }
         .timeline-entry {
             background-color: #ffffff;
