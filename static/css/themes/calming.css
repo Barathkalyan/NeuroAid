@@ -1,0 +1,18 @@
+body {
+    background-color: #e6f0fa;
+    color: #2c3e50;
+}
+
+nav {
+    background-color: #3498db;
+}
+
+h1, h2 {
+    color: #2c3e50;
+}
+
+input, select {
+    background-color: #f0f8ff;
+    color: #2c3e50;
+    border-color: #3498db;
+}
