@@ -81,20 +81,6 @@ body {
 
 }
 
-.save-btn {
-  padding: 12px 24px;
-  background-color: #7c3aed;
-  align-items: center;
-  justify-content: center;
-  align-self: center;
-  color: #ffffff;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 20px;
-  transition: background-color 0.3s ease;
-}
-
 .save-btn:hover {
   background-color: #6b21a8;
 }

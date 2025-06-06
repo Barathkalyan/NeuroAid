@@ -294,7 +294,7 @@ def get_mood_data():
 
 @app.route('/api/gratitude', methods=['GET', 'POST'])
 def handle_gratitude():
-    if 'user' not in session or 'access_token' not in session:
+    if 'user' not in session:
         logger.warning("User not authenticated for /api/gratitude")
         return jsonify({'error': 'Unauthorized'}), 401
 
@@ -2588,15 +2588,25 @@ footer {
 
 # File: static/css/settings.css
 ```css
+:root {
+  --primary: #7c3aed;
+  --secondary: #f9faff;
+  --glass-bg: rgba(255, 255, 255, 0.9);
+  --glass-border: rgba(200, 200, 200, 0.3);
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+  --text-primary: #1f2937;
+  --text-secondary: #6b7280;
+}
+
 .settings-section {
-  margin-bottom: 32px;
+  margin-top: 20px;
 }
 
 .settings-section h2 {
-  font-size: 1.8rem;
+  font-size: 32px;
   font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: 24px;
+  margin-bottom: 20px;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -2614,7 +2624,7 @@ footer {
   border: 1px solid var(--glass-border);
   backdrop-filter: blur(12px);
   box-shadow: var(--shadow);
-  width: 100%;
+  margin-bottom: 30px;
 }
 
 .settings-group {
@@ -2622,53 +2632,46 @@ footer {
 }
 
 .settings-group h3 {
-  font-size: 1.4rem;
-  font-weight: 600;
+  font-size: 25px;
   color: var(--text-primary);
-  margin-bottom: 16px;
+  margin-bottom: 15px;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 }
 
 .settings-group h3 i {
   color: var(--primary);
-  font-size: 1.6rem;
 }
 
 .form-group {
-  margin-bottom: 16px;
+  margin-bottom: 15px;
 }
 
 .form-group label {
   display: block;
-  font-size: 1rem;
-  font-weight: 500;
   color: var(--text-primary);
-  margin-bottom: 8px;
+  font-size: 18px;
+  font-weight: 500;
+  margin-bottom: 5px;
 }
 
-.form-group input[type="email"],
-.form-group input[type="password"],
-.form-group input[type="time"],
+.form-group input,
 .form-group select {
   width: 100%;
-  padding: 10px 14px;
-  border: 1px solid var(--glass-border);
+  padding: 12px;
+  border: 1px solid #c7bbe4;
   border-radius: 8px;
-  font-size: 1rem;
+  font-size: 16px;
+  background-color: #f4f0fa;
   color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.5);
-  backdrop-filter: blur(4px);
   transition: border-color 0.3s ease;
 }
 
-.form-group input[type="email"]:focus,
-.form-group input[type="password"]:focus,
-.form-group input[type="time"]:focus,
+.form-group input:focus,
 .form-group select:focus {
-  outline: none;
   border-color: var(--primary);
+  outline: none;
 }
 
 .toggle-group {
@@ -2679,13 +2682,14 @@ footer {
 
 .toggle-wrapper {
   position: relative;
-  display: inline-block;
-  width: 48px;
+  width: 50px;
   height: 24px;
 }
 
-.toggle-wrapper input[type="checkbox"] {
-  display: none;
+.toggle-wrapper input {
+  opacity: 0;
+  width: 0;
+  height: 0;
 }
 
 .toggle-slider {
@@ -2703,76 +2707,81 @@ footer {
 .toggle-slider:before {
   position: absolute;
   content: "";
-  height: 20px;
-  width: 20px;
-  left: 2px;
-  bottom: 2px;
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
   background-color: white;
   border-radius: 50%;
   transition: transform 0.3s ease;
 }
 
-input[type="checkbox"]:checked + .toggle-slider {
+.toggle-wrapper input:checked + .toggle-slider {
   background-color: var(--primary);
 }
 
-input[type="checkbox"]:checked + .toggle-slider:before {
-  transform: translateX(24px);
+.toggle-wrapper input:checked + .toggle-slider:before {
+  transform: translateX(26px);
 }
 
 .card-button {
-  background: var(--primary);
-  color: #fff;
+  background-color: var(--primary);
+  color: white;
   border: none;
-  padding: 10px 20px;
+  padding: 15px 30px;
   border-radius: 8px;
-  font-size: 1rem;
-  font-weight: 500;
   cursor: pointer;
-  transition: background 0.3s ease;
-  display: block;
-  width: 100%;
-  text-align: center;
+  font-size: 16px;
+  font-weight: 600;
+  transition: background-color 0.3s ease, transform 0.3s ease;
 }
 
 .card-button:hover {
-  background: #6d28d9;
+  background-color: #6d28d9;
+  transform: translateY(-2px);
 }
 
-/* Responsive Adjustments */
-@media (max-width: 900px) {
-  .settings-section h2 {
-    font-size: 1.6rem;
-  }
-
-  .settings-group h3 {
-    font-size: 1.2rem;
-  }
+.error-message,
+.success-message {
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  font-size: 16px;
 }
 
+.error-message {
+  background-color: #fee2e2;
+  color: #dc2626;
+}
+
+.success-message {
+  background-color: #d1fae5;
+  color: #10b981;
+}
+
+/* Responsive Design */
 @media (max-width: 600px) {
-  .settings-card {
-    padding: 16px;
-  }
-
   .settings-section h2 {
-    font-size: 1.4rem;
+    font-size: 28px;
   }
 
   .settings-group h3 {
-    font-size: 1.1rem;
+    font-size: 22px;
   }
 
   .form-group label {
-    font-size: 0.95rem;
+    font-size: 16px;
   }
 
-  .form-group input[type="email"],
-  .form-group input[type="password"],
-  .form-group input[type="time"],
+  .form-group input,
   .form-group select {
-    font-size: 0.95rem;
-    padding: 8px 12px;
+    font-size: 14px;
+    padding: 10px;
+  }
+
+  .card-button {
+    padding: 12px 20px;
+    font-size: 14px;
   }
 }
 ```
@@ -3147,180 +3156,137 @@ button:hover {
 # File: static/css/themes/calming.css
 ```css
 :root {
-  --glass-bg: rgba(230, 240, 250, 0.9);
-  --header-bg: linear-gradient(90deg, #74c0fc 0%, #a5d8ff 100%);
+  --background: #e8e1fa;
+  --card-bg: rgba(244, 240, 250, 0.9);
+  --text-primary: #2d2d2d;
+  --text-secondary: #666;
 }
-
 body {
-    background-color: #e6f0fa;
-    color: #2c3e50;
+  background: var(--background);
 }
-
-.sidebar {
-    background: var(--glass-bg);
-}
-
-header, footer {
-    background: var(--header-bg);
-}
-
-input, select {
-    background: rgba(240, 248, 255, 0.5);
-    color: #2c3e50;
-    border-color: #74c0fc;
-}
-
-.search-bar input,
-.search-bar input::placeholder {
-    color: #2c3e50;
-}
-
-.profile span,
-.profile i {
-    color: #2c3e50;
+.settings-card, .stat-box, .chart-card {
+  background: var(--card-bg);
 }
 ```
 
 # File: static/css/themes/dark.css
 ```css
 :root {
-  --glass-bg: rgba(30, 30, 30, 0.9);
-  --header-bg: linear-gradient(90deg, #4b3f72 0%, #6b5b95 100%);
+  --background: #1f2937;
+  --card-bg: rgba(31, 41, 55, 0.9);
+  --text-primary: #f9fafb;
+  --text-secondary: #9ca3af;
 }
-
 body {
-    background-color: #121212;
-    color: #e0e0e0;
+  background: var(--background);
 }
-
-.sidebar {
-    background: var(--glass-bg);
+.settings-card, .stat-box, .chart-card {
+  background: var(--card-bg);
+  color: var(--text-primary);
 }
-
-header, footer {
-    background: var(--header-bg);
-}
-
-input, select {
-    background: rgba(50, 50, 50, 0.5);
-    color: #e0e0e0;
-    border-color: #555;
-}
-
-.search-bar input,
-.search-bar input::placeholder {
-    color: #e0e0e0;
-}
-
-.profile span,
-.profile i {
-    color: #e0e0e0;
+.form-group input,
+.form-group select {
+  background-color: #374151;
+  color: var(--text-primary);
 }
 ```
 
 # File: static/css/themes/light.css
 ```css
 :root {
-  --glass-bg: rgba(255, 255, 255, 0.9);
-  --header-bg: linear-gradient(90deg, #a78bfa 0%, #c084fc 100%);
+  --background: #f3f4f6;
+  --card-bg: rgba(255, 255, 255, 0.9);
+  --text-primary: #1f2937;
+  --text-secondary: #6b7280;
 }
-
 body {
-    background-color: #f3f4f6;
-    color: #1f2937;
+  background: var(--background);
 }
-
-.sidebar {
-    background: var(--glass-bg);
-}
-
-header, footer {
-    background: var(--header-bg);
-}
-
-input, select {
-    background: rgba(255, 255, 255, 0.5);
-    color: #1f2937;
+.settings-card, .stat-box, .chart-card {
+  background: var(--card-bg);
 }
 ```
 
 # File: static/js/gratitude.js
 ```js
-document.addEventListener('DOMContentLoaded', function () {
+document.addEventListener('DOMContentLoaded', () => {
     const gratitudeForm = document.getElementById('gratitude-form');
     const gratitudeTimeline = document.getElementById('gratitude-timeline');
     const streakElement = document.getElementById('gratitude-streak');
 
-    // Function to fetch and display gratitude entries
+    // Fetch and display gratitude entries and streak
     function fetchGratitudeEntries() {
         fetch('/api/gratitude')
             .then(response => response.json())
             .then(data => {
-                console.log('Gratitude Entries:', data.entries);
-                console.log('Gratitude Streak:', data.streak);
-
-                // Update streak
-                streakElement.textContent = `${data.streak} Days`;
-
-                // Display entries in timeline
-                if (data.entries.length === 0) {
-                    gratitudeTimeline.innerHTML = '<p>No gratitude entries yet. Start by recording three good things today!</p>';
+                if (data.error) {
+                    gratitudeTimeline.innerHTML = `<p>Error: ${data.error}</p>`;
+                    streakElement.textContent = '0 Days';
                     return;
                 }
 
-                const timelineHTML = data.entries.map(entry => `
-                    <div class="timeline-entry">
-                        <div class="date">${entry.date}</div>
-                        <div class="entry-content">
-                            <p><strong>1. What made you smile:</strong> ${entry.thing1}</p>
-                            <p><strong>2. What you’re thankful for:</strong> ${entry.thing2}</p>
-                            <p><strong>3. What went well:</strong> ${entry.thing3}</p>
+                // Display streak
+                streakElement.textContent = `${data.streak} Days`;
+
+                // Display entries
+                if (data.entries.length === 0) {
+                    gratitudeTimeline.innerHTML = '<p>No gratitude entries yet. Start by adding one above!</p>';
+                } else {
+                    gratitudeTimeline.innerHTML = data.entries.map(entry => `
+                        <div class="timeline-entry">
+                            <div class="date">${entry.date}</div>
+                            <div class="entry-content">
+                                <p>1. ${entry.thing1}</p>
+                                <p>2. ${entry.thing2}</p>
+                                <p>3. ${entry.thing3}</p>
+                            </div>
                         </div>
-                    </div>
-                `).join('');
-                gratitudeTimeline.innerHTML = timelineHTML;
+                    `).join('');
+                }
             })
             .catch(error => {
                 console.error('Error fetching gratitude entries:', error);
-                gratitudeTimeline.innerHTML = '<p>Unable to load gratitude entries. Please try again later.</p>';
+                gratitudeTimeline.innerHTML = '<p>Unable to load entries. Please try again later.</p>';
+                streakElement.textContent = '0 Days';
             });
     }
 
-    // Submit new gratitude entry
-    gratitudeForm.addEventListener('submit', function (e) {
+    // Handle form submission
+    gratitudeForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const thing1 = document.getElementById('thing1').value.trim();
         const thing2 = document.getElementById('thing2').value.trim();
         const thing3 = document.getElementById('thing3').value.trim();
 
         if (!thing1 || !thing2 || !thing3) {
-            alert('Please fill in all three fields.');
+            alert('Please fill out all fields.');
             return;
         }
 
-        const entry = { thing1, thing2, thing3 };
-
-        fetch('/api/gratitude', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(entry)
-        })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    gratitudeForm.reset();
-                    fetchGratitudeEntries(); // Refresh timeline and streak
-                } else {
-                    alert('Failed to save gratitude entry. Please try again.');
-                }
-            })
-            .catch(error => {
-                console.error('Error saving gratitude entry:', error);
-                alert('Failed to save gratitude entry. Please try again.');
+        try {
+            const response = await fetch('/api/gratitude', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ thing1, thing2, thing3 }),
             });
+            const data = await response.json();
+
+            if (data.success) {
+                alert('Gratitude entry saved successfully!');
+                gratitudeForm.reset();
+                fetchGratitudeEntries(); // Refresh entries
+            } else {
+                alert(`Error: ${data.error || 'Failed to save entry.'}`);
+            }
+        } catch (error) {
+            console.error('Error saving gratitude entry:', error);
+            alert('Unable to save entry. Please try again later.');
+        }
     });
 
-    // Initial fetch of gratitude entries
+    // Initial fetch
     fetchGratitudeEntries();
 });
 ```
@@ -5045,8 +5011,8 @@ document.addEventListener('DOMContentLoaded', function () {
           </div>
         {% endif %}
 
-        <!-- Settings Form -->
-        <div class="settings-card card">
+<!-- Settings Form -->
+        <div class="settings-card">
           <form id="settings-form" method="POST" action="{{ url_for('settings') }}">
             <!-- Account Settings -->
             <div class="settings-group">
@@ -5105,6 +5071,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 </select>
               </div>
             </div>
+
+            <button type="submit" class="card-button">Save Changes</button>
+          </form>
+        </div>
 
             <button type="submit" class="card-button">Save Changes</button>
           </form>

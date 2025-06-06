@@ -32,19 +32,7 @@
             resize: vertical;
             margin-bottom: 15px;
         }
-        .gratitude-form button {
-            background-color: #7c3aed;
-            color: white;
-            border: none;
-            padding: 15px 20px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 16px;
-            transition: background-color 0.3s;
-        }
-        .gratitude-form button:hover {
-            background-color: #370980;
-        }
+
         .suggestions {
             margin-top: 10px;
             color: #3d3939;
