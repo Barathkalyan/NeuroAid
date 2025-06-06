@@ -394,7 +394,7 @@ def login():
         if not email or not password:
             error = 'Email and password are required.'
             return render_template('login.html', error=error), 400
-        supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+        supabase = get_supabase()
         try:
             user_response = supabase.table('users').select('id, email, password').eq('email', email).execute()
             if not user_response.data:
@@ -406,7 +406,13 @@ def login():
                 session['user'] = str(user['id'])
                 session['user_email'] = email
                 session['last_activity'] = datetime.now(ZoneInfo("UTC")).isoformat()
-                logger.info(f"User {email} logged in successfully, user_id: {user['id']}")
+                # Load user preferences (theme) into session
+                preferences = supabase.table('user_preferences')\
+                    .select('theme')\
+                    .eq('user_id', user['id'])\
+                    .execute()
+                session['theme'] = preferences.data[0]['theme'] if preferences.data else 'light'
+                logger.info(f"User {email} logged in successfully, user_id: {user['id']}, theme: {session['theme']}")
                 return redirect(url_for('index'))
             else:
                 error = 'Invalid credentials.'
@@ -433,7 +439,7 @@ def signup():
             error = 'Passwords do not match!'
             return render_template('signup.html', error=error), 400
 
-        supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+        supabase = get_supabase()
         try:
             # Check if email already exists
             existing_user = supabase.table('users').select('id').eq('email', email).execute()
@@ -446,6 +452,17 @@ def signup():
             hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
             user_data = {'id': user_id, 'email': email, 'password': hashed_password}
             supabase.table('users').insert(user_data).execute()
+
+            # Insert default preferences for the new user
+            preferences_data = {
+                'user_id': user_id,
+                'two_factor_enabled': False,
+                'theme': 'light',
+                'reminder_time': '09:00',
+                'notification_preference': 'email'
+            }
+            supabase.table('user_preferences').insert(preferences_data).execute()
+
             logger.info(f"User {email} signed up successfully with user_id: {user_id}")
             return redirect(url_for('login'))
         except Exception as e:
@@ -536,7 +553,7 @@ def index():
         suggestions = ["Unable to load suggestions. Try writing!"]
         recent_entries_data = []
 
-    return render_template('index.html', suggestions=suggestions, recent_entries=recent_entries_data)
+    return render_template('index.html', suggestions=suggestions, recent_entries=recent_entries_data, theme=session.get('theme', 'light'))
 
 @app.route('/journal', methods=['GET', 'POST'])
 def journal():
@@ -566,7 +583,7 @@ def journal():
                 return redirect(url_for('journal'))
             except Exception as e:
                 logger.error(f"Journal save error: {str(e)}")
-                return render_template('Journal.html', error="Failed to save entry.", current_date=current_date)
+                return render_template('Journal.html', error="Failed to save entry.", current_date=current_date, theme=session.get('theme', 'light'))
 
     try:
         entries = supabase.table('journal_entries')\
@@ -585,10 +602,10 @@ def journal():
             entry_date_ist = entry_date.astimezone(ZoneInfo("Asia/Kolkata"))
             entry['created_at'] = entry_date_ist.strftime('%Y-%m-%d %H:%M:%S')
 
-        return render_template('Journal.html', entries=entries.data if entries.data else [], current_date=current_date)
+        return render_template('Journal.html', entries=entries.data if entries.data else [], current_date=current_date, theme=session.get('theme', 'light'))
     except Exception as e:
         logger.error(f"Journal fetch error: {str(e)}")
-        return render_template('Journal.html', error="Failed to load entries.", current_date=current_date)
+        return render_template('Journal.html', error="Failed to load entries.", current_date=current_date, theme=session.get('theme', 'light'))
 
 @app.route('/delete_entry/<entry_id>', methods=['DELETE'])
 def delete_entry(entry_id):
@@ -616,14 +633,14 @@ def progress():
     if 'user' not in session:
         logger.info("User not logged in, redirecting to login.")
         return redirect(url_for('login'))
-    return render_template('progress.html')
+    return render_template('progress.html', theme=session.get('theme', 'light'))
 
 @app.route('/vibe')
 def vibe():
     if 'user' not in session:
         logger.info("User not logged in, redirecting to login.")
         return redirect(url_for('login'))
-    return render_template('vibe.html')
+    return render_template('vibe.html', theme=session.get('theme', 'light'))
 
 @app.route('/gratitude')
 def gratitude():
@@ -631,7 +648,7 @@ def gratitude():
         logger.info("User not logged in, redirecting to login.")
         return redirect(url_for('login'))
 
-    return render_template('gratitude.html')
+    return render_template('gratitude.html', theme=session.get('theme', 'light'))
 
 @app.route('/profile')
 def profile():
@@ -639,7 +656,102 @@ def profile():
         logger.info("User not logged in, redirecting to login.")
         return redirect(url_for('login'))
 
-    return render_template('profile.html')
+    return render_template('profile.html', theme=session.get('theme', 'light'))
+
+@app.route('/settings', methods=['GET', 'POST'])
+def settings():
+    if 'user' not in session:
+        logger.info("User not logged in, redirecting to login.")
+        return redirect(url_for('login'))
+
+    supabase = get_supabase()
+    user_id = session['user']
+    error = None
+    success = None
+
+    if request.method == 'POST':
+        try:
+            # Handle email/password change (updates users table)
+            new_email = request.form.get('email')
+            new_password = request.form.get('password')
+            confirm_password = request.form.get('confirm_password')
+
+            if new_email or new_password:
+                if new_password and new_password != confirm_password:
+                    error = "Passwords do not match!"
+                    return render_template('settings.html', error=error, success=success, theme=session.get('theme', 'light'))
+
+                user_update = {}
+                if new_email:
+                    # Check if the new email already exists
+                    existing_user = supabase.table('users').select('id').eq('email', new_email).neq('id', user_id).execute()
+                    if existing_user.data:
+                        error = "Email already in use by another account."
+                        return render_template('settings.html', error=error, success=success, theme=session.get('theme', 'light'))
+                    user_update['email'] = new_email
+                    session['user_email'] = new_email
+
+                if new_password:
+                    hashed_password = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                    user_update['password'] = hashed_password
+
+                if user_update:
+                    supabase.table('users').update(user_update).eq('id', user_id).execute()
+                    logger.info(f"User {user_id} updated email/password.")
+
+            # Handle preferences update (updates user_preferences table)
+            two_factor_enabled = request.form.get('two_factor_enabled') == 'on'
+            theme = request.form.get('theme')
+            reminder_time = request.form.get('reminder_time')
+            notification_preference = request.form.get('notification_preference')
+
+            preferences_update = {
+                'two_factor_enabled': two_factor_enabled,
+                'theme': theme,
+                'reminder_time': reminder_time,
+                'notification_preference': notification_preference
+            }
+            supabase.table('user_preferences').update(preferences_update).eq('user_id', user_id).execute()
+            logger.info(f"Preferences updated for user {user_id}: {preferences_update}")
+
+            # Update session theme
+            session['theme'] = theme
+
+            success = "Settings updated successfully!"
+        except Exception as e:
+            error = "Failed to update settings. Please try again."
+            logger.error(f"Settings update error: {str(e)}")
+
+    # Fetch current user data and preferences
+    try:
+        user_data = supabase.table('users').select('email').eq('id', user_id).execute()
+        preferences_data = supabase.table('user_preferences')\
+            .select('two_factor_enabled, theme, reminder_time, notification_preference')\
+            .eq('user_id', user_id)\
+            .execute()
+
+        if not user_data.data or not preferences_data.data:
+            error = "Unable to load settings."
+            return render_template('settings.html', error=error, success=success, theme=session.get('theme', 'light'))
+
+        user = user_data.data[0]
+        preferences = preferences_data.data[0]
+    except Exception as e:
+        error = "Unable to load settings."
+        logger.error(f"Settings load error: {str(e)}")
+        return render_template('settings.html', error=error, success=success, theme=session.get('theme', 'light'))
+
+    return render_template(
+        'settings.html',
+        email=user['email'],
+        two_factor_enabled=preferences['two_factor_enabled'],
+        theme=preferences['theme'],
+        reminder_time=preferences['reminder_time'],
+        notification_preference=preferences['notification_preference'],
+        error=error,
+        success=success,
+        current_theme=session.get('theme', 'light')
+    )
 
 @app.route('/logout')
 def logout():
@@ -648,6 +760,7 @@ def logout():
         session.pop('user', None)
         session.pop('user_email', None)
         session.pop('last_activity', None)
+        session.pop('theme', None)
         logger.info(f"User {user_email} logged out.")
     return redirect(url_for('login'))
 
