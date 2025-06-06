@@ -13,21 +13,21 @@
             margin-bottom: 30px;
         }
         .gratitude-form h3 {
-            color: #2d2d2d;
+            color: #000000;
             margin-bottom: 15px;
-            font-size: 24px;
+            font-size: 25px;
         }
         .gratitude-form label {
             display: block;
-            color: #666;
-            font-size: 16px;
+            color: #363333;
+            font-size: 20px;
             margin-bottom: 5px;
         }
         .gratitude-form textarea {
             width: 100%;
             padding: 10px;
             border: 1px solid #c7bbe4;
-            border-radius: 5px;
+            border-radius: 15px;
             font-size: 16px;
             resize: vertical;
             margin-bottom: 15px;
@@ -36,7 +36,7 @@
             background-color: #7c3aed;
             color: white;
             border: none;
-            padding: 10px 20px;
+            padding: 15px 20px;
             border-radius: 5px;
             cursor: pointer;
             font-size: 16px;
