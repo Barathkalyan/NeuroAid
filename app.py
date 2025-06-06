@@ -292,7 +292,7 @@ def get_mood_data():
 
 @app.route('/api/gratitude', methods=['GET', 'POST'])
 def handle_gratitude():
-    if 'user' not in session or 'access_token' not in session:
+    if 'user' not in session:
         logger.warning("User not authenticated for /api/gratitude")
         return jsonify({'error': 'Unauthorized'}), 401
 

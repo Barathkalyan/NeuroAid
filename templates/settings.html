@@ -61,8 +61,8 @@
           </div>
         {% endif %}
 
-        <!-- Settings Form -->
-        <div class="settings-card card">
+<!-- Settings Form -->
+        <div class="settings-card">
           <form id="settings-form" method="POST" action="{{ url_for('settings') }}">
             <!-- Account Settings -->
             <div class="settings-group">
@@ -121,6 +121,10 @@
                 </select>
               </div>
             </div>
+
+            <button type="submit" class="card-button">Save Changes</button>
+          </form>
+        </div>
 
             <button type="submit" class="card-button">Save Changes</button>
           </form>

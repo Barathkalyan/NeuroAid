@@ -1,33 +1,18 @@
 :root {
-  --glass-bg: rgba(30, 30, 30, 0.9);
-  --header-bg: linear-gradient(90deg, #4b3f72 0%, #6b5b95 100%);
+  --background: #1f2937;
+  --card-bg: rgba(31, 41, 55, 0.9);
+  --text-primary: #f9fafb;
+  --text-secondary: #9ca3af;
 }
-
 body {
-    background-color: #121212;
-    color: #e0e0e0;
+  background: var(--background);
 }
-
-.sidebar {
-    background: var(--glass-bg);
+.settings-card, .stat-box, .chart-card {
+  background: var(--card-bg);
+  color: var(--text-primary);
 }
-
-header, footer {
-    background: var(--header-bg);
-}
-
-input, select {
-    background: rgba(50, 50, 50, 0.5);
-    color: #e0e0e0;
-    border-color: #555;
-}
-
-.search-bar input,
-.search-bar input::placeholder {
-    color: #e0e0e0;
-}
-
-.profile span,
-.profile i {
-    color: #e0e0e0;
+.form-group input,
+.form-group select {
+  background-color: #374151;
+  color: var(--text-primary);
 }

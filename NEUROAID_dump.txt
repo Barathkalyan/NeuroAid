@@ -396,7 +396,7 @@ def login():
         if not email or not password:
             error = 'Email and password are required.'
             return render_template('login.html', error=error), 400
-        supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+        supabase = get_supabase()
         try:
             user_response = supabase.table('users').select('id, email, password').eq('email', email).execute()
             if not user_response.data:
@@ -408,7 +408,13 @@ def login():
                 session['user'] = str(user['id'])
                 session['user_email'] = email
                 session['last_activity'] = datetime.now(ZoneInfo("UTC")).isoformat()
-                logger.info(f"User {email} logged in successfully, user_id: {user['id']}")
+                # Load user preferences (theme) into session
+                preferences = supabase.table('user_preferences')\
+                    .select('theme')\
+                    .eq('user_id', user['id'])\
+                    .execute()
+                session['theme'] = preferences.data[0]['theme'] if preferences.data else 'light'
+                logger.info(f"User {email} logged in successfully, user_id: {user['id']}, theme: {session['theme']}")
                 return redirect(url_for('index'))
             else:
                 error = 'Invalid credentials.'
@@ -435,7 +441,7 @@ def signup():
             error = 'Passwords do not match!'
             return render_template('signup.html', error=error), 400
 
-        supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+        supabase = get_supabase()
         try:
             # Check if email already exists
             existing_user = supabase.table('users').select('id').eq('email', email).execute()
@@ -448,6 +454,17 @@ def signup():
             hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
             user_data = {'id': user_id, 'email': email, 'password': hashed_password}
             supabase.table('users').insert(user_data).execute()
+
+            # Insert default preferences for the new user
+            preferences_data = {
+                'user_id': user_id,
+                'two_factor_enabled': False,
+                'theme': 'light',
+                'reminder_time': '09:00',
+                'notification_preference': 'email'
+            }
+            supabase.table('user_preferences').insert(preferences_data).execute()
+
             logger.info(f"User {email} signed up successfully with user_id: {user_id}")
             return redirect(url_for('login'))
         except Exception as e:
@@ -538,7 +555,7 @@ def index():
         suggestions = ["Unable to load suggestions. Try writing!"]
         recent_entries_data = []
 
-    return render_template('index.html', suggestions=suggestions, recent_entries=recent_entries_data)
+    return render_template('index.html', suggestions=suggestions, recent_entries=recent_entries_data, theme=session.get('theme', 'light'))
 
 @app.route('/journal', methods=['GET', 'POST'])
 def journal():
@@ -568,7 +585,7 @@ def journal():
                 return redirect(url_for('journal'))
             except Exception as e:
                 logger.error(f"Journal save error: {str(e)}")
-                return render_template('Journal.html', error="Failed to save entry.", current_date=current_date)
+                return render_template('Journal.html', error="Failed to save entry.", current_date=current_date, theme=session.get('theme', 'light'))
 
     try:
         entries = supabase.table('journal_entries')\
@@ -587,10 +604,10 @@ def journal():
             entry_date_ist = entry_date.astimezone(ZoneInfo("Asia/Kolkata"))
             entry['created_at'] = entry_date_ist.strftime('%Y-%m-%d %H:%M:%S')
 
-        return render_template('Journal.html', entries=entries.data if entries.data else [], current_date=current_date)
+        return render_template('Journal.html', entries=entries.data if entries.data else [], current_date=current_date, theme=session.get('theme', 'light'))
     except Exception as e:
         logger.error(f"Journal fetch error: {str(e)}")
-        return render_template('Journal.html', error="Failed to load entries.", current_date=current_date)
+        return render_template('Journal.html', error="Failed to load entries.", current_date=current_date, theme=session.get('theme', 'light'))
 
 @app.route('/delete_entry/<entry_id>', methods=['DELETE'])
 def delete_entry(entry_id):
@@ -618,14 +635,14 @@ def progress():
     if 'user' not in session:
         logger.info("User not logged in, redirecting to login.")
         return redirect(url_for('login'))
-    return render_template('progress.html')
+    return render_template('progress.html', theme=session.get('theme', 'light'))
 
 @app.route('/vibe')
 def vibe():
     if 'user' not in session:
         logger.info("User not logged in, redirecting to login.")
         return redirect(url_for('login'))
-    return render_template('vibe.html')
+    return render_template('vibe.html', theme=session.get('theme', 'light'))
 
 @app.route('/gratitude')
 def gratitude():
@@ -633,7 +650,7 @@ def gratitude():
         logger.info("User not logged in, redirecting to login.")
         return redirect(url_for('login'))
 
-    return render_template('gratitude.html')
+    return render_template('gratitude.html', theme=session.get('theme', 'light'))
 
 @app.route('/profile')
 def profile():
@@ -641,7 +658,102 @@ def profile():
         logger.info("User not logged in, redirecting to login.")
         return redirect(url_for('login'))
 
-    return render_template('profile.html')
+    return render_template('profile.html', theme=session.get('theme', 'light'))
+
+@app.route('/settings', methods=['GET', 'POST'])
+def settings():
+    if 'user' not in session:
+        logger.info("User not logged in, redirecting to login.")
+        return redirect(url_for('login'))
+
+    supabase = get_supabase()
+    user_id = session['user']
+    error = None
+    success = None
+
+    if request.method == 'POST':
+        try:
+            # Handle email/password change (updates users table)
+            new_email = request.form.get('email')
+            new_password = request.form.get('password')
+            confirm_password = request.form.get('confirm_password')
+
+            if new_email or new_password:
+                if new_password and new_password != confirm_password:
+                    error = "Passwords do not match!"
+                    return render_template('settings.html', error=error, success=success, current_theme=session.get('theme', 'light'))
+
+                user_update = {}
+                if new_email:
+                    # Check if the new email already exists
+                    existing_user = supabase.table('users').select('id').eq('email', new_email).neq('id', user_id).execute()
+                    if existing_user.data:
+                        error = "Email already in use by another account."
+                        return render_template('settings.html', error=error, success=success, current_theme=session.get('theme', 'light'))
+                    user_update['email'] = new_email
+                    session['user_email'] = new_email
+
+                if new_password:
+                    hashed_password = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                    user_update['password'] = hashed_password
+
+                if user_update:
+                    supabase.table('users').update(user_update).eq('id', user_id).execute()
+                    logger.info(f"User {user_id} updated email/password.")
+
+            # Handle preferences update (updates user_preferences table)
+            two_factor_enabled = request.form.get('two_factor_enabled') == 'on'
+            theme = request.form.get('theme')
+            reminder_time = request.form.get('reminder_time')
+            notification_preference = request.form.get('notification_preference')
+
+            preferences_update = {
+                'two_factor_enabled': two_factor_enabled,
+                'theme': theme,
+                'reminder_time': reminder_time,
+                'notification_preference': notification_preference
+            }
+            supabase.table('user_preferences').update(preferences_update).eq('user_id', user_id).execute()
+            logger.info(f"Preferences updated for user {user_id}: {preferences_update}")
+
+            # Update session theme
+            session['theme'] = theme
+
+            success = "Settings updated successfully!"
+        except Exception as e:
+            error = "Failed to update settings. Please try again."
+            logger.error(f"Settings update error: {str(e)}")
+
+    # Fetch current user data and preferences
+    try:
+        user_data = supabase.table('users').select('email').eq('id', user_id).execute()
+        preferences_data = supabase.table('user_preferences')\
+            .select('two_factor_enabled, theme, reminder_time, notification_preference')\
+            .eq('user_id', user_id)\
+            .execute()
+
+        if not user_data.data or not preferences_data.data:
+            error = "Unable to load settings."
+            return render_template('settings.html', error=error, success=success, current_theme=session.get('theme', 'light'))
+
+        user = user_data.data[0]
+        preferences = preferences_data.data[0]
+    except Exception as e:
+        error = "Unable to load settings."
+        logger.error(f"Settings load error: {str(e)}")
+        return render_template('settings.html', error=error, success=success, current_theme=session.get('theme', 'light'))
+
+    return render_template(
+        'settings.html',
+        email=user['email'],
+        two_factor_enabled=preferences['two_factor_enabled'],
+        theme=preferences['theme'],
+        reminder_time=preferences['reminder_time'],
+        notification_preference=preferences['notification_preference'],
+        error=error,
+        success=success,
+        current_theme=session.get('theme', 'light')
+    )
 
 @app.route('/logout')
 def logout():
@@ -650,6 +762,7 @@ def logout():
         session.pop('user', None)
         session.pop('user_email', None)
         session.pop('last_activity', None)
+        session.pop('theme', None)
         logger.info(f"User {user_email} logged out.")
     return redirect(url_for('login'))
 
@@ -1342,6 +1455,10 @@ footer {
 .gratitude-section {
             margin-top: 20px;
         }
+.gratitude-section h2{
+    font-size: 32px;
+    margin-bottom: 20px;
+}
         .gratitude-form {
             background-color: #e8e1fa;
             padding: 20px;
@@ -1350,21 +1467,21 @@ footer {
             margin-bottom: 30px;
         }
         .gratitude-form h3 {
-            color: #2d2d2d;
+            color: #000000;
             margin-bottom: 15px;
-            font-size: 24px;
+            font-size: 25px;
         }
         .gratitude-form label {
             display: block;
-            color: #666;
-            font-size: 16px;
+            color: #363333;
+            font-size: 20px;
             margin-bottom: 5px;
         }
         .gratitude-form textarea {
             width: 100%;
             padding: 10px;
             border: 1px solid #c7bbe4;
-            border-radius: 5px;
+            border-radius: 15px;
             font-size: 16px;
             resize: vertical;
             margin-bottom: 15px;
@@ -1373,18 +1490,18 @@ footer {
             background-color: #7c3aed;
             color: white;
             border: none;
-            padding: 10px 20px;
+            padding: 15px 20px;
             border-radius: 5px;
             cursor: pointer;
             font-size: 16px;
             transition: background-color 0.3s;
         }
         .gratitude-form button:hover {
-            background-color: #5b21b6;
+            background-color: #370980;
         }
         .suggestions {
             margin-top: 10px;
-            color: #666;
+            color: #3d3939;
             font-style: italic;
             font-size: 14px;
         }
@@ -1410,6 +1527,10 @@ footer {
         }
         .timeline {
             margin-top: 20px;
+        }
+
+        .timeline h3{
+            font-size: 28px;
         }
         .timeline-entry {
             background-color: #ffffff;
@@ -2465,6 +2586,197 @@ footer {
 }
 ```
 
+# File: static/css/settings.css
+```css
+.settings-section {
+  margin-bottom: 32px;
+}
+
+.settings-section h2 {
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.settings-section h2 i {
+  color: var(--primary);
+  font-size: 2rem;
+}
+
+.settings-card {
+  background: var(--glass-bg);
+  border-radius: 16px;
+  padding: 24px;
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow);
+  width: 100%;
+}
+
+.settings-group {
+  margin-bottom: 24px;
+}
+
+.settings-group h3 {
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.settings-group h3 i {
+  color: var(--primary);
+  font-size: 1.6rem;
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.form-group input[type="email"],
+.form-group input[type="password"],
+.form-group input[type="time"],
+.form-group select {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  font-size: 1rem;
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(4px);
+  transition: border-color 0.3s ease;
+}
+
+.form-group input[type="email"]:focus,
+.form-group input[type="password"]:focus,
+.form-group input[type="time"]:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.toggle-group {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.toggle-wrapper {
+  position: relative;
+  display: inline-block;
+  width: 48px;
+  height: 24px;
+}
+
+.toggle-wrapper input[type="checkbox"] {
+  display: none;
+}
+
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  border-radius: 12px;
+  transition: background-color 0.3s ease;
+}
+
+.toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 20px;
+  width: 20px;
+  left: 2px;
+  bottom: 2px;
+  background-color: white;
+  border-radius: 50%;
+  transition: transform 0.3s ease;
+}
+
+input[type="checkbox"]:checked + .toggle-slider {
+  background-color: var(--primary);
+}
+
+input[type="checkbox"]:checked + .toggle-slider:before {
+  transform: translateX(24px);
+}
+
+.card-button {
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.3s ease;
+  display: block;
+  width: 100%;
+  text-align: center;
+}
+
+.card-button:hover {
+  background: #6d28d9;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 900px) {
+  .settings-section h2 {
+    font-size: 1.6rem;
+  }
+
+  .settings-group h3 {
+    font-size: 1.2rem;
+  }
+}
+
+@media (max-width: 600px) {
+  .settings-card {
+    padding: 16px;
+  }
+
+  .settings-section h2 {
+    font-size: 1.4rem;
+  }
+
+  .settings-group h3 {
+    font-size: 1.1rem;
+  }
+
+  .form-group label {
+    font-size: 0.95rem;
+  }
+
+  .form-group input[type="email"],
+  .form-group input[type="password"],
+  .form-group input[type="time"],
+  .form-group select {
+    font-size: 0.95rem;
+    padding: 8px 12px;
+  }
+}
+```
+
 # File: static/css/signup.css
 ```css
 :root {
@@ -2830,6 +3142,106 @@ button:hover {
     background-color: #5b21b6;
 }
 
+```
+
+# File: static/css/themes/calming.css
+```css
+:root {
+  --glass-bg: rgba(230, 240, 250, 0.9);
+  --header-bg: linear-gradient(90deg, #74c0fc 0%, #a5d8ff 100%);
+}
+
+body {
+    background-color: #e6f0fa;
+    color: #2c3e50;
+}
+
+.sidebar {
+    background: var(--glass-bg);
+}
+
+header, footer {
+    background: var(--header-bg);
+}
+
+input, select {
+    background: rgba(240, 248, 255, 0.5);
+    color: #2c3e50;
+    border-color: #74c0fc;
+}
+
+.search-bar input,
+.search-bar input::placeholder {
+    color: #2c3e50;
+}
+
+.profile span,
+.profile i {
+    color: #2c3e50;
+}
+```
+
+# File: static/css/themes/dark.css
+```css
+:root {
+  --glass-bg: rgba(30, 30, 30, 0.9);
+  --header-bg: linear-gradient(90deg, #4b3f72 0%, #6b5b95 100%);
+}
+
+body {
+    background-color: #121212;
+    color: #e0e0e0;
+}
+
+.sidebar {
+    background: var(--glass-bg);
+}
+
+header, footer {
+    background: var(--header-bg);
+}
+
+input, select {
+    background: rgba(50, 50, 50, 0.5);
+    color: #e0e0e0;
+    border-color: #555;
+}
+
+.search-bar input,
+.search-bar input::placeholder {
+    color: #e0e0e0;
+}
+
+.profile span,
+.profile i {
+    color: #e0e0e0;
+}
+```
+
+# File: static/css/themes/light.css
+```css
+:root {
+  --glass-bg: rgba(255, 255, 255, 0.9);
+  --header-bg: linear-gradient(90deg, #a78bfa 0%, #c084fc 100%);
+}
+
+body {
+    background-color: #f3f4f6;
+    color: #1f2937;
+}
+
+.sidebar {
+    background: var(--glass-bg);
+}
+
+header, footer {
+    background: var(--header-bg);
+}
+
+input, select {
+    background: rgba(255, 255, 255, 0.5);
+    color: #1f2937;
+}
 ```
 
 # File: static/js/gratitude.js
@@ -3633,6 +4045,32 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 ```
 
+# File: static/js/settings.js
+```js
+document.addEventListener('DOMContentLoaded', () => {
+    const themeSelect = document.getElementById('theme');
+    const themeStylesheet = document.getElementById('theme-stylesheet');
+
+    // Preview theme when dropdown changes
+    themeSelect.addEventListener('change', (e) => {
+        const selectedTheme = e.target.value;
+        themeStylesheet.href = `/static/css/themes/${selectedTheme}.css`;
+    });
+
+    // Optional: Client-side validation for password match
+    const form = document.getElementById('settings-form');
+    form.addEventListener('submit', (e) => {
+        const password = document.getElementById('password').value;
+        const confirmPassword = document.getElementById('confirm_password').value;
+
+        if (password && password !== confirmPassword) {
+            e.preventDefault();
+            alert('Passwords do not match!');
+        }
+    });
+});
+```
+
 # File: static/js/utils.js
 ```js
 const calculateProfileCompletion = (profileData) => {
@@ -3823,7 +4261,6 @@ document.addEventListener('DOMContentLoaded', function () {
     <!-- Link to external CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/gratitude.css') }}">
- 
 </head>
 <body>
     <div class="app-container">
@@ -3833,16 +4270,16 @@ document.addEventListener('DOMContentLoaded', function () {
                 <i class="ri-brain-line"></i>
                 <h1>Neuro<span>Aid</span></h1>
             </div>
-            <nav>
-                <a href="{{ url_for('index') }}"><i class="ri-home-5-line"></i> Home</a>
-                <a href="{{ url_for('journal') }}"><i class="ri-booklet-line"></i> Journal</a>
-                <a href="{{ url_for('progress') }}"><i class="ri-bar-chart-2-line"></i> Progress</a>
-                <a href="{{ url_for('vibe') }}"><i class="ri-music-2-line"></i> Vibe</a>
-                <a href="{{ url_for('gratitude') }}" class="active"><i class="ri-heart-line"></i> Gratitude</a>
-                <a href="#"><i class="ri-settings-3-line"></i> Settings</a>
-                <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
-                <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
-            </nav>
+                <nav>
+                  <a href="{{ url_for('index') }}" ><i class="ri-home-5-line"></i> Home</a>
+                  <a href="{{ url_for('journal') }}" ><i class="ri-booklet-line"></i> Journal</a>
+                  <a href="{{ url_for('progress') }}"><i class="ri-bar-chart-2-line"></i> Progress</a>
+                  <a href="{{ url_for('vibe') }}"><i class="ri-music-2-line"></i> Vibe</a>
+                  <a href="{{ url_for('gratitude') }}" class="active"><i class="ri-heart-line"></i> Gratitude</a>
+                  <a href="{{ url_for('settings')}}"><i class="ri-settings-3-line"></i> Settings</a>
+                  <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
+                  <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
+                </nav>
         </div>
 
         <!-- Main Content -->
@@ -3927,7 +4364,7 @@ document.addEventListener('DOMContentLoaded', function () {
       <a href="{{ url_for('progress') }}"><i class="ri-bar-chart-2-line"></i> Progress</a>
       <a href="{{ url_for('vibe') }}"><i class="ri-music-2-line"></i> Vibe</a>
       <a href="{{ url_for('gratitude') }}"><i class="ri-heart-line"></i> Gratitude</a>
-      <a href="#"><i class="ri-settings-3-line"></i> Settings</a>
+      <a href="{{ url_for('settings')}}"><i class="ri-settings-3-line"></i> Settings</a>
       <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
       <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
     </nav>
@@ -4057,10 +4494,12 @@ document.addEventListener('DOMContentLoaded', function () {
       <h1>Neuro<span>Aid</span></h1>
     </div>
     <nav>
-      <a href="{{ url_for('index') }}"><i class="ri-home-5-line"></i> Home</a>
+      <a href="{{ url_for('index') }}" ><i class="ri-home-5-line"></i> Home</a>
       <a href="{{ url_for('journal') }}" class="active"><i class="ri-booklet-line"></i> Journal</a>
-      <a href="{{ url_for('progress') }}" ><i class="ri-bar-chart-2-line"></i> Progress</a>
-      <a href="#"><i class="ri-settings-3-line"></i> Settings</a>
+      <a href="{{ url_for('progress') }}"><i class="ri-bar-chart-2-line"></i> Progress</a>
+      <a href="{{ url_for('vibe') }}"><i class="ri-music-2-line"></i> Vibe</a>
+      <a href="{{ url_for('gratitude') }}"><i class="ri-heart-line"></i> Gratitude</a>
+      <a href="{{ url_for('settings')}}"><i class="ri-settings-3-line"></i> Settings</a>
       <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
       <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
     </nav>
@@ -4225,11 +4664,13 @@ document.addEventListener('DOMContentLoaded', function () {
     <nav>
       <a href="{{ url_for('index') }}"><i class="ri-home-5-line"></i> Home</a>
       <a href="{{ url_for('journal') }}"><i class="ri-booklet-line"></i> Journal</a>
-      <a href="{{ url_for('progress') }}" ><i class="ri-bar-chart-2-line"></i> Progress</a>
+      <a href="{{ url_for('progress') }}"><i class="ri-bar-chart-2-line"></i> Progress</a>
+      <a href="{{ url_for('vibe') }}"><i class="ri-music-2-line"></i> Vibe</a>
+      <a href="{{ url_for('gratitude') }}"><i class="ri-heart-line"></i> Gratitude</a>
       <a href="#"><i class="ri-settings-3-line"></i> Settings</a>
       <a href="{{ url_for('profile') }}" class="active"><i class="ri-user-line"></i> Profile</a>
       <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
-    </nav>
+    </nav>>
   </div>
 
   <div class="wrapper">
@@ -4454,16 +4895,16 @@ document.addEventListener('DOMContentLoaded', function () {
         <i class="ri-brain-line"></i>
         <h1>Neuro<span>Aid</span></h1>
       </div>
-      <nav>
-        <a href="{{ url_for('index') }}"><i class="ri-home-5-line"></i> Home</a>
-        <a href="{{ url_for('journal') }}"><i class="ri-booklet-line"></i> Journal</a>
-        <a href="{{ url_for('progress') }}" class="active"><i class="ri-bar-chart-2-line"></i> Progress</a>
-        <a href="{{ url_for('vibe') }}"><i class="ri-music-2-line"></i> Vibe</a>
-        <a href="{{ url_for('gratitude') }}"><i class="ri-heart-line"></i> Gratitude</a>
-        <a href="#"><i class="ri-settings-3-line"></i> Settings</a>
-        <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
-        <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
-      </nav>
+        <nav>
+          <a href="{{ url_for('index') }}" ><i class="ri-home-5-line"></i> Home</a>
+          <a href="{{ url_for('journal') }}" ><i class="ri-booklet-line"></i> Journal</a>
+          <a href="{{ url_for('progress') }}" class="active"><i class="ri-bar-chart-2-line"></i> Progress</a>
+          <a href="{{ url_for('vibe') }}"><i class="ri-music-2-line"></i> Vibe</a>
+          <a href="{{ url_for('gratitude') }}"><i class="ri-heart-line"></i> Gratitude</a>
+          <a href="{{ url_for('settings')}}"><i class="ri-settings-3-line"></i> Settings</a>
+          <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
+          <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
+        </nav>
     </div>
 
     <!-- Main Content -->
@@ -4539,6 +4980,148 @@ document.addEventListener('DOMContentLoaded', function () {
 </html>
 ```
 
+# File: templates/settings.html
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>NeuroAid - Settings</title>
+  <!-- Remix Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css" />
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Link to external CSS -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/settings.css') }}" />
+  <!-- Dynamic Theme -->
+  <link id="theme-stylesheet" rel="stylesheet" href="{{ url_for('static', filename='css/themes/' + current_theme + '.css') }}">
+</head>
+<body>
+  <div class="sidebar">
+    <div class="logo">
+      <i class="ri-brain-line"></i>
+      <h1>Neuro<span>Aid</span></h1>
+    </div>
+    <nav>
+      <a href="{{ url_for('index') }}"><i class="ri-home-5-line"></i> Home</a>
+      <a href="{{ url_for('journal') }}"><i class="ri-booklet-line"></i> Journal</a>
+      <a href="{{ url_for('progress') }}"><i class="ri-bar-chart-2-line"></i> Progress</a>
+      <a href="{{ url_for('vibe') }}"><i class="ri-music-2-line"></i> Vibe</a>
+      <a href="{{ url_for('gratitude') }}"><i class="ri-heart-line"></i> Gratitude</a>
+      <a href="{{ url_for('settings') }}" class="active"><i class="ri-settings-3-line"></i> Settings</a>
+      <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
+      <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
+    </nav>
+  </div>
+
+  <div class="wrapper">
+    <main class="main-content">
+      <header>
+        <div class="search-bar">
+          <i class="ri-search-line"></i>
+          <input type="text" placeholder="Search..." />
+        </div>
+        <div class="profile">
+          <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile" />
+          <span>{{ session.get('user_email', 'User').split('@')[0] }}</span>
+          <i class="ri-arrow-down-s-line"></i>
+        </div>
+      </header>
+
+      <section class="settings-section">
+        <h2><i class="ri-settings-3-line"></i> Settings</h2>
+
+        <!-- Success/Error Messages -->
+        {% if error %}
+          <div class="error-message" style="background-color: #fee2e2; color: #dc2626; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 1rem;">
+            {{ error }}
+          </div>
+        {% endif %}
+        {% if success %}
+          <div class="success-message" style="background-color: #d1fae5; color: #10b981; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 1rem;">
+            {{ success }}
+          </div>
+        {% endif %}
+
+        <!-- Settings Form -->
+        <div class="settings-card card">
+          <form id="settings-form" method="POST" action="{{ url_for('settings') }}">
+            <!-- Account Settings -->
+            <div class="settings-group">
+              <h3><i class="ri-user-settings-line"></i> Account Settings</h3>
+              <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" value="{{ email }}" placeholder="Enter new email (optional)">
+              </div>
+              <div class="form-group">
+                <label for="password">New Password</label>
+                <input type="password" id="password" name="password" placeholder="Enter new password (optional)">
+              </div>
+              <div class="form-group">
+                <label for="confirm_password">Confirm New Password</label>
+                <input type="password" id="confirm_password" name="confirm_password" placeholder="Confirm new password">
+              </div>
+            </div>
+
+            <!-- Security Settings -->
+            <div class="settings-group">
+              <h3><i class="ri-shield-check-line"></i> Security Settings</h3>
+              <div class="form-group toggle-group">
+                <label for="two_factor_enabled">Enable Two-Factor Authentication</label>
+                <div class="toggle-wrapper">
+                  <input type="checkbox" id="two_factor_enabled" name="two_factor_enabled" {% if two_factor_enabled %}checked{% endif %}>
+                  <span class="toggle-slider"></span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Appearance Settings -->
+            <div class="settings-group">
+              <h3><i class="ri-paint-brush-line"></i> Appearance Settings</h3>
+              <div class="form-group">
+                <label for="theme">App Theme</label>
+                <select id="theme" name="theme">
+                  <option value="light" {% if theme == 'light' %}selected{% endif %}>Light</option>
+                  <option value="dark" {% if theme == 'dark' %}selected{% endif %}>Dark</option>
+                  <option value="calming" {% if theme == 'calming' %}selected{% endif %}>Calming</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Notification Settings -->
+            <div class="settings-group">
+              <h3><i class="ri-notification-3-line"></i> Notification Settings</h3>
+              <div class="form-group">
+                <label for="reminder_time">Daily Reminder Time</label>
+                <input type="time" id="reminder_time" name="reminder_time" value="{{ reminder_time }}">
+              </div>
+              <div class="form-group">
+                <label for="notification_preference">Notification Preference</label>
+                <select id="notification_preference" name="notification_preference">
+                  <option value="email" {% if notification_preference == 'email' %}selected{% endif %}>Email</option>
+                  <option value="push" {% if notification_preference == 'push' %}selected{% endif %}>Push</option>
+                </select>
+              </div>
+            </div>
+
+            <button type="submit" class="card-button">Save Changes</button>
+          </form>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <span>© 2025 NeuroAid. Your mental health companion.</span>
+    </footer>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
+</body>
+</html>
+```
+
 # File: templates/signup.html
 ```html
 <!DOCTYPE html>
@@ -4606,78 +5189,7 @@ document.addEventListener('DOMContentLoaded', function () {
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- Link to external CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
-    <style>
-        .music-recommendations-section {
-            margin-top: 20px;
-        }
-        .recommendations-content {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-            gap: 20px;
-            margin-top: 20px;
-        }
-        .song-card {
-            background-color: #ffffff;
-            border: 1px solid #c7bbe4;
-            border-radius: 10px;
-            padding: 15px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.07);
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-        .song-card p {
-            margin: 0;
-            color: #202020;
-            font-size: 16px;
-        }
-        .play-btn {
-            background-color: #7c3aed;
-            color: white;
-            border: none;
-            padding: 8px 12px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: background-color 0.3s;
-        }
-        .play-btn:hover {
-            background-color: #5b21b6;
-        }
-        .music-player {
-            margin-top: 20px;
-            padding: 15px;
-            background-color: #e8e1fa;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-        }
-        .mood-selector {
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .mood-selector select {
-            padding: 8px;
-            border-radius: 5px;
-            border: 1px solid #c7bbe4;
-            font-size: 16px;
-        }
-        .load-more-btn {
-            margin-top: 20px;
-            background-color: #7c3aed;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 16px;
-            transition: background-color 0.3s;
-        }
-        .load-more-btn:hover {
-            background-color: #5b21b6;
-        }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/vibe.css') }}">
 </head>
 <body>
     <div class="app-container">
@@ -4687,16 +5199,16 @@ document.addEventListener('DOMContentLoaded', function () {
                 <i class="ri-brain-line"></i>
                 <h1>Neuro<span>Aid</span></h1>
             </div>
-            <nav>
-                <a href="{{ url_for('index') }}"><i class="ri-home-5-line"></i> Home</a>
-                <a href="{{ url_for('journal') }}"><i class="ri-booklet-line"></i> Journal</a>
-                <a href="{{ url_for('progress') }}"><i class="ri-bar-chart-2-line"></i> Progress</a>
-                <a href="{{ url_for('vibe') }}" class="active"><i class="ri-music-2-line"></i> Vibe</a>
-                <a href="{{ url_for('gratitude') }}"><i class="ri-heart-line"></i> Gratitude</a>
-                <a href="#"><i class="ri-settings-3-line"></i> Settings</a>
-                <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
-                <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
-            </nav>
+                <nav>
+                    <a href="{{ url_for('index') }}"><i class="ri-home-5-line"></i> Home</a>
+                    <a href="{{ url_for('journal') }}"><i class="ri-booklet-line"></i> Journal</a>
+                    <a href="{{ url_for('progress') }}"><i class="ri-bar-chart-2-line"></i> Progress</a>
+                    <a href="{{ url_for('vibe') }}"><i class="ri-music-2-line"></i> Vibe</a>
+                    <a href="{{ url_for('gratitude') }}"><i class="ri-heart-line"></i> Gratitude</a>
+                    <a href="{{ url_for('settings')}}" class="active"><i class="ri-settings-3-line"></i> Settings</a>
+                    <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
+                    <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
+                </nav>
         </div>
 
         <!-- Main Content -->
