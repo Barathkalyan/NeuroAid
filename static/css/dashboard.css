@@ -19,7 +19,7 @@
 
 body {
   min-height: 100vh;
-  background: #f3f4f6;
+  background: var(--background);
   display: flex;
   flex-direction: column;
 }

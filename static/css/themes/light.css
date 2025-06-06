@@ -1,12 +1,12 @@
 :root {
-  --background: #f3f4f6;
-  --card-bg: rgba(255, 255, 255, 0.9);
+  --primary: #7c3aed;
+  --secondary: #f9faff;
+  --accent: #d4bfff;
+  --glass-bg: rgba(255, 255, 255, 0.9);
+  --glass-border: rgba(200, 200, 200, 0.3);
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+  --header-bg: linear-gradient(90deg, #a78bfa 0%, #c084fc 100%);
   --text-primary: #1f2937;
   --text-secondary: #6b7280;
-}
-body {
-  background: var(--background);
-}
-.settings-card, .stat-box, .chart-card {
-  background: var(--card-bg);
+  --background: #f3f4f6;
 }

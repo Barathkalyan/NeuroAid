@@ -681,7 +681,8 @@ def settings():
             if new_email or new_password:
                 if new_password and new_password != confirm_password:
                     error = "Passwords do not match!"
-                    return render_template('settings.html', error=error, success=success, current_theme=session.get('theme', 'light'))
+                    return render_template('settings.html', error=error, success=success, theme=session.get('theme', 'light')
+)
 
                 user_update = {}
                 if new_email:
@@ -689,7 +690,8 @@ def settings():
                     existing_user = supabase.table('users').select('id').eq('email', new_email).neq('id', user_id).execute()
                     if existing_user.data:
                         error = "Email already in use by another account."
-                        return render_template('settings.html', error=error, success=success, current_theme=session.get('theme', 'light'))
+                        return render_template('settings.html', error=error, success=success, theme=session.get('theme', 'light')
+)
                     user_update['email'] = new_email
                     session['user_email'] = new_email
 
@@ -734,25 +736,24 @@ def settings():
 
         if not user_data.data or not preferences_data.data:
             error = "Unable to load settings."
-            return render_template('settings.html', error=error, success=success, current_theme=session.get('theme', 'light'))
+            return render_template('settings.html', error=error, success=success, theme=session.get('theme', 'light'))
 
         user = user_data.data[0]
         preferences = preferences_data.data[0]
     except Exception as e:
         error = "Unable to load settings."
         logger.error(f"Settings load error: {str(e)}")
-        return render_template('settings.html', error=error, success=success, current_theme=session.get('theme', 'light'))
+        return render_template('settings.html', error=error, success=success, theme=session.get('theme', 'light'))
 
     return render_template(
         'settings.html',
         email=user['email'],
         two_factor_enabled=preferences['two_factor_enabled'],
-        theme=preferences['theme'],
         reminder_time=preferences['reminder_time'],
         notification_preference=preferences['notification_preference'],
         error=error,
         success=success,
-        current_theme=session.get('theme', 'light')
+        theme=session.get('theme', 'light')
     )
 
 @app.route('/logout')
@@ -929,7 +930,7 @@ h1, p {
 
 body {
   min-height: 100vh;
-  background: #f3f4f6;
+  background: var(--background);
   display: flex;
   flex-direction: column;
 }
@@ -1189,20 +1190,10 @@ footer {
 }
 
 .action-button {
-  background-color: #7c3aed;
-  color: white;
-  padding: 25px 30px;
-  font-size: 18px;
-  border-radius: 10px;
-  text-decoration: none;
-  font-weight: 700;
-  transition: background-color 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
+  background: none; /* Remove background to avoid conflicts */
 }
-
 .action-button:hover {
-  background-color: #310c6d;
-  transform: translateY(-3px);
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+  background: none; /* Remove hover background */
 }
 
 /* Stats section */
@@ -1448,6 +1439,58 @@ footer {
     height: 300px !important; /* Further adjust for very small screens */
   }
 }
+
+
+/* Reusable button styles */
+.neuroaid-btn {
+  background-color: var(--primary); /* #7c3aed */
+  color: #fff;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: transform 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.neuroaid-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+  background-color: #6d28d9; /* Darker shade */
+}
+
+.neuroaid-btn:active {
+  transform: scale(0.95);
+}
+
+.neuroaid-btn.loading {
+  position: relative;
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+.neuroaid-btn.loading::after {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border: 2px solid #fff;
+  border-top: 2px solid transparent;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+@keyframes spin {
+  0% { transform: translateY(-50%) rotate(0deg); }
+  100% { transform: translateY(-50%) rotate(360deg); }
+}
 ```
 
 # File: static/css/gratitude.css
@@ -1486,19 +1529,7 @@ footer {
             resize: vertical;
             margin-bottom: 15px;
         }
-        .gratitude-form button {
-            background-color: #7c3aed;
-            color: white;
-            border: none;
-            padding: 15px 20px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 16px;
-            transition: background-color 0.3s;
-        }
-        .gratitude-form button:hover {
-            background-color: #370980;
-        }
+
         .suggestions {
             margin-top: 10px;
             color: #3d3939;
@@ -1635,20 +1666,6 @@ body {
   margin-top: 20px;
   text-align: right;
 
-}
-
-.save-btn {
-  padding: 12px 24px;
-  background-color: #7c3aed;
-  align-items: center;
-  justify-content: center;
-  align-self: center;
-  color: #ffffff;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 20px;
-  transition: background-color 0.3s ease;
 }
 
 .save-btn:hover {
@@ -3156,37 +3173,52 @@ button:hover {
 # File: static/css/themes/calming.css
 ```css
 :root {
-  --background: #e8e1fa;
-  --card-bg: rgba(244, 240, 250, 0.9);
-  --text-primary: #2d2d2d;
-  --text-secondary: #666;
-}
-body {
-  background: var(--background);
-}
-.settings-card, .stat-box, .chart-card {
-  background: var(--card-bg);
+  --primary: #4c68d7;
+  --secondary: #e6f3fa;
+  --accent: #a3bffa;
+  --glass-bg: rgba(240, 248, 255, 0.9);
+  --glass-border: rgba(150, 200, 255, 0.3);
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+  --header-bg: linear-gradient(90deg, #4c68d7 0%, #81a1c1 100%);
+  --text-primary: #2d3748;
+  --text-secondary: #718096;
+  --background: #e6f0fa;
 }
 ```
 
 # File: static/css/themes/dark.css
 ```css
 :root {
-  --background: #1f2937;
-  --card-bg: rgba(31, 41, 55, 0.9);
-  --text-primary: #f9fafb;
-  --text-secondary: #9ca3af;
+  --primary: #a78bfa;
+  --secondary: #2d3748;
+  --accent: #b794f4;
+  --glass-bg: rgba(45, 55, 72, 0.8);
+  --glass-border: rgba(100, 100, 100, 0.5);
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  --header-bg: linear-gradient(90deg, #4c1d95 0%, #7c3aed 100%);
+  --text-primary: #e2e8f0;
+  --text-secondary: #a0aec0;
+  --background: #1a202c;
 }
-body {
-  background: var(--background);
+
+/* Fix sidebar visibility in dark mode */
+.sidebar {
+  background: var(--glass-bg);
+  border-right: 1px solid var(--glass-border);
 }
-.settings-card, .stat-box, .chart-card {
-  background: var(--card-bg);
+
+.sidebar nav a {
   color: var(--text-primary);
 }
-.form-group input,
-.form-group select {
-  background-color: #374151;
+
+.sidebar nav a:hover,
+.sidebar nav a.active {
+  background: var(--primary);
+  color: #fff;
+}
+
+.logo h1,
+.logo h1 span {
   color: var(--text-primary);
 }
 ```
@@ -3194,16 +3226,16 @@ body {
 # File: static/css/themes/light.css
 ```css
 :root {
-  --background: #f3f4f6;
-  --card-bg: rgba(255, 255, 255, 0.9);
+  --primary: #7c3aed;
+  --secondary: #f9faff;
+  --accent: #d4bfff;
+  --glass-bg: rgba(255, 255, 255, 0.9);
+  --glass-border: rgba(200, 200, 200, 0.3);
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+  --header-bg: linear-gradient(90deg, #a78bfa 0%, #c084fc 100%);
   --text-primary: #1f2937;
   --text-secondary: #6b7280;
-}
-body {
-  background: var(--background);
-}
-.settings-card, .stat-box, .chart-card {
-  background: var(--card-bg);
+  --background: #f3f4f6;
 }
 ```
 
@@ -4227,6 +4259,7 @@ document.addEventListener('DOMContentLoaded', function () {
     <!-- Link to external CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/gratitude.css') }}">
+    <link id="theme-stylesheet" rel="stylesheet" href="{{ url_for('static', filename='css/themes/' + theme + '.css') }}">
 </head>
 <body>
     <div class="app-container">
@@ -4274,7 +4307,7 @@ document.addEventListener('DOMContentLoaded', function () {
                             <textarea id="thing2" name="thing2" rows="2" placeholder="E.g., A sunny morning walk..."></textarea>
                             <label for="thing3">3. What went well today?</label>
                             <textarea id="thing3" name="thing3" rows="2" placeholder="E.g., Finished a task early..."></textarea>
-                            <button type="submit">Save Entry</button>
+                            <button type="submit" class="neuroaid-btn"><i class="ri-save-line"></i> Save Entry</button>
                             <p class="suggestions">Not sure what to write? How about a small win, like enjoying a warm cup of tea?</p>
                         </form>
                     </div>
@@ -4317,6 +4350,7 @@ document.addEventListener('DOMContentLoaded', function () {
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <!-- Link to external CSS -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}" />
+  <link id="theme-stylesheet" rel="stylesheet" href="{{ url_for('static', filename='css/themes/' + theme + '.css') }}">
 </head>
 <body>
   <div class="sidebar">
@@ -4396,8 +4430,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         <!-- Quick Actions -->
         <div class="quick-actions">
-          <a href="{{ url_for('journal') }}" class="action-button">Write a Journal Entry</a>
-          <a href="{{ url_for('progress') }}" class="action-button">View Progress</a>
+          <a href="{{ url_for('journal') }}" class="neuroaid-btn"><i class="ri-booklet-line"></i> Write a Journal Entry</a>
+         <a href="{{ url_for('progress') }}" class="neuroaid-btn"><i class="ri-bar-chart-2-line"></i> View Progress</a>
         </div>
 
       </section>
@@ -4428,6 +4462,7 @@ document.addEventListener('DOMContentLoaded', function () {
   <!-- Link to external CSS -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/journal.css') }}" />
+  <link id="theme-stylesheet" rel="stylesheet" href="{{ url_for('static', filename='css/themes/' + theme + '.css') }}">
   <!-- Link to JavaScript -->
   <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
   <script src="{{ url_for('static', filename='js/journal.js') }}" defer></script>
@@ -4505,7 +4540,7 @@ document.addEventListener('DOMContentLoaded', function () {
           <div id="editor"></div>
           <input type="hidden" name="content" id="journal-content">
             <div class="journal-actions">
-            <button type="submit" class="save-btn">Save Entry</button>
+            <button type="submit" class="neuroaid-btn"><i class="ri-save-line"></i> Save Entry</button>
             </div>
         </form>
 
@@ -4617,6 +4652,7 @@ document.addEventListener('DOMContentLoaded', function () {
   <!-- Link to external CSS -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/profile.css') }}" />
+  <link id="theme-stylesheet" rel="stylesheet" href="{{ url_for('static', filename='css/themes/' + theme + '.css') }}">
   <!-- Link to JavaScript -->
   <script src="{{ url_for('static', filename='js/utils.js') }}" defer></script>
   <script src="{{ url_for('static', filename='js/profile.js') }}" defer></script>
@@ -4848,6 +4884,7 @@ document.addEventListener('DOMContentLoaded', function () {
   <!-- Link to external CSS -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/progress.css') }}" />
+  <link id="theme-stylesheet" rel="stylesheet" href="{{ url_for('static', filename='css/themes/' + theme + '.css') }}">
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <!-- Link to JavaScript -->
@@ -4962,7 +4999,7 @@ document.addEventListener('DOMContentLoaded', function () {
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/settings.css') }}" />
   <!-- Dynamic Theme -->
-  <link id="theme-stylesheet" rel="stylesheet" href="{{ url_for('static', filename='css/themes/' + current_theme + '.css') }}">
+  <link id="theme-stylesheet" rel="stylesheet" href="{{ url_for('static', filename='css/themes/' + theme + '.css') }}">
 </head>
 <body>
   <div class="sidebar">
@@ -5072,11 +5109,7 @@ document.addEventListener('DOMContentLoaded', function () {
               </div>
             </div>
 
-            <button type="submit" class="card-button">Save Changes</button>
-          </form>
-        </div>
-
-            <button type="submit" class="card-button">Save Changes</button>
+            <button type="submit" class="neuroaid-btn"><i class="ri-save-line"></i> Save Changes</button>
           </form>
         </div>
       </section>
@@ -5160,6 +5193,7 @@ document.addEventListener('DOMContentLoaded', function () {
     <!-- Link to external CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/vibe.css') }}">
+    <link id="theme-stylesheet" rel="stylesheet" href="{{ url_for('static', filename='css/themes/' + theme + '.css') }}">
 </head>
 <body>
     <div class="app-container">

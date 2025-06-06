@@ -679,7 +679,8 @@ def settings():
             if new_email or new_password:
                 if new_password and new_password != confirm_password:
                     error = "Passwords do not match!"
-                    return render_template('settings.html', error=error, success=success, current_theme=session.get('theme', 'light'))
+                    return render_template('settings.html', error=error, success=success, theme=session.get('theme', 'light')
+)
 
                 user_update = {}
                 if new_email:
@@ -687,7 +688,8 @@ def settings():
                     existing_user = supabase.table('users').select('id').eq('email', new_email).neq('id', user_id).execute()
                     if existing_user.data:
                         error = "Email already in use by another account."
-                        return render_template('settings.html', error=error, success=success, current_theme=session.get('theme', 'light'))
+                        return render_template('settings.html', error=error, success=success, theme=session.get('theme', 'light')
+)
                     user_update['email'] = new_email
                     session['user_email'] = new_email
 
@@ -732,25 +734,24 @@ def settings():
 
         if not user_data.data or not preferences_data.data:
             error = "Unable to load settings."
-            return render_template('settings.html', error=error, success=success, current_theme=session.get('theme', 'light'))
+            return render_template('settings.html', error=error, success=success, theme=session.get('theme', 'light'))
 
         user = user_data.data[0]
         preferences = preferences_data.data[0]
     except Exception as e:
         error = "Unable to load settings."
         logger.error(f"Settings load error: {str(e)}")
-        return render_template('settings.html', error=error, success=success, current_theme=session.get('theme', 'light'))
+        return render_template('settings.html', error=error, success=success, theme=session.get('theme', 'light'))
 
     return render_template(
         'settings.html',
         email=user['email'],
         two_factor_enabled=preferences['two_factor_enabled'],
-        theme=preferences['theme'],
         reminder_time=preferences['reminder_time'],
         notification_preference=preferences['notification_preference'],
         error=error,
         success=success,
-        current_theme=session.get('theme', 'light')
+        theme=session.get('theme', 'light')
     )
 
 @app.route('/logout')

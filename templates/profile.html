@@ -11,6 +11,7 @@
   <!-- Link to external CSS -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/profile.css') }}" />
+  <link id="theme-stylesheet" rel="stylesheet" href="{{ url_for('static', filename='css/themes/' + theme + '.css') }}">
   <!-- Link to JavaScript -->
   <script src="{{ url_for('static', filename='js/utils.js') }}" defer></script>
   <script src="{{ url_for('static', filename='js/profile.js') }}" defer></script>

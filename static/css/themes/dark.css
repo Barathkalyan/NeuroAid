@@ -1,18 +1,33 @@
 :root {
-  --background: #1f2937;
-  --card-bg: rgba(31, 41, 55, 0.9);
-  --text-primary: #f9fafb;
-  --text-secondary: #9ca3af;
+  --primary: #a78bfa;
+  --secondary: #2d3748;
+  --accent: #b794f4;
+  --glass-bg: rgba(45, 55, 72, 0.8);
+  --glass-border: rgba(100, 100, 100, 0.5);
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  --header-bg: linear-gradient(90deg, #4c1d95 0%, #7c3aed 100%);
+  --text-primary: #e2e8f0;
+  --text-secondary: #a0aec0;
+  --background: #1a202c;
 }
-body {
-  background: var(--background);
+
+/* Fix sidebar visibility in dark mode */
+.sidebar {
+  background: var(--glass-bg);
+  border-right: 1px solid var(--glass-border);
 }
-.settings-card, .stat-box, .chart-card {
-  background: var(--card-bg);
+
+.sidebar nav a {
   color: var(--text-primary);
 }
-.form-group input,
-.form-group select {
-  background-color: #374151;
+
+.sidebar nav a:hover,
+.sidebar nav a.active {
+  background: var(--primary);
+  color: #fff;
+}
+
+.logo h1,
+.logo h1 span {
   color: var(--text-primary);
 }
