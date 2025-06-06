@@ -1,18 +1,33 @@
+:root {
+  --glass-bg: rgba(230, 240, 250, 0.9);
+  --header-bg: linear-gradient(90deg, #74c0fc 0%, #a5d8ff 100%);
+}
+
 body {
     background-color: #e6f0fa;
     color: #2c3e50;
 }
 
-nav {
-    background-color: #3498db;
+.sidebar {
+    background: var(--glass-bg);
 }
 
-h1, h2 {
-    color: #2c3e50;
+header, footer {
+    background: var(--header-bg);
 }
 
 input, select {
-    background-color: #f0f8ff;
+    background: rgba(240, 248, 255, 0.5);
     color: #2c3e50;
-    border-color: #3498db;
+    border-color: #74c0fc;
+}
+
+.search-bar input,
+.search-bar input::placeholder {
+    color: #2c3e50;
+}
+
+.profile span,
+.profile i {
+    color: #2c3e50;
 }
