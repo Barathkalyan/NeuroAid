@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - NeuroAid</title>
+    <link rel="stylesheet" href="/static/css/settings.css">
+    <link id="theme-stylesheet" rel="stylesheet" href="/static/css/themes/{{ current_theme }}.css">
+</head>
+<body>
+    <nav>
+        <a href="/index">Home</a>
+        <a href="/journal">Journal</a>
+        <a href="/progress">Progress</a>
+        <a href="/vibe">Vibe</a>
+        <a href="/gratitude">Gratitude</a>
+        <a href="/profile">Profile</a>
+        <a href="/settings">Settings</a>
+        <a href="/logout">Logout</a>
+    </nav>
+    <div class="container">
+        <h1>Settings</h1>
+        {% if error %}
+            <div class="error">{{ error }}</div>
+        {% endif %}
+        {% if success %}
+            <div class="success">{{ success }}</div>
+        {% endif %}
+        <form id="settings-form" method="POST" action="/settings">
+            <!-- Account Settings -->
+            <h2>Account Settings</h2>
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" value="{{ email }}" placeholder="Enter new email (optional)">
+            </div>
+            <div class="form-group">
+                <label for="password">New Password</label>
+                <input type="password" id="password" name="password" placeholder="Enter new password (optional)">
+            </div>
+            <div class="form-group">
+                <label for="confirm_password">Confirm New Password</label>
+                <input type="password" id="confirm_password" name="confirm_password" placeholder="Confirm new password">
+            </div>
+
+            <!-- Security Settings -->
+            <h2>Security Settings</h2>
+            <div class="form-group toggle-group">
+                <label for="two_factor_enabled">Enable Two-Factor Authentication</label>
+                <input type="checkbox" id="two_factor_enabled" name="two_factor_enabled" {% if two_factor_enabled %}checked{% endif %}>
+                <span class="toggle-slider"></span>
+            </div>
+
+            <!-- Appearance Settings -->
+            <h2>Appearance Settings</h2>
+            <div class="form-group">
+                <label for="theme">App Theme</label>
+                <select id="theme" name="theme">
+                    <option value="light" {% if theme == 'light' %}selected{% endif %}>Light</option>
+                    <option value="dark" {% if theme == 'dark' %}selected{% endif %}>Dark</option>
+                    <option value="calming" {% if theme == 'calming' %}selected{% endif %}>Calming</option>
+                </select>
+            </div>
+
+            <!-- Notification Settings -->
+            <h2>Notification Settings</h2>
+            <div class="form-group">
+                <label for="reminder_time">Daily Reminder Time</label>
+                <input type="time" id="reminder_time" name="reminder_time" value="{{ reminder_time }}">
+            </div>
+            <div class="form-group">
+                <label for="notification_preference">Notification Preference</label>
+                <select id="notification_preference" name="notification_preference">
+                    <option value="email" {% if notification_preference == 'email' %}selected{% endif %}>Email</option>
+                    <option value="push" {% if notification_preference == 'push' %}selected{% endif %}>Push</option>
+                </select>
+            </div>
+
+            <button type="submit">Save Changes</button>
+        </form>
+    </div>
+    <script src="/static/js/settings.js"></script>
+</body>
+</html>
