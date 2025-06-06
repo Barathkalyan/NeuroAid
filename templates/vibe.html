@@ -50,11 +50,21 @@
 
                 <section class="music-recommendations-section">
                     <h2><i class="ri-music-2-line"></i> Vibe - Tamil Music Recommendations</h2>
+                    <div class="language-selector">
+                        <label for="language-select">Select Language:</label>
+                        <select id="language-select">
+                            <option value="tamil">Tamil</option>
+                            <option value="hindi">Hindi</option>
+                            <option value="telugu">Telugu</option>
+                            <option value="malayalam">Malayalam</option>
+                            <option value="kannada">Kannada</option>
+                            <option value="english">English</option>
+                        </select>
+                    </div>
                     <div class="mood-selector">
                         <label for="mood-day">Select Mood from Day:</label>
                         <select id="mood-day">
                             <option value="">Select a day</option>
-                            <!-- Options will be populated by vibe.js -->
                         </select>
                     </div>
                     <div id="tamil-music-recommendations" class="recommendations-content">

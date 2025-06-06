@@ -4669,10 +4669,10 @@ document.addEventListener('DOMContentLoaded', function () {
       <a href="{{ url_for('progress') }}"><i class="ri-bar-chart-2-line"></i> Progress</a>
       <a href="{{ url_for('vibe') }}"><i class="ri-music-2-line"></i> Vibe</a>
       <a href="{{ url_for('gratitude') }}"><i class="ri-heart-line"></i> Gratitude</a>
-      <a href="#"><i class="ri-settings-3-line"></i> Settings</a>
+      <a href="{{ url_for('settings') }}"><i class="ri-settings-3-line"></i> Settings</a>
       <a href="{{ url_for('profile') }}" class="active"><i class="ri-user-line"></i> Profile</a>
       <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
-    </nav>>
+    </nav>
   </div>
 
   <div class="wrapper">
@@ -5207,9 +5207,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     <a href="{{ url_for('index') }}"><i class="ri-home-5-line"></i> Home</a>
                     <a href="{{ url_for('journal') }}"><i class="ri-booklet-line"></i> Journal</a>
                     <a href="{{ url_for('progress') }}"><i class="ri-bar-chart-2-line"></i> Progress</a>
-                    <a href="{{ url_for('vibe') }}"><i class="ri-music-2-line"></i> Vibe</a>
+                    <a href="{{ url_for('vibe') }}" class="active"><i class="ri-music-2-line"></i> Vibe</a>
                     <a href="{{ url_for('gratitude') }}"><i class="ri-heart-line"></i> Gratitude</a>
-                    <a href="{{ url_for('settings')}}" class="active"><i class="ri-settings-3-line"></i> Settings</a>
+                    <a href="{{ url_for('settings')}}" ><i class="ri-settings-3-line"></i> Settings</a>
                     <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
                     <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
                 </nav>

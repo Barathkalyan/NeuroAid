@@ -385,6 +385,93 @@ def handle_gratitude():
             logger.error(f"Error fetching gratitude entries: {str(e)}")
             return jsonify({'error': str(e)}), 500
 
+@app.route('/api/recommend_music', methods=['GET'])
+def recommend_music():
+    if 'user' not in session:
+        logger.warning("User not authenticated for /api/recommend_music")
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    supabase = get_supabase()
+    user_id = session['user']
+    
+    try:
+        # Fetch latest mood
+        entries = supabase.table('journal_entries')\
+            .select('analysis->mood')\
+            .eq('user_id', user_id)\
+            .order('created_at', desc=True)\
+            .limit(1)\
+            .execute()
+        mood = entries.data[0]['mood'] if entries.data else 3  # Default to neutral
+
+        # Fetch user language preference
+        preferences = supabase.table('user_preferences')\
+            .select('language')\
+            .eq('user_id', user_id)\
+            .execute()
+        language = preferences.data[0]['language'] if preferences.data else 'tamil'
+
+        # Map mood to genre
+        MOOD_TO_GENRE = {
+            1: f'{language}-sad',    # Sad songs
+            2: f'{language}-melody', # Melodic songs
+            3: f'{language}-folk',   # Folk/classics
+            4: f'{language}-pop',    # Pop songs
+            5: f'{language}-dance'   # Upbeat/dance
+        }
+        genre = MOOD_TO_GENRE.get(mood, f'{language}-folk')
+
+        # Fetch songs from JioSaavn
+        JIOSAAVN_API_URL = 'http://127.0.0.1:5000/result/?query=<insert-jiosaavn-link-or-query-here>&lyrics=true'  # Update with actual endpoint
+        params = {'query': genre, 'language': language, 'limit': 7}
+        response = requests.get(JIOSAAVN_API_URL, params=params)
+        response.raise_for_status()
+        tracks = response.json().get('data', [])
+
+        recommendations = [
+            {
+                'trackName': track.get('name', 'Unknown'),
+                'artistName': ', '.join([artist['name'] for artist in track.get('artists', [])]),
+                'previewUrl': track.get('downloadUrl', [{}])[-1].get('url', ''),  # Full song URL
+                'language': language
+            } for track in tracks
+        ]
+
+        logger.info(f"Fetched {len(recommendations)} songs for user {user_id}, genre: {genre}")
+        return jsonify({'recommendations': recommendations}), 200
+
+    except requests.RequestException as e:
+        logger.error(f"JioSaavn API error: {str(e)}")
+        return jsonify({'error': 'Failed to fetch music'}), 500
+    except Exception as e:
+        logger.error(f"Error in recommend_music: {str(e)}")
+        return jsonify({'error': 'Internal server error'}), 500
+    
+@app.route('/api/update_language', methods=['POST'])
+def update_language():
+    if 'user' not in session:
+        logger.warning("User not authenticated for /api/update_language")
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    supabase = get_supabase()
+    user_id = session['user']
+    
+    try:
+        data = request.get_json()
+        language = data.get('language', 'tamil')
+        valid_languages = ['tamil', 'hindi', 'telugu', 'malayalam', 'kannada', 'english']
+        if language not in valid_languages:
+            return jsonify({'error': 'Invalid language'}), 400
+
+        supabase.table('user_preferences').update({'language': language}).eq('user_id', user_id).execute()
+        logger.info(f"Language updated to {language} for user {user_id}")
+        return jsonify({'success': True}), 200
+
+    except Exception as e:
+        logger.error(f"Error updating language: {str(e)}")
+        return jsonify({'error': 'Failed to update language'}), 500
+    
+    
 @app.route('/', methods=['GET', 'POST'])
 def login():
     error = None
