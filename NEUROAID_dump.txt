@@ -387,6 +387,97 @@ def handle_gratitude():
             logger.error(f"Error fetching gratitude entries: {str(e)}")
             return jsonify({'error': str(e)}), 500
 
+@app.route('/api/recommend_music', methods=['GET'])
+def recommend_music():
+    if 'user' not in session:
+        logger.warning("User not authenticated for /api/recommend_music")
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    supabase = get_supabase()
+    user_id = session['user']
+    date = request.args.get('date')  # Get optional date parameter
+
+    try:
+        query = supabase.table('journal_entries')\
+            .select('analysis->mood')\
+            .eq('user_id', user_id)
+        
+        if date:
+            try:
+                # Parse the date (expected format: YYYY-MM-DD)
+                start_date = datetime.fromisoformat(date.replace('Z', '+00:00')).replace(tzinfo=ZoneInfo("UTC"))
+                end_date = start_date.replace(hour=23, minute=59, second=59, microsecond=999999)
+                query = query.gte('created_at', start_date.isoformat()).lte('created_at', end_date.isoformat())
+            except ValueError:
+                logger.error(f"Invalid date format: {date}")
+                return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD'}), 400
+        
+        query = query.order('created_at', desc=True).limit(1)
+        entries = query.execute()
+        
+        mood = entries.data[0]['mood'] if entries.data else 3  # Default to neutral if no entries
+        
+        preferences = supabase.table('user_preferences')\
+            .select('language')\
+            .eq('user_id', user_id)\
+            .execute()
+        language = preferences.data[0]['language'] if preferences.data else 'tamil'
+
+        MOOD_PLAYLISTS = {
+            'tamil': {
+                1: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWX3SoTqhs2rq',  # Tamil Sad
+                2: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWVV27DiNWxkR',  # Tamil Melodies
+                3: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWXz6ZFxA5jKQ',  # Tamil Folk
+                4: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX7VikJbFQ7xS',  # Tamil Pop
+                5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWUnAwRxD2pxH'   # Tamil Party/Dance
+            },
+            'english': {
+                1: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX9sIqqvKsjG8',  # Sad Songs
+                2: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX3rxVfibe1L0',  # Chill Hits
+                3: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX0BcQWzuB7ZO',  # Acoustic
+                4: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXcBWIGoYBM5M',  # Pop Hits
+                5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWUa8ZRTfalSI'   # Party Hits
+            }
+        }
+
+        playlist_url = MOOD_PLAYLISTS.get(language, MOOD_PLAYLISTS['tamil']).get(mood)
+        
+        if not playlist_url:
+            logger.error(f"No playlist found for mood {mood} and language {language}")
+            return jsonify({'error': 'No playlist available for this mood and language'}), 404
+
+        return jsonify({'embedUrl': playlist_url, 'mood': mood}), 200
+
+    except Exception as e:
+        logger.error(f"Error recommending Spotify playlist: {str(e)}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+    
+@app.route('/api/update_language', methods=['POST'])
+def update_language():
+    if 'user' not in session:
+        logger.warning("User not authenticated for /api/update_language")
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    supabase = get_supabase()
+    user_id = session['user']
+    
+    try:
+        data = request.get_json()
+        language = data.get('language', 'tamil')
+        valid_languages = ['tamil', 'hindi', 'telugu', 'malayalam', 'kannada', 'english']
+        if language not in valid_languages:
+            return jsonify({'error': 'Invalid language'}), 400
+
+        supabase.table('user_preferences').update({'language': language}).eq('user_id', user_id).execute()
+        logger.info(f"Language updated to {language} for user {user_id}")
+        return jsonify({'success': True}), 200
+
+    except Exception as e:
+        logger.error(f"Error updating language: {str(e)}")
+        return jsonify({'error': 'Failed to update language'}), 500
+    
+    
 @app.route('/', methods=['GET', 'POST'])
 def login():
     error = None
@@ -3168,6 +3259,28 @@ button:hover {
     background-color: #5b21b6;
 }
 
+.language-selector {
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.language-selector label {
+    color: var(--text-primary);
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+.language-selector select {
+    padding: 8px;
+    border-radius: 8px;
+    border: 1px solid var(--glass-border);
+    background: var(--glass-bg);
+    color: var(--text-primary);
+    font-size: 1rem;
+    cursor: pointer;
+}
 ```
 
 # File: static/css/themes/calming.css
@@ -4114,58 +4227,69 @@ const updateProgressBar = (percentage) => {
 # File: static/js/vibe.js
 ```js
 document.addEventListener('DOMContentLoaded', function () {
-    let currentLimit = 7; // Initial number of recommendations
-    let currentGenre = '';
-    let moodData = [];
+    let currentLimit = 7;
+    let currentGenre = 'tamil-folk';
+    let moodData = null;
 
-    // Function to map mood score to Tamil genre
-    function mapMoodToGenre(moodScore) {
-        if (moodScore >= 4) return 'tamil pop'; // Happy/Energetic
-        else if (moodScore >= 2) return 'tamil acoustic'; // Neutral/Calm
-        else return 'tamil ballad'; // Sad/Neutral
+    // Map mood to genre (handled server-side, kept for reference)
+    function mapMoodToGenre(mood) {
+        const genres = {
+            1: 'sad',
+            2: 'melody',
+            3: 'folk',
+            4: 'pop',
+            5: 'dance'
+        };
+        return genres[Math.round(mood)] || 'folk';
     }
 
-    // Function to update the recommendations section
+    // Update recommendations UI
     function updateRecommendations(songs) {
         const recommendationsElement = document.getElementById('tamil-music-recommendations');
-        if (recommendationsElement) {
-            if (songs.length === 0) {
-                recommendationsElement.innerHTML = 'No recommendations available.';
-                document.getElementById('load-more-btn').style.display = 'none';
-                return;
-            }
-            const songList = songs.map(song => `
-                <div class="song-card">
-                    <p><strong>Song:</strong> ${song.trackName}</p>
-                    <p><strong>Artist:</strong> ${song.artistName}</p>
-                    ${song.previewUrl ? `<button class="play-btn" data-preview-url="${song.previewUrl}">Play Preview</button>` : '<p>No preview available.</p>'}
-                </div>
-            `).join('');
-            recommendationsElement.innerHTML = songList;
-            console.log('Recommendations updated:', songs);
-            document.getElementById('load-more-btn').style.display = songs.length >= currentLimit ? 'block' : 'none';
-            setupMusicPlayer();
-        } else {
-            console.error('Recommendations element not found. ID: tamil-music-recommendations');
+        recommendationsElement.innerHTML = '';
+
+        if (!songs || songs.length === 0) {
+            recommendationsElement.innerHTML = 'No songs found. Try logging your mood!';
+            document.getElementById('load-more-btn').style.display = 'none';
+            return;
         }
-    }
 
-    // Function to set up music player functionality
-    function setupMusicPlayer() {
-        const playButtons = document.querySelectorAll('.play-btn');
-        const audioPlayer = document.getElementById('audio-player');
-        const audioSource = document.getElementById('audio-source');
-        const nowPlaying = document.getElementById('now-playing');
+        songs.forEach(song => {
+            const songCard = document.createElement('div');
+            songCard.className = 'song-card';
+            songCard.innerHTML = `
+                <p>Song: ${song.trackName}</p>
+                <p>Artist: ${song.artistName}</p>
+                <p>Language: ${song.language.charAt(0).toUpperCase() + song.language.slice(1)}</p>
+                <button class="play-btn neuroaid-btn" data-preview-url="${song.previewUrl}">
+                    <i class="ri-play-fill"></i> Play
+                </button>
+            `;
+            recommendationsElement.appendChild(songCard);
+        });
 
-        playButtons.forEach(button => {
+        document.getElementById('load-more-btn').style.display = 'block';
+
+        // Add play button functionality
+        document.querySelectorAll('.play-btn').forEach(button => {
             button.addEventListener('click', function () {
+                const audioPlayer = document.getElementById('audio-player');
+                const audioSource = document.getElementById('audio-source');
+                const nowPlaying = document.getElementById('now-playing');
                 const previewUrl = this.getAttribute('data-preview-url');
+
+                if (!previewUrl) {
+                    nowPlaying.textContent = 'No audio available';
+                    return;
+                }
+
                 audioSource.src = previewUrl;
                 audioPlayer.load();
                 audioPlayer.play().catch(error => {
                     console.error('Error playing audio:', error);
-                    nowPlaying.textContent = 'Error playing preview';
+                    nowPlaying.textContent = 'Error playing song';
                 });
+
                 const songCard = this.closest('.song-card');
                 const songName = songCard.querySelector('p:first-child').textContent.replace('Song: ', '');
                 const artistName = songCard.querySelector('p:nth-child(2)').textContent.replace('Artist: ', '');
@@ -4174,38 +4298,48 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         audioPlayer.addEventListener('ended', () => {
-            nowPlaying.textContent = 'Nothing playing';
+            document.getElementById('now-playing').textContent = 'Nothing playing';
         });
     }
 
-    // Function to fetch recommendations
-    function fetchRecommendations(genre, limit) {
-        fetch(`https://itunes.apple.com/search?term=${genre}&media=music&limit=${limit}`)
+    // Fetch recommendations from backend
+    function fetchRecommendations(limit) {
+        fetch(`/api/recommend_music?limit=${limit}`)
             .then(response => response.json())
-            .then(musicData => {
-                const songs = musicData.results.map(song => ({
-                    trackName: song.trackName,
-                    artistName: song.artistName,
-                    previewUrl: song.previewUrl
-                }));
-                updateRecommendations(songs);
+            .then(data => {
+                if (data.error) {
+                    console.error('Error:', data.error);
+                    document.getElementById('tamil-music-recommendations').innerHTML = 'Unable to fetch songs. Try later!';
+                    document.getElementById('load-more-btn').style.display = 'none';
+                    return;
+                }
+                updateRecommendations(data.recommendations);
             })
             .catch(error => {
-                console.error('Error fetching music data:', error);
-                const recommendationsElement = document.getElementById('tamil-music-recommendations');
-                recommendationsElement.innerHTML = 'Unable to fetch Tamil songs. Try listening to some upbeat Tamil pop by Anirudh Ravichander!';
+                console.error('Error fetching recommendations:', error);
+                document.getElementById('tamil-music-recommendations').innerHTML = 'Unable to fetch songs. Try later!';
                 document.getElementById('load-more-btn').style.display = 'none';
             });
     }
 
-    // Fetch mood data and recommend songs
+    // Populate mood day selector
     fetch('/api/mood_data')
         .then(response => response.json())
         .then(data => {
-            console.log('API Response:', data);
             moodData = data;
+            const moodDaySelect = document.getElementById('mood-day');
+            moodDaySelect.innerHTML = '<option value="">Select a day</option>';
 
-            // Find the latest non-zero mood score
+            data.labels.forEach((label, index) => {
+                if (data.data[index] > 0) {
+                    const option = document.createElement('option');
+                    option.value = index;
+                    option.textContent = `${label} (Mood: ${data.data[index].toFixed(1)})`;
+                    moodDaySelect.appendChild(option);
+                }
+            });
+
+            // Fetch initial recommendations
             let latestMood = 0;
             for (let i = data.data.length - 1; i >= 0; i--) {
                 if (data.data[i] > 0) {
@@ -4214,34 +4348,50 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }
 
-            // If no mood data, show a message
             if (latestMood === 0) {
                 updateRecommendations([]);
-                const recommendationsElement = document.getElementById('tamil-music-recommendations');
-                recommendationsElement.innerHTML = 'Log your mood to get Tamil music recommendations!';
+                document.getElementById('tamil-music-recommendations').innerHTML = 'Log your mood to get song recommendations!';
                 document.getElementById('load-more-btn').style.display = 'none';
                 return;
             }
 
-            // Map mood to genre and fetch recommendations
             currentGenre = mapMoodToGenre(latestMood);
-            console.log('Mood:', latestMood, 'Genre:', currentGenre);
-            fetchRecommendations(currentGenre, currentLimit);
+            fetchRecommendations(currentLimit);
         })
         .catch(error => {
             console.error('Error fetching mood data:', error);
-            const recommendationsElement = document.getElementById('tamil-music-recommendations');
-            recommendationsElement.innerHTML = 'Log your mood to get Tamil music recommendations!';
+            document.getElementById('tamil-music-recommendations').innerHTML = 'Log your mood to get song recommendations!';
             document.getElementById('load-more-btn').style.display = 'none';
         });
 
-    // Load More button functionality
-    document.getElementById('load-more-btn').addEventListener('click', function () {
-        currentLimit += 7; // Fetch 7 more songs
-        fetchRecommendations(currentGenre, currentLimit);
+    // Language filter
+    const languageSelect = document.getElementById('language-select');
+    if (languageSelect) {
+        languageSelect.addEventListener('change', async () => {
+            const language = languageSelect.value;
+            try {
+                const response = await fetch('/api/update_language', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ language })
+                });
+                if (response.ok) {
+                    fetchRecommendations(currentLimit);
+                } else {
+                    console.error('Error updating language');
+                }
+            } catch (error) {
+                console.error('Error updating language:', error);
+            }
+        });
+    }
+
+    // Load More button
+    document.getElementById('load-more-btn').addEventListener('click', () => {
+        currentLimit += 7;
+        fetchRecommendations(currentLimit);
     });
 });
-
 ```
 
 # File: templates/gratitude.html
@@ -5186,36 +5336,66 @@ document.addEventListener('DOMContentLoaded', function () {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NeuroAid - Vibe</title>
-    <!-- Remix Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css">
-    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Link to external CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/vibe.css') }}">
     <link id="theme-stylesheet" rel="stylesheet" href="{{ url_for('static', filename='css/themes/' + theme + '.css') }}">
+    <style>
+        .music-box {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+            text-align: center;
+        }
+        .music-box h3 {
+            margin: 0 0 10px;
+            font-size: 1.2rem;
+            color: var(--text-color);
+        }
+        .music-box p {
+            color: var(--text-color-secondary);
+        }
+        .selector-group {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+            align-items: center;
+        }
+        .selector-group label {
+            font-weight: 500;
+            color: var(--text-color);
+            margin-right: 10px;
+        }
+        .selector-group select {
+            padding: 8px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background: var(--input-bg);
+            color: var(--text-color);
+        }
+    </style>
 </head>
 <body>
     <div class="app-container">
-        <!-- Sidebar -->
         <div class="sidebar">
             <div class="logo">
                 <i class="ri-brain-line"></i>
                 <h1>Neuro<span>Aid</span></h1>
             </div>
-                <nav>
-                    <a href="{{ url_for('index') }}"><i class="ri-home-5-line"></i> Home</a>
-                    <a href="{{ url_for('journal') }}"><i class="ri-booklet-line"></i> Journal</a>
-                    <a href="{{ url_for('progress') }}"><i class="ri-bar-chart-2-line"></i> Progress</a>
-                    <a href="{{ url_for('vibe') }}" class="active"><i class="ri-music-2-line"></i> Vibe</a>
-                    <a href="{{ url_for('gratitude') }}"><i class="ri-heart-line"></i> Gratitude</a>
-                    <a href="{{ url_for('settings')}}" ><i class="ri-settings-3-line"></i> Settings</a>
-                    <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
-                    <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
-                </nav>
+            <nav>
+                <a href="{{ url_for('index') }}"><i class="ri-home-5-line"></i> Home</a>
+                <a href="{{ url_for('journal') }}"><i class="ri-booklet-line"></i> Journal</a>
+                <a href="{{ url_for('progress') }}"><i class="ri-bar-chart-2-line"></i> Progress</a>
+                <a href="{{ url_for('vibe') }}" class="active"><i class="ri-music-2-line"></i> Vibe</a>
+                <a href="{{ url_for('gratitude') }}"><i class="ri-heart-line"></i> Gratitude</a>
+                <a href="{{ url_for('settings') }}"><i class="ri-settings-3-line"></i> Settings</a>
+                <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
+                <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
+            </nav>
         </div>
 
-        <!-- Main Content -->
         <div class="wrapper">
             <main class="main-content">
                 <header>
@@ -5232,34 +5412,132 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 <section class="music-recommendations-section">
                     <h2><i class="ri-music-2-line"></i> Vibe - Tamil Music Recommendations</h2>
-                    <div class="mood-selector">
-                        <label for="mood-day">Select Mood from Day:</label>
-                        <select id="mood-day">
-                            <option value="">Select a day</option>
-                            <!-- Options will be populated by vibe.js -->
-                        </select>
+                    <div class="selector-group">
+                        <div>
+                            <label for="language-select">Select Language:</label>
+                            <select id="language-select">
+                                <option value="tamil" selected>Tamil</option>
+                                <option value="hindi">Hindi</option>
+                                <option value="telugu">Telugu</option>
+                                <option value="malayalam">Malayalam</option>
+                                <option value="kannada">Kannada</option>
+                                <option value="english">English</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="mood-day">Select Mood from Day:</label>
+                            <select id="mood-day">
+                                <option value="">Latest Mood</option>
+                            </select>
+                        </div>
                     </div>
-                    <div id="tamil-music-recommendations" class="recommendations-content">
-                        Fetching Tamil music recommendations…
-                    </div>
-                    <button id="load-more-btn" class="load-more-btn" style="display: none;">Load More</button>
-                    <div class="music-player">
+                    <div class="music-box" id="spotify-player">
                         <h3>Now Playing</h3>
-                        <p id="now-playing">Nothing playing</p>
-                        <audio id="audio-player" controls>
-                            <source id="audio-source" src="" type="audio/mpeg">
-                            Your browser does not support the audio element.
-                        </audio>
+                        <p>Loading music...</p>
                     </div>
                 </section>
             </main>
-
-            <footer>
-                <span>© 2025 NeuroAid. Your mental health companion.</span>
-            </footer>
         </div>
     </div>
-    <script src="{{ url_for('static', filename='js/vibe.js') }}"></script>
+
+    <script>
+        // Load Spotify embed for the latest mood or selected day
+        async function loadSpotifyEmbed(date = null) {
+            const playerContainer = document.getElementById('spotify-player');
+            try {
+                const url = date ? `/api/recommend_music?date=${date}` : '/api/recommend_music';
+                const response = await fetch(url);
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to fetch music');
+                }
+                const data = await response.json();
+                if (data.embedUrl) {
+                    playerContainer.innerHTML = `
+                        <h3>Now Playing (Mood: ${data.mood})</h3>
+                        <iframe style="border-radius:12px" 
+                                src="${data.embedUrl}" 
+                                width="100%" 
+                                height="380" 
+                                frameborder="0" 
+                                allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
+                                loading="lazy">
+                        </iframe>`;
+                } else {
+                    playerContainer.innerHTML = `<h3>Now Playing</h3><p>No songs found. Try logging your mood!</p>`;
+                }
+            } catch (error) {
+                console.error('Error loading Spotify playlist:', error);
+                playerContainer.innerHTML = `<h3>Now Playing</h3><p>${error.message}</p>`;
+            }
+        }
+
+        // Populate the mood selector with the last 7 days of mood data
+        async function populateMoodSelector() {
+            const moodDaySelect = document.getElementById('mood-day');
+            try {
+                // Fetch mood data for the last 7 days
+                const response = await fetch('/api/mood_data');
+                if (!response.ok) throw new Error('Failed to fetch mood data');
+                const data = await response.json();
+
+                if (data.labels && data.moods) {
+                    const today = new Date('2025-06-07'); // Hardcoded to match the screenshot date
+                    for (let i = 0; i < data.labels.length; i++) {
+                        const date = new Date(today);
+                        date.setDate(today.getDate() - (6 - i)); // Last 7 days
+                        const dateStr = date.toISOString().split('T')[0]; // YYYY-MM-DD
+                        const mood = data.moods[i] || 'N/A';
+                        const label = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                        const option = document.createElement('option');
+                        option.value = dateStr;
+                        option.textContent = `${label} (Mood: ${mood})`;
+                        moodDaySelect.appendChild(option);
+                    }
+                }
+            } catch (error) {
+                console.error('Error populating mood selector:', error);
+                moodDaySelect.innerHTML = '<option value="">Latest Mood</option>';
+            }
+        }
+
+        // Update language preference and reload playlist
+        document.addEventListener('DOMContentLoaded', () => {
+            const languageSelect = document.getElementById('language-select');
+            const moodDaySelect = document.getElementById('mood-day');
+
+            // Populate mood selector
+            populateMoodSelector();
+
+            // Load initial playlist
+            loadSpotifyEmbed();
+
+            // Handle language change
+            languageSelect.addEventListener('change', async () => {
+                const language = languageSelect.value;
+                try {
+                    const response = await fetch('/api/update_language', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ language })
+                    });
+                    if (response.ok) {
+                        loadSpotifyEmbed(moodDaySelect.value || null);
+                    } else {
+                        throw new Error('Error updating language');
+                    }
+                } catch (error) {
+                    console.error('Error updating language:', error);
+                }
+            });
+
+            // Handle mood day selection
+            moodDaySelect.addEventListener('change', () => {
+                const selectedDate = moodDaySelect.value;
+                loadSpotifyEmbed(selectedDate || null);
+            });
+        });
+    </script>
 </body>
 </html>
 ```

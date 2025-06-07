@@ -393,59 +393,63 @@ def recommend_music():
 
     supabase = get_supabase()
     user_id = session['user']
-    
-    try:
-        # Fetch latest mood
-        entries = supabase.table('journal_entries')\
-            .select('analysis->mood')\
-            .eq('user_id', user_id)\
-            .order('created_at', desc=True)\
-            .limit(1)\
-            .execute()
-        mood = entries.data[0]['mood'] if entries.data else 3  # Default to neutral
+    date = request.args.get('date')  # Get optional date parameter
 
-        # Fetch user language preference
+    try:
+        query = supabase.table('journal_entries')\
+            .select('analysis->mood')\
+            .eq('user_id', user_id)
+        
+        if date:
+            try:
+                # Parse the date (expected format: YYYY-MM-DD)
+                start_date = datetime.fromisoformat(date.replace('Z', '+00:00')).replace(tzinfo=ZoneInfo("UTC"))
+                end_date = start_date.replace(hour=23, minute=59, second=59, microsecond=999999)
+                query = query.gte('created_at', start_date.isoformat()).lte('created_at', end_date.isoformat())
+            except ValueError:
+                logger.error(f"Invalid date format: {date}")
+                return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD'}), 400
+        
+        query = query.order('created_at', desc=True).limit(1)
+        entries = query.execute()
+        
+        mood = entries.data[0]['mood'] if entries.data else 3  # Default to neutral if no entries
+        
         preferences = supabase.table('user_preferences')\
             .select('language')\
             .eq('user_id', user_id)\
             .execute()
         language = preferences.data[0]['language'] if preferences.data else 'tamil'
 
-        # Map mood to genre
-        MOOD_TO_GENRE = {
-            1: f'{language}-sad',    # Sad songs
-            2: f'{language}-melody', # Melodic songs
-            3: f'{language}-folk',   # Folk/classics
-            4: f'{language}-pop',    # Pop songs
-            5: f'{language}-dance'   # Upbeat/dance
+        MOOD_PLAYLISTS = {
+            'tamil': {
+                1: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWX3SoTqhs2rq',  # Tamil Sad
+                2: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWVV27DiNWxkR',  # Tamil Melodies
+                3: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWXz6ZFxA5jKQ',  # Tamil Folk
+                4: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX7VikJbFQ7xS',  # Tamil Pop
+                5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWUnAwRxD2pxH'   # Tamil Party/Dance
+            },
+            'english': {
+                1: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX9sIqqvKsjG8',  # Sad Songs
+                2: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX3rxVfibe1L0',  # Chill Hits
+                3: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX0BcQWzuB7ZO',  # Acoustic
+                4: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXcBWIGoYBM5M',  # Pop Hits
+                5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWUa8ZRTfalSI'   # Party Hits
+            }
         }
-        genre = MOOD_TO_GENRE.get(mood, f'{language}-folk')
 
-        # Fetch songs from JioSaavn
-        JIOSAAVN_API_URL = 'http://127.0.0.1:5000/result/?query=<insert-jiosaavn-link-or-query-here>&lyrics=true'  # Update with actual endpoint
-        params = {'query': genre, 'language': language, 'limit': 7}
-        response = requests.get(JIOSAAVN_API_URL, params=params)
-        response.raise_for_status()
-        tracks = response.json().get('data', [])
+        playlist_url = MOOD_PLAYLISTS.get(language, MOOD_PLAYLISTS['tamil']).get(mood)
+        
+        if not playlist_url:
+            logger.error(f"No playlist found for mood {mood} and language {language}")
+            return jsonify({'error': 'No playlist available for this mood and language'}), 404
 
-        recommendations = [
-            {
-                'trackName': track.get('name', 'Unknown'),
-                'artistName': ', '.join([artist['name'] for artist in track.get('artists', [])]),
-                'previewUrl': track.get('downloadUrl', [{}])[-1].get('url', ''),  # Full song URL
-                'language': language
-            } for track in tracks
-        ]
+        return jsonify({'embedUrl': playlist_url, 'mood': mood}), 200
 
-        logger.info(f"Fetched {len(recommendations)} songs for user {user_id}, genre: {genre}")
-        return jsonify({'recommendations': recommendations}), 200
-
-    except requests.RequestException as e:
-        logger.error(f"JioSaavn API error: {str(e)}")
-        return jsonify({'error': 'Failed to fetch music'}), 500
     except Exception as e:
-        logger.error(f"Error in recommend_music: {str(e)}")
+        logger.error(f"Error recommending Spotify playlist: {str(e)}")
         return jsonify({'error': 'Internal server error'}), 500
+
     
 @app.route('/api/update_language', methods=['POST'])
 def update_language():
