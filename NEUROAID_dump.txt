@@ -424,21 +424,50 @@ def recommend_music():
         language = preferences.data[0]['language'] if preferences.data else 'tamil'
 
         MOOD_PLAYLISTS = {
-            'tamil': {
-                1: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWX3SoTqhs2rq',  # Tamil Sad
-                2: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWVV27DiNWxkR',  # Tamil Melodies
-                3: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWXz6ZFxA5jKQ',  # Tamil Folk
-                4: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX7VikJbFQ7xS',  # Tamil Pop
-                5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWUnAwRxD2pxH'   # Tamil Party/Dance
-            },
-            'english': {
-                1: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX9sIqqvKsjG8',  # Sad Songs
-                2: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX3rxVfibe1L0',  # Chill Hits
-                3: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX0BcQWzuB7ZO',  # Acoustic
-                4: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXcBWIGoYBM5M',  # Pop Hits
-                5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWUa8ZRTfalSI'   # Party Hits
-            }
-        }
+    'tamil': {
+        1: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWX3SoTqhs2rq',
+        2: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWVV27DiNWxkR',
+        3: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWXz6ZFxA5jKQ',
+        4: 'https://open.spotify.com/embed/playlist/2Yra1CyIYaJ2YNz49yjh4i',
+        5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWUnAwRxD2pxH'
+    },
+    'english': {
+        1: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX9sIqqvKsjG8',
+        2: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX3rxVfibe1L0',
+        3: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX0BcQWzuB7ZO',
+        4: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXcBWIGoYBM5M',
+        5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWUa8ZRTfalSI'
+    },
+    'hindi': {
+        1: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWYkaDif7Ztbp',
+        2: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWUVpAXiEPK8P',
+        3: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX4dyzvuaRJ0n',
+        4: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX4SBhb3fqCJd',
+        5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX4ZrmoTDh6zJ'
+    },
+    'telugu': {
+        1: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWXLeA8Omikj7',
+        2: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXapHi7gXtXo2',
+        3: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXdbXrPNafg9d',
+        4: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXaKIA8E7WcJj',
+        5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWXi7h5CniH97'
+    },
+    'malayalam': {
+        1: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWWhB4HOWKFQc',
+        2: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX6KYgZMe25iS',
+        3: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXbqXxdO1a3nX',
+        4: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWZz8QXaU2aX5',
+        5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWVoDnLC9PqaD'
+    },
+    'kannada': {
+        1: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWXh3XHYZ7Sx1',
+        2: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX33aWnYYWvdf',
+        3: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWVXaB8Ox0zRJ',
+        4: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXe3a8d5bfgGk',
+        5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWUTJW8w3JNz2'
+    }
+}
+
 
         playlist_url = MOOD_PLAYLISTS.get(language, MOOD_PLAYLISTS['tamil']).get(mood)
         
@@ -453,7 +482,7 @@ def recommend_music():
         return jsonify({'error': 'Internal server error'}), 500
 
     
-@app.route('/api/update_language', methods=['POST'])
+@app.route('/api/update_language', methods=['GET', 'POST'])
 def update_language():
     if 'user' not in session:
         logger.warning("User not authenticated for /api/update_language")
@@ -461,7 +490,20 @@ def update_language():
 
     supabase = get_supabase()
     user_id = session['user']
-    
+
+    if request.method == 'GET':
+        try:
+            preferences = supabase.table('user_preferences')\
+                .select('language')\
+                .eq('user_id', user_id)\
+                .execute()
+            language = preferences.data[0]['language'] if preferences.data else 'tamil'
+            return jsonify({'language': language}), 200
+        except Exception as e:
+            logger.error(f"Error fetching user language: {str(e)}")
+            return jsonify({'error': 'Failed to fetch language'}), 500
+                                  
+    # POST request (already implemented)
     try:
         data = request.get_json()
         language = data.get('language', 'tamil')
@@ -472,10 +514,10 @@ def update_language():
         supabase.table('user_preferences').update({'language': language}).eq('user_id', user_id).execute()
         logger.info(f"Language updated to {language} for user {user_id}")
         return jsonify({'success': True}), 200
-
     except Exception as e:
         logger.error(f"Error updating language: {str(e)}")
         return jsonify({'error': 'Failed to update language'}), 500
+
     
     
 @app.route('/', methods=['GET', 'POST'])
@@ -4243,63 +4285,31 @@ document.addEventListener('DOMContentLoaded', function () {
         return genres[Math.round(mood)] || 'folk';
     }
 
-    // Update recommendations UI
-    function updateRecommendations(songs) {
+    // Update recommendations UI with Spotify embed
+    function updateRecommendations(data) {
         const recommendationsElement = document.getElementById('tamil-music-recommendations');
         recommendationsElement.innerHTML = '';
 
-        if (!songs || songs.length === 0) {
-            recommendationsElement.innerHTML = 'No songs found. Try logging your mood!';
+        if (!data || !data.embedUrl) {
+            recommendationsElement.innerHTML = 'No playlist found. Try logging your mood!';
             document.getElementById('load-more-btn').style.display = 'none';
             return;
         }
 
-        songs.forEach(song => {
-            const songCard = document.createElement('div');
-            songCard.className = 'song-card';
-            songCard.innerHTML = `
-                <p>Song: ${song.trackName}</p>
-                <p>Artist: ${song.artistName}</p>
-                <p>Language: ${song.language.charAt(0).toUpperCase() + song.language.slice(1)}</p>
-                <button class="play-btn neuroaid-btn" data-preview-url="${song.previewUrl}">
-                    <i class="ri-play-fill"></i> Play
-                </button>
+        // Update Spotify iframe src
+        const spotifyIframe = document.getElementById('spotify-player');
+        if (spotifyIframe) {
+            spotifyIframe.src = data.embedUrl;
+        } else {
+            recommendationsElement.innerHTML = `
+                <iframe id="spotify-player" style="border-radius:12px" src="${data.embedUrl}" 
+                    width="100%" height="380" frameBorder="0" allowfullscreen=""
+                    allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
+                    loading="lazy"></iframe>
             `;
-            recommendationsElement.appendChild(songCard);
-        });
+        }
 
-        document.getElementById('load-more-btn').style.display = 'block';
-
-        // Add play button functionality
-        document.querySelectorAll('.play-btn').forEach(button => {
-            button.addEventListener('click', function () {
-                const audioPlayer = document.getElementById('audio-player');
-                const audioSource = document.getElementById('audio-source');
-                const nowPlaying = document.getElementById('now-playing');
-                const previewUrl = this.getAttribute('data-preview-url');
-
-                if (!previewUrl) {
-                    nowPlaying.textContent = 'No audio available';
-                    return;
-                }
-
-                audioSource.src = previewUrl;
-                audioPlayer.load();
-                audioPlayer.play().catch(error => {
-                    console.error('Error playing audio:', error);
-                    nowPlaying.textContent = 'Error playing song';
-                });
-
-                const songCard = this.closest('.song-card');
-                const songName = songCard.querySelector('p:first-child').textContent.replace('Song: ', '');
-                const artistName = songCard.querySelector('p:nth-child(2)').textContent.replace('Artist: ', '');
-                nowPlaying.textContent = `${songName} by ${artistName}`;
-            });
-        });
-
-        audioPlayer.addEventListener('ended', () => {
-            document.getElementById('now-playing').textContent = 'Nothing playing';
-        });
+        document.getElementById('load-more-btn').style.display = 'none'; // Hide load more, as it's a single playlist
     }
 
     // Fetch recommendations from backend
@@ -4309,15 +4319,15 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(data => {
                 if (data.error) {
                     console.error('Error:', data.error);
-                    document.getElementById('tamil-music-recommendations').innerHTML = 'Unable to fetch songs. Try later!';
+                    document.getElementById('tamil-music-recommendations').innerHTML = 'Unable to fetch playlist. Try later!';
                     document.getElementById('load-more-btn').style.display = 'none';
                     return;
                 }
-                updateRecommendations(data.recommendations);
+                updateRecommendations(data);
             })
             .catch(error => {
                 console.error('Error fetching recommendations:', error);
-                document.getElementById('tamil-music-recommendations').innerHTML = 'Unable to fetch songs. Try later!';
+                document.getElementById('tamil-music-recommendations').innerHTML = 'Unable to fetch playlist. Try later!';
                 document.getElementById('load-more-btn').style.display = 'none';
             });
     }
@@ -4349,8 +4359,8 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             if (latestMood === 0) {
-                updateRecommendations([]);
-                document.getElementById('tamil-music-recommendations').innerHTML = 'Log your mood to get song recommendations!';
+                updateRecommendations({});
+                document.getElementById('tamil-music-recommendations').innerHTML = 'Log your mood to get playlist recommendations!';
                 document.getElementById('load-more-btn').style.display = 'none';
                 return;
             }
@@ -4360,7 +4370,7 @@ document.addEventListener('DOMContentLoaded', function () {
         })
         .catch(error => {
             console.error('Error fetching mood data:', error);
-            document.getElementById('tamil-music-recommendations').innerHTML = 'Log your mood to get song recommendations!';
+            document.getElementById('tamil-music-recommendations').innerHTML = 'Log your mood to get playlist recommendations!';
             document.getElementById('load-more-btn').style.display = 'none';
         });
 
@@ -4386,7 +4396,19 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // Load More button
+    // Mood day selector change
+    const moodDaySelect = document.getElementById('mood-day');
+    if (moodDaySelect) {
+        moodDaySelect.addEventListener('change', () => {
+            const selectedIndex = moodDaySelect.value;
+            if (selectedIndex !== '') {
+                currentGenre = mapMoodToGenre(moodData.data[selectedIndex]);
+                fetchRecommendations(currentLimit);
+            }
+        });
+    }
+
+    // Load More button (optional, if you want to support fetching more playlists)
     document.getElementById('load-more-btn').addEventListener('click', () => {
         currentLimit += 7;
         fetchRecommendations(currentLimit);
@@ -5453,19 +5475,23 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
                 const data = await response.json();
                 if (data.embedUrl) {
-                    playerContainer.innerHTML = `
-                        <h3>Now Playing (Mood: ${data.mood})</h3>
-                        <iframe style="border-radius:12px" 
-                                src="${data.embedUrl}" 
-                                width="100%" 
-                                height="380" 
-                                frameborder="0" 
-                                allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
-                                loading="lazy">
-                        </iframe>`;
-                } else {
-                    playerContainer.innerHTML = `<h3>Now Playing</h3><p>No songs found. Try logging your mood!</p>`;
-                }
+                     playerContainer.innerHTML = `<h3>Now Playing (Mood: ${data.mood})</h3><div id="iframe-wrapper"></div>`;
+                        const iframeWrapper = document.getElementById('iframe-wrapper');
+                        setTimeout(() => {
+                             iframeWrapper.innerHTML = `
+                                <iframe style="border-radius:12px" 
+                                   src="${data.embedUrl}" 
+                                   width="100%" 
+                                 height="380" 
+                                    frameborder="0" 
+                                    allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
+                                    loading="lazy">
+                                </iframe>`;
+                        }, 50);
+                    } else {
+                         playerContainer.innerHTML = `<h3>Now Playing</h3><p>No songs found. Try logging your mood!</p>`;
+                    }
+
             } catch (error) {
                 console.error('Error loading Spotify playlist:', error);
                 playerContainer.innerHTML = `<h3>Now Playing</h3><p>${error.message}</p>`;

@@ -1,166 +1,74 @@
-document.addEventListener('DOMContentLoaded', function () {
-    let currentLimit = 7;
-    let currentGenre = 'tamil-folk';
-    let moodData = null;
-
-    // Map mood to genre (handled server-side, kept for reference)
-    function mapMoodToGenre(mood) {
-        const genres = {
-            1: 'sad',
-            2: 'melody',
-            3: 'folk',
-            4: 'pop',
-            5: 'dance'
-        };
-        return genres[Math.round(mood)] || 'folk';
-    }
-
-    // Update recommendations UI
-    function updateRecommendations(songs) {
-        const recommendationsElement = document.getElementById('tamil-music-recommendations');
-        recommendationsElement.innerHTML = '';
-
-        if (!songs || songs.length === 0) {
-            recommendationsElement.innerHTML = 'No songs found. Try logging your mood!';
-            document.getElementById('load-more-btn').style.display = 'none';
-            return;
+async function loadSpotifyEmbed() {
+    const playerContainer = document.getElementById('spotify-player');
+    try {
+        const response = await fetch('/api/recommend_music');
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to fetch music');
         }
-
-        songs.forEach(song => {
-            const songCard = document.createElement('div');
-            songCard.className = 'song-card';
-            songCard.innerHTML = `
-                <p>Song: ${song.trackName}</p>
-                <p>Artist: ${song.artistName}</p>
-                <p>Language: ${song.language.charAt(0).toUpperCase() + song.language.slice(1)}</p>
-                <button class="play-btn neuroaid-btn" data-preview-url="${song.previewUrl}">
-                    <i class="ri-play-fill"></i> Play
-                </button>
-            `;
-            recommendationsElement.appendChild(songCard);
-        });
-
-        document.getElementById('load-more-btn').style.display = 'block';
-
-        // Add play button functionality
-        document.querySelectorAll('.play-btn').forEach(button => {
-            button.addEventListener('click', function () {
-                const audioPlayer = document.getElementById('audio-player');
-                const audioSource = document.getElementById('audio-source');
-                const nowPlaying = document.getElementById('now-playing');
-                const previewUrl = this.getAttribute('data-preview-url');
-
-                if (!previewUrl) {
-                    nowPlaying.textContent = 'No audio available';
-                    return;
-                }
-
-                audioSource.src = previewUrl;
-                audioPlayer.load();
-                audioPlayer.play().catch(error => {
-                    console.error('Error playing audio:', error);
-                    nowPlaying.textContent = 'Error playing song';
-                });
-
-                const songCard = this.closest('.song-card');
-                const songName = songCard.querySelector('p:first-child').textContent.replace('Song: ', '');
-                const artistName = songCard.querySelector('p:nth-child(2)').textContent.replace('Artist: ', '');
-                nowPlaying.textContent = `${songName} by ${artistName}`;
-            });
-        });
-
-        audioPlayer.addEventListener('ended', () => {
-            document.getElementById('now-playing').textContent = 'Nothing playing';
-        });
+        const data = await response.json();
+        if (data.embedUrl) {
+            playerContainer.innerHTML = `
+                <h3>Now Playing (Mood Score: ${data.mood})</h3>
+                <div id="iframe-wrapper">
+                    <iframe style="border-radius:12px" 
+                            src="${data.embedUrl}" 
+                            width="100%" 
+                            height="380" 
+                            frameborder="0" 
+                            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
+                            loading="lazy"></iframe>
+                </div>`;
+        } else {
+            playerContainer.innerHTML = `
+                <h3>Now Playing</h3>
+                <p>No songs found. Try journaling to log your mood!</p>`;
+        }
+    } catch (error) {
+        console.error('Error loading Spotify playlist:', error);
+        playerContainer.innerHTML = `
+            <h3>Now Playing</h3>
+            <p>Error loading playlist: ${error.message}</p>`;
     }
+}
 
-    // Fetch recommendations from backend
-    function fetchRecommendations(limit) {
-        fetch(`/api/recommend_music?limit=${limit}`)
-            .then(response => response.json())
-            .then(data => {
-                if (data.error) {
-                    console.error('Error:', data.error);
-                    document.getElementById('tamil-music-recommendations').innerHTML = 'Unable to fetch songs. Try later!';
-                    document.getElementById('load-more-btn').style.display = 'none';
-                    return;
-                }
-                updateRecommendations(data.recommendations);
-            })
-            .catch(error => {
-                console.error('Error fetching recommendations:', error);
-                document.getElementById('tamil-music-recommendations').innerHTML = 'Unable to fetch songs. Try later!';
-                document.getElementById('load-more-btn').style.display = 'none';
-            });
-    }
-
-    // Populate mood day selector
-    fetch('/api/mood_data')
-        .then(response => response.json())
-        .then(data => {
-            moodData = data;
-            const moodDaySelect = document.getElementById('mood-day');
-            moodDaySelect.innerHTML = '<option value="">Select a day</option>';
-
-            data.labels.forEach((label, index) => {
-                if (data.data[index] > 0) {
-                    const option = document.createElement('option');
-                    option.value = index;
-                    option.textContent = `${label} (Mood: ${data.data[index].toFixed(1)})`;
-                    moodDaySelect.appendChild(option);
-                }
-            });
-
-            // Fetch initial recommendations
-            let latestMood = 0;
-            for (let i = data.data.length - 1; i >= 0; i--) {
-                if (data.data[i] > 0) {
-                    latestMood = data.data[i];
-                    break;
-                }
-            }
-
-            if (latestMood === 0) {
-                updateRecommendations([]);
-                document.getElementById('tamil-music-recommendations').innerHTML = 'Log your mood to get song recommendations!';
-                document.getElementById('load-more-btn').style.display = 'none';
-                return;
-            }
-
-            currentGenre = mapMoodToGenre(latestMood);
-            fetchRecommendations(currentLimit);
-        })
-        .catch(error => {
-            console.error('Error fetching mood data:', error);
-            document.getElementById('tamil-music-recommendations').innerHTML = 'Log your mood to get song recommendations!';
-            document.getElementById('load-more-btn').style.display = 'none';
-        });
-
-    // Language filter
+async function setCurrentLanguage() {
     const languageSelect = document.getElementById('language-select');
-    if (languageSelect) {
-        languageSelect.addEventListener('change', async () => {
-            const language = languageSelect.value;
-            try {
-                const response = await fetch('/api/update_language', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ language })
-                });
-                if (response.ok) {
-                    fetchRecommendations(currentLimit);
-                } else {
-                    console.error('Error updating language');
-                }
-            } catch (error) {
-                console.error('Error updating language:', error);
-            }
-        });
+    try {
+        const response = await fetch('/api/update_language');
+        if (!response.ok) throw new Error('Failed to fetch current language');
+        const data = await response.json();
+        if (data.language) {
+            languageSelect.value = data.language;
+        }
+    } catch (error) {
+        console.error('Error fetching current language:', error);
+        languageSelect.value = 'tamil';
     }
+}
 
-    // Load More button
-    document.getElementById('load-more-btn').addEventListener('click', () => {
-        currentLimit += 7;
-        fetchRecommendations(currentLimit);
+document.addEventListener('DOMContentLoaded', () => {
+    const languageSelect = document.getElementById('language-select');
+
+    setCurrentLanguage().then(() => loadSpotifyEmbed());
+
+    languageSelect.addEventListener('change', async () => {
+        const language = languageSelect.value;
+        try {
+            const response = await fetch('/api/update_language', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ language })
+            });
+            if (!response.ok) {
+                throw new Error('Error updating language');
+            }
+            await loadSpotifyEmbed();
+        } catch (error) {
+            console.error('Error updating language:', error);
+            document.getElementById('spotify-player').innerHTML = `
+                <h3>Now Playing</h3>
+                <p>Error updating language: ${error.message}</p>`;
+        }
     });
 });

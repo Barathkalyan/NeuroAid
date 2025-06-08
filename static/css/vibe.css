@@ -1,137 +1,56 @@
-.music-recommendations-section {
-    margin-top: 30px;
-    padding: 30px;
-    background-color: #f5f3ff;
-    border-radius: 16px;
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
+.music-box {
+    background: var(--card-bg, #ffffff);
+    border-radius: 12px;
+    padding: 20px;
+    margin-top: 20px;
+    text-align: center;
+    box-shadow: var(--shadow, 0 2px 5px rgba(0, 0, 0, 0.1));
+}
+
+.music-box h3 {
+    margin: 0 0 10px;
+    font-size: 1.5rem;
+    color: var(--text-primary, #1f2937);
+}
+
+.music-box p {
+    color: var(--text-secondary, #6b7280);
+    font-size: 1rem;
+}
+
+.selector-group {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
+    align-items: center;
+    justify-content: center;
+}
+
+.selector-group label {
+    font-weight: 500;
+    color: var(--text-primary, #1f2937);
+    margin-right: 10px;
+}
+
+.selector-group select {
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--glass-border, #e5e7eb);
+    background: var(--secondary, #f9faff);
+    color: var(--text-primary, #1f2937);
+    font-size: 1rem;
+    cursor: pointer;
+}
+
+.selector-group select:focus {
+    outline: none;
+    border-color: var(--primary, #7c3aed);
 }
 
 .music-recommendations-section h2 {
-    font-size: 32px;
-    margin-bottom: 20px;
-    color: #2b2b2b;
-}
-
-/* Removed .mood-selector styles */
-
-.recommendations-content {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 25px;
-    margin-top: 30px; /* keep margin for spacing */
-}
-
-.song-card {
-    background-color: #fff;
-    border: 1px solid #e0dcf5;
-    border-radius: 12px;
-    padding: 20px;
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.04);
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    transition: transform 0.2s;
-}
-
-.song-card:hover {
-    transform: translateY(-4px);
-}
-
-.song-card p {
-    margin: 0;
-    color: #222;
-    font-size: 16px;
-    line-height: 1.4;
-}
-
-.play-btn {
-    align-self: flex-start;
-    background-color: #7c3aed;
-    color: white;
-    border: none;
-    padding: 10px 16px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: 500;
-    transition: background-color 0.3s;
-}
-
-.play-btn:hover {
-    background-color: #5b21b6;
-}
-
-.music-player {
-    margin-top: 40px;
-    padding: 25px;
-    background: linear-gradient(135deg, #e3d7fd, #c9b6ff);
-    border-radius: 16px;
-    box-shadow: 0 10px 30px rgba(124, 58, 237, 0.1);
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-    align-items: center;
-    text-align: center;
-}
-
-.music-player h3 {
-    margin: 0;
-    font-size: 20px;
-    color: #322f3d;
-}
-
-#now-playing {
-    font-size: 16px;
-    color: #4b445a;
-    font-weight: 500;
-}
-
-#audio-player {
-    width: 100%;
-    max-width: 500px;
-    margin-top: 10px;
-    border-radius: 8px;
-    outline: none;
-    background-color: #fff;
-}
-
-.load-more-btn {
-    margin: 30px auto 0;
-    display: block;
-    background-color: #7c3aed;
-    color: white;
-    border: none;
-    padding: 12px 24px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 16px;
-    font-weight: 600;
-    transition: background-color 0.3s;
-}
-
-.load-more-btn:hover {
-    background-color: #5b21b6;
-}
-
-.language-selector {
-    margin-bottom: 20px;
     display: flex;
     align-items: center;
-    gap: 10px;
-}
-
-.language-selector label {
-    color: var(--text-primary);
-    font-size: 1rem;
-    font-weight: 500;
-}
-
-.language-selector select {
-    padding: 8px;
-    border-radius: 8px;
-    border: 1px solid var(--glass-border);
-    background: var(--glass-bg);
-    color: var(--text-primary);
-    font-size: 1rem;
-    cursor: pointer;
+    gap: 8px;
+    font-size: 1.75rem;
+    color: var(--text-primary, #1f2937);
 }

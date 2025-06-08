@@ -422,21 +422,50 @@ def recommend_music():
         language = preferences.data[0]['language'] if preferences.data else 'tamil'
 
         MOOD_PLAYLISTS = {
-            'tamil': {
-                1: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWX3SoTqhs2rq',  # Tamil Sad
-                2: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWVV27DiNWxkR',  # Tamil Melodies
-                3: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWXz6ZFxA5jKQ',  # Tamil Folk
-                4: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX7VikJbFQ7xS',  # Tamil Pop
-                5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWUnAwRxD2pxH'   # Tamil Party/Dance
-            },
-            'english': {
-                1: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX9sIqqvKsjG8',  # Sad Songs
-                2: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX3rxVfibe1L0',  # Chill Hits
-                3: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX0BcQWzuB7ZO',  # Acoustic
-                4: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXcBWIGoYBM5M',  # Pop Hits
-                5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWUa8ZRTfalSI'   # Party Hits
-            }
-        }
+    'tamil': {
+        1: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWX3SoTqhs2rq',
+        2: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWVV27DiNWxkR',
+        3: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWXz6ZFxA5jKQ',
+        4: 'https://open.spotify.com/embed/playlist/2Yra1CyIYaJ2YNz49yjh4i',
+        5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWUnAwRxD2pxH'
+    },
+    'english': {
+        1: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX9sIqqvKsjG8',
+        2: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX3rxVfibe1L0',
+        3: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX0BcQWzuB7ZO',
+        4: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXcBWIGoYBM5M',
+        5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWUa8ZRTfalSI'
+    },
+    'hindi': {
+        1: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWYkaDif7Ztbp',
+        2: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWUVpAXiEPK8P',
+        3: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX4dyzvuaRJ0n',
+        4: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX4SBhb3fqCJd',
+        5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX4ZrmoTDh6zJ'
+    },
+    'telugu': {
+        1: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWXLeA8Omikj7',
+        2: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXapHi7gXtXo2',
+        3: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXdbXrPNafg9d',
+        4: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXaKIA8E7WcJj',
+        5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWXi7h5CniH97'
+    },
+    'malayalam': {
+        1: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWWhB4HOWKFQc',
+        2: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX6KYgZMe25iS',
+        3: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXbqXxdO1a3nX',
+        4: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWZz8QXaU2aX5',
+        5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWVoDnLC9PqaD'
+    },
+    'kannada': {
+        1: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWXh3XHYZ7Sx1',
+        2: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX33aWnYYWvdf',
+        3: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWVXaB8Ox0zRJ',
+        4: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXe3a8d5bfgGk',
+        5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWUTJW8w3JNz2'
+    }
+}
+
 
         playlist_url = MOOD_PLAYLISTS.get(language, MOOD_PLAYLISTS['tamil']).get(mood)
         
@@ -451,7 +480,7 @@ def recommend_music():
         return jsonify({'error': 'Internal server error'}), 500
 
     
-@app.route('/api/update_language', methods=['POST'])
+@app.route('/api/update_language', methods=['GET', 'POST'])
 def update_language():
     if 'user' not in session:
         logger.warning("User not authenticated for /api/update_language")
@@ -459,22 +488,59 @@ def update_language():
 
     supabase = get_supabase()
     user_id = session['user']
-    
+
+    def ensure_user_preferences():
+        try:
+            preferences = supabase.table('user_preferences').select('language').eq('user_id', user_id).execute()
+            if not preferences.data:
+                default_prefs = {
+                    'user_id': user_id,
+                    'language': 'tamil',
+                    'theme': 'light',
+                    'two_factor_enabled': False,
+                    'reminder_time': '09:00',
+                    'notification_preference': 'email'
+                }
+                logger.debug(f"Inserting default preferences for {user_id}: {default_prefs}")
+                response = supabase.table('user_preferences').insert(default_prefs).execute()
+                if not response.data:
+                    logger.error(f"Failed to insert default preferences for {user_id}")
+                    raise Exception("No data returned from preferences insert")
+                logger.info(f"Created default preferences for user {user_id}")
+                return 'tamil'
+            return preferences.data[0]['language']
+        except Exception as e:
+            logger.error(f"Error ensuring preferences for {user_id}: {str(e)}")
+            raise e
+
+    if request.method == 'GET':
+        try:
+            language = ensure_user_preferences()
+            logger.info(f"Fetched language for user {user_id}: {language}")
+            return jsonify({'language': language}), 200
+        except Exception as e:
+            logger.error(f"Error fetching user language: {str(e)}")
+            return jsonify({'error': 'Failed to fetch language'}), 500
+
     try:
         data = request.get_json()
         language = data.get('language', 'tamil')
         valid_languages = ['tamil', 'hindi', 'telugu', 'malayalam', 'kannada', 'english']
         if language not in valid_languages:
+            logger.warning(f"Invalid language attempted: {language}")
             return jsonify({'error': 'Invalid language'}), 400
 
-        supabase.table('user_preferences').update({'language': language}).eq('user_id', user_id).execute()
+        ensure_user_preferences()
+        logger.debug(f"Updating language to {language} for {user_id}")
+        response = supabase.table('user_preferences').update({'language': language}).eq('user_id', user_id).execute()
+        if not response.data:
+            logger.error(f"No data returned from language update for {user_id}")
+            return jsonify({'error': 'Failed to update language'}), 500
         logger.info(f"Language updated to {language} for user {user_id}")
-        return jsonify({'success': True}), 200
-
+        return jsonify({'success': True, 'language': language}), 200
     except Exception as e:
         logger.error(f"Error updating language: {str(e)}")
         return jsonify({'error': 'Failed to update language'}), 500
-    
     
 @app.route('/', methods=['GET', 'POST'])
 def login():
@@ -524,10 +590,12 @@ def signup():
 
         if not email or not password or not confirm_password:
             error = 'Email, password, and confirm password are required.'
+            logger.warning(f"Signup failed: Missing required fields")
             return render_template('signup.html', error=error), 400
 
         if password != confirm_password:
             error = 'Passwords do not match!'
+            logger.warning(f"Signup failed: Passwords do not match for {email}")
             return render_template('signup.html', error=error), 400
 
         supabase = get_supabase()
@@ -536,33 +604,41 @@ def signup():
             existing_user = supabase.table('users').select('id').eq('email', email).execute()
             if existing_user.data:
                 error = 'Email already exists.'
+                logger.warning(f"Signup failed: Email {email} already exists")
                 return render_template('signup.html', error=error), 400
 
             # Generate a UUID for the user
             user_id = str(uuid.uuid4())
             hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
             user_data = {'id': user_id, 'email': email, 'password': hashed_password}
-            supabase.table('users').insert(user_data).execute()
+            logger.debug(f"Inserting user: {user_data}")
+            user_response = supabase.table('users').insert(user_data).execute()
+            logger.info(f"User inserted: {user_id}")
 
-            # Insert default preferences for the new user
+            # Insert default preferences
             preferences_data = {
                 'user_id': user_id,
+                'language': 'tamil',
                 'two_factor_enabled': False,
                 'theme': 'light',
                 'reminder_time': '09:00',
                 'notification_preference': 'email'
             }
-            supabase.table('user_preferences').insert(preferences_data).execute()
+            logger.debug(f"Inserting preferences: {preferences_data}")
+            pref_response = supabase.table('user_preferences').insert(preferences_data).execute()
+            if not pref_response.data:
+                logger.error(f"No data returned from user_preferences insert for {user_id}")
+                supabase.table('users').delete().eq('id', user_id).execute()
+                raise Exception("Failed to create user preferences: No data returned")
 
             logger.info(f"User {email} signed up successfully with user_id: {user_id}")
             return redirect(url_for('login'))
         except Exception as e:
-            error = 'Unable to sign up right now. Please try again later.'
-            logger.error(f"Signup error: {str(e)}")
+            error = f'Unable to sign up: {str(e)}. Please try again later.'
+            logger.error(f"Signup error for {email}: {str(e)}")
             return render_template('signup.html', error=error), 400
 
     return render_template('signup.html', error=error)
-
 @app.route('/index')
 def index():
     if 'user' not in session:
