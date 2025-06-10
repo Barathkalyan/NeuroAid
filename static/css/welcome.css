@@ -1,0 +1,51 @@
+.welcome-container {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex-grow: 1;
+}
+
+.welcome-text {
+    font-size: 18px;
+    font-weight: 600;
+    color: #2d2d2d;
+    opacity: 1;
+    animation: fadeOut 5s ease-in-out forwards;
+}
+
+@keyframes fadeOut {
+    0% { opacity: 1; }
+    80% { opacity: 1; }
+    100% { opacity: 0; visibility: hidden; }
+}
+
+.quote-text {
+    font-size: 16px;
+    font-style: italic;
+    color: #666;
+    opacity: 0;
+    visibility: hidden;
+    animation: fadeIn 1s ease-in-out 5s forwards;
+}
+
+@keyframes fadeIn {
+    0% { opacity: 0; visibility: hidden; }
+    100% { opacity: 1; visibility: visible; }
+}
+
+/* Theme-specific styles */
+.theme-dark .welcome-text {
+    color: #ffffff;
+}
+
+.theme-dark .quote-text {
+    color: #cccccc;
+}
+
+.theme-calming .welcome-text {
+    color: #7c3aed;
+}
+
+.theme-calming .quote-text {
+    color: #5b2cb3;
+}

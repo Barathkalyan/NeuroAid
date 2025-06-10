@@ -1,88 +1,97 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NeuroAid - Gratitude Journal</title>
-    <!-- Remix Icons -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css">
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Link to external CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/gratitude.css') }}">
-    <link id="theme-stylesheet" rel="stylesheet" href="{{ url_for('static', filename='css/themes/' + theme + '.css') }}">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NeuroAid - Gratitude Journal</title>
+  <!-- Remix Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css">
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Link to external CSS -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/gratitude.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dropdown.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/welcome.css') }}">
+  <link id="theme-stylesheet" rel="stylesheet" href="{{ url_for('static', filename='css/themes/' + theme + '.css') }}">
 </head>
 <body>
-    <div class="app-container">
-        <!-- Sidebar -->
-        <div class="sidebar">
-            <div class="logo">
-                <i class="ri-brain-line"></i>
-                <h1>Neuro<span>Aid</span></h1>
-            </div>
-                <nav>
-                  <a href="{{ url_for('index') }}" ><i class="ri-home-5-line"></i> Home</a>
-                  <a href="{{ url_for('journal') }}" ><i class="ri-booklet-line"></i> Journal</a>
-                  <a href="{{ url_for('progress') }}"><i class="ri-bar-chart-2-line"></i> Progress</a>
-                  <a href="{{ url_for('vibe') }}"><i class="ri-music-2-line"></i> Vibe</a>
-                  <a href="{{ url_for('gratitude') }}" class="active"><i class="ri-heart-line"></i> Gratitude</a>
-                  <a href="{{ url_for('settings')}}"><i class="ri-settings-3-line"></i> Settings</a>
-                  <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
-                  <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
-                </nav>
-        </div>
-
-        <!-- Main Content -->
-        <div class="wrapper">
-            <main class="main-content">
-                <header>
-                    <div class="search-bar">
-                        <i class="ri-search-line"></i>
-                        <input type="text" placeholder="Search...">
-                    </div>
-                    <div class="profile">
-                        <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile">
-                        <span>{{ session.get('user_email', 'User').split('@')[0] }}</span>
-                        <i class="ri-arrow-down-s-line"></i>
-                    </div>
-                </header>
-
-                <section class="gratitude-section">
-                    <h2><i class="ri-heart-line"></i> Gratitude Journal</h2>
-                    <div class="gratitude-form">
-                        <h3>Record Three Good Things Today</h3>
-                        <form id="gratitude-form">
-                            <label for="thing1">1. What made you smile today?</label>
-                            <textarea id="thing1" name="thing1" rows="2" placeholder="E.g., A kind word from a friend..."></textarea>
-                            <label for="thing2">2. What are you thankful for today?</label>
-                            <textarea id="thing2" name="thing2" rows="2" placeholder="E.g., A sunny morning walk..."></textarea>
-                            <label for="thing3">3. What went well today?</label>
-                            <textarea id="thing3" name="thing3" rows="2" placeholder="E.g., Finished a task early..."></textarea>
-                            <button type="submit" class="neuroaid-btn"><i class="ri-save-line"></i> Save Entry</button>
-                            <p class="suggestions">Not sure what to write? How about a small win, like enjoying a warm cup of tea?</p>
-                        </form>
-                    </div>
-
-                    <div class="streak-counter">
-                        <i class="ri-calendar-line"></i>
-                        <p><strong>Gratitude Streak:</strong> <span id="gratitude-streak">0 Days</span></p>
-                    </div>
-
-                    <div class="timeline">
-                        <h3>Your Positivity Log</h3>
-                        <div id="gratitude-timeline">
-                            <!-- Timeline entries will be populated by gratitude.js -->
-                        </div>
-                    </div>
-                </section>
-            </main>
-
-            <footer>
-                <span>© 2025 NeuroAid. Your mental health companion.</span>
-            </footer>
-        </div>
+  <div class="app-container">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="logo">
+        <i class="ri-brain-line"></i>
+        <h1>Neuro<span>Aid</span></h1>
+      </div>
+      <nav>
+        <a href="{{ url_for('index') }}"><i class="ri-home-5-line"></i> Home</a>
+        <a href="{{ url_for('journal') }}"><i class="ri-booklet-line"></i> Journal</a>
+        <a href="{{ url_for('progress') }}"><i class="ri-bar-chart-2-line"></i> Progress</a>
+        <a href="{{ url_for('vibe') }}"><i class="ri-music-2-line"></i> Vibe</a>
+        <a href="{{ url_for('gratitude') }}" class="active"><i class="ri-heart-line"></i> Gratitude</a>
+        <a href="{{ url_for('settings')}}"><i class="ri-settings-3-line"></i> Settings</a>
+        <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
+        <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
+      </nav>
     </div>
-    <script src="{{ url_for('static', filename='js/gratitude.js') }}"></script>
+
+    <!-- Main Content -->
+    <div class="wrapper">
+      <main class="main-content">
+        <header>
+          <div class="welcome-container">
+            <div class="welcome-text">Welcome to NeuroAid, {{ session.get('user_email', 'User').split('@')[0] }}</div>
+            <div class="quote-text"></div>
+          </div>
+          <div class="profile-dropdown">
+            <div class="profile">
+              <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile" />
+              <span>{{ session.get('user_email', 'User').split('@')[0] }}</span>
+              <i class="ri-arrow-down-s-line"></i>
+            </div>
+            <div class="dropdown-content">
+              <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
+              <a href="{{ url_for('settings') }}"><i class="ri-settings-3-line"></i> Settings</a>
+              <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
+            </div>
+          </div>
+        </header>
+
+        <section class="gratitude-section">
+          <h2><i class="ri-heart-line"></i> Gratitude Journal</h2>
+          <div class="gratitude-form">
+            <h3>Record Three Good Things Today</h3>
+            <form id="gratitude-form">
+              <label for="thing1">1. What made you smile today?</label>
+              <textarea id="thing1" name="thing1" rows="2" placeholder="E.g., A kind word from a friend..."></textarea>
+              <label for="thing2">2. What are you thankful for today?</label>
+              <textarea id="thing2" name="thing2" rows="2" placeholder="E.g., A sunny morning walk..."></textarea>
+              <label for="thing3">3. What went well today?</label>
+              <textarea id="thing3" name="thing3" rows="2" placeholder="E.g., Finished a task early..."></textarea>
+              <button type="submit" class="neuroaid-btn"><i class="ri-save-line"></i> Save Entry</button>
+              <p class="suggestions">Not sure what to write? How about a small win, like enjoying a warm cup of tea?</p>
+            </form>
+          </div>
+
+          <div class="streak-counter">
+            <i class="ri-calendar-line"></i>
+            <p><strong>Gratitude Streak:</strong> <span id="gratitude-streak">0 Days</span></p>
+          </div>
+
+          <div class="timeline">
+            <h3>Your Positivity Log</h3>
+            <div id="gratitude-timeline"></div>
+          </div>
+        </section>
+      </main>
+
+      <footer>
+        <span>© 2025 NeuroAid. Your mental health companion.</span>
+      </footer>
+    </div>
+  </div>
+  <script src="{{ url_for('static', filename='js/gratitude.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/dropdown.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/welcome.js') }}"></script>
 </body>
 </html>

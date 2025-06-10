@@ -11,7 +11,8 @@
   <!-- Link to external CSS -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/settings.css') }}" />
-  <!-- Dynamic Theme -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dropdown.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/welcome.css') }}" />
   <link id="theme-stylesheet" rel="stylesheet" href="{{ url_for('static', filename='css/themes/' + theme + '.css') }}">
 </head>
 <body>
@@ -35,95 +36,64 @@
   <div class="wrapper">
     <main class="main-content">
       <header>
-        <div class="search-bar">
-          <i class="ri-search-line"></i>
-          <input type="text" placeholder="Search..." />
+        <div class="welcome-container">
+          <div class="welcome-text">Welcome to NeuroAid, {{ session.get('user_email', 'User').split('@')[0] }}</div>
+          <div class="quote-text"></div>
         </div>
-        <div class="profile">
-          <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile" />
-          <span>{{ session.get('user_email', 'User').split('@')[0] }}</span>
-          <i class="ri-arrow-down-s-line"></i>
+        <div class="profile-dropdown">
+          <div class="profile">
+            <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile" />
+            <span>{{ session.get('user_email', 'User').split('@')[0] }}</span>
+            <i class="ri-arrow-down-s-line"></i>
+          </div>
+          <div class="dropdown-content">
+            <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
+            <a href="{{ url_for('settings') }}"><i class="ri-settings-3-line"></i> Settings</a>
+            <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
+          </div>
         </div>
       </header>
 
       <section class="settings-section">
         <h2><i class="ri-settings-3-line"></i> Settings</h2>
-
-        <!-- Success/Error Messages -->
-        {% if error %}
-          <div class="error-message" style="background-color: #fee2e2; color: #dc2626; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 1rem;">
-            {{ error }}
+        <!-- Theme Selection -->
+        <div class="settings-card" style="background-color: #ffffff; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);">
+          <h3 style="color: #2d2d2d; margin-bottom: 15px;">Appearance</h3>
+          <div class="form-field">
+            <label for="theme-select" style="color: #666; font-size: 14px;">Theme</label>
+            <select id="theme-select" aria-label="Theme" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+              <option value="default" {{ 'selected' if theme == 'default' }}>Default</option>
+              <option value="dark" {{ 'selected' if theme == 'dark' }}>Dark</option>
+              <option value="calming" {{ 'selected' if theme == 'calming' }}>Calming</option>
+            </select>
           </div>
-        {% endif %}
-        {% if success %}
-          <div class="success-message" style="background-color: #d1fae5; color: #10b981; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 1rem;">
-            {{ success }}
+          <button class="neuroaid-btn" id="save-theme" style="margin-top: 15px;"><i class="ri-save-line"></i> Save Theme</button>
+        </div>
+        <!-- Notifications -->
+        <div class="settings-card" style="background-color: #ffffff; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);">
+          <h3 style="color: #2d2d2d; margin-bottom: 15px;">Notifications</h3>
+          <div class="form-field" style="margin-bottom: 10px;">
+            <label style="display: flex; align-items: center; color: #666; font-size: 14px;">
+              <input type="checkbox" id="email-notifications" aria-label="Email Notifications" style="margin-right: 10px;" />
+              Receive email notifications
+            </label>
           </div>
-        {% endif %}
-
-<!-- Settings Form -->
-        <div class="settings-card">
-          <form id="settings-form" method="POST" action="{{ url_for('settings') }}">
-            <!-- Account Settings -->
-            <div class="settings-group">
-              <h3><i class="ri-user-settings-line"></i> Account Settings</h3>
-              <div class="form-group">
-                <label for="email">Email</label>
-                <input type="email" id="email" name="email" value="{{ email }}" placeholder="Enter new email (optional)">
-              </div>
-              <div class="form-group">
-                <label for="password">New Password</label>
-                <input type="password" id="password" name="password" placeholder="Enter new password (optional)">
-              </div>
-              <div class="form-group">
-                <label for="confirm_password">Confirm New Password</label>
-                <input type="password" id="confirm_password" name="confirm_password" placeholder="Confirm new password">
-              </div>
-            </div>
-
-            <!-- Security Settings -->
-            <div class="settings-group">
-              <h3><i class="ri-shield-check-line"></i> Security Settings</h3>
-              <div class="form-group toggle-group">
-                <label for="two_factor_enabled">Enable Two-Factor Authentication</label>
-                <div class="toggle-wrapper">
-                  <input type="checkbox" id="two_factor_enabled" name="two_factor_enabled" {% if two_factor_enabled %}checked{% endif %}>
-                  <span class="toggle-slider"></span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Appearance Settings -->
-            <div class="settings-group">
-              <h3><i class="ri-paint-brush-line"></i> Appearance Settings</h3>
-              <div class="form-group">
-                <label for="theme">App Theme</label>
-                <select id="theme" name="theme">
-                  <option value="light" {% if theme == 'light' %}selected{% endif %}>Light</option>
-                  <option value="dark" {% if theme == 'dark' %}selected{% endif %}>Dark</option>
-                  <option value="calming" {% if theme == 'calming' %}selected{% endif %}>Calming</option>
-                </select>
-              </div>
-            </div>
-
-            <!-- Notification Settings -->
-            <div class="settings-group">
-              <h3><i class="ri-notification-3-line"></i> Notification Settings</h3>
-              <div class="form-group">
-                <label for="reminder_time">Daily Reminder Time</label>
-                <input type="time" id="reminder_time" name="reminder_time" value="{{ reminder_time }}">
-              </div>
-              <div class="form-group">
-                <label for="notification_preference">Notification Preference</label>
-                <select id="notification_preference" name="notification_preference">
-                  <option value="email" {% if notification_preference == 'email' %}selected{% endif %}>Email</option>
-                  <option value="push" {% if notification_preference == 'push' %}selected{% endif %}>Push</option>
-                </select>
-              </div>
-            </div>
-
-            <button type="submit" class="neuroaid-btn"><i class="ri-save-line"></i> Save Changes</button>
-          </form>
+          <div class="form-field">
+            <label style="display: flex; align-items: center; color: #666; font-size: 14px;">
+              <input type="checkbox" id="push-notifications" aria-label="Push Notifications" style="margin-right: 10px;" />
+              Receive push notifications
+            </label>
+          </div>
+          <button class="neuroaid-btn" id="save-notifications" style="margin-top: 15px;"><i class="ri-save-line"></i> Save Notification Settings</button>
+        </div>
+        <!-- Account Management -->
+        <div class="settings-card" style="background-color: #ffffff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);">
+          <h3 style="color: #2d2d2d; margin-bottom: 15px;">Account</h3>
+          <div class="action-group" style="display: flex; flex-direction: column; gap: 10px;">
+            <button class="neuroaid-btn" id="change-password"><i class="ri-lock-line"></i> Change Password</button>
+            <button class="neuroaid-btn" id="export-data"><i class="ri-download-line"></i> Export Data</button>
+            <button class="neuroaid-btn danger" id="delete-account"><i class="ri-delete-bin-line"></i> Delete Account</button>
+          </div>
         </div>
       </section>
     </main>
@@ -132,7 +102,8 @@
       <span>© 2025 NeuroAid. Your mental health companion.</span>
     </footer>
   </div>
-
-  <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/dropdown.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/welcome.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/settings.js') }}" defer></script>
 </body>
 </html>

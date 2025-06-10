@@ -11,6 +11,8 @@
   <!-- Link to external CSS -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/progress.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dropdown.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/welcome.css') }}" />
   <link id="theme-stylesheet" rel="stylesheet" href="{{ url_for('static', filename='css/themes/' + theme + '.css') }}">
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -25,30 +27,37 @@
         <i class="ri-brain-line"></i>
         <h1>Neuro<span>Aid</span></h1>
       </div>
-        <nav>
-          <a href="{{ url_for('index') }}" ><i class="ri-home-5-line"></i> Home</a>
-          <a href="{{ url_for('journal') }}" ><i class="ri-booklet-line"></i> Journal</a>
-          <a href="{{ url_for('progress') }}" class="active"><i class="ri-bar-chart-2-line"></i> Progress</a>
-          <a href="{{ url_for('vibe') }}"><i class="ri-music-2-line"></i> Vibe</a>
-          <a href="{{ url_for('gratitude') }}"><i class="ri-heart-line"></i> Gratitude</a>
-          <a href="{{ url_for('settings')}}"><i class="ri-settings-3-line"></i> Settings</a>
-          <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
-          <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
-        </nav>
+      <nav>
+        <a href="{{ url_for('index') }}"><i class="ri-home-5-line"></i> Home</a>
+        <a href="{{ url_for('journal') }}"><i class="ri-booklet-line"></i> Journal</a>
+        <a href="{{ url_for('progress') }}" class="active"><i class="ri-bar-chart-2-line"></i> Progress</a>
+        <a href="{{ url_for('vibe') }}"><i class="ri-music-2-line"></i> Vibe</a>
+        <a href="{{ url_for('gratitude') }}"><i class="ri-heart-line"></i> Gratitude</a>
+        <a href="{{ url_for('settings')}}"><i class="ri-settings-3-line"></i> Settings</a>
+        <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
+        <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
+      </nav>
     </div>
 
     <!-- Main Content -->
     <div class="wrapper">
       <main class="main-content">
         <header>
-          <div class="search-bar">
-            <i class="ri-search-line"></i>
-            <input type="text" placeholder="Search progress..." />
+          <div class="welcome-container">
+            <div class="welcome-text">Welcome to NeuroAid, {{ session.get('user_email', 'User').split('@')[0] }}</div>
+            <div class="quote-text"></div>
           </div>
-          <div class="profile">
-            <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile" id="header-profile-pic" />
-            <span>{{ session.get('user_email', 'User').split('@')[0] }}</span>
-            <i class="ri-arrow-down-s-line"></i>
+          <div class="profile-dropdown">
+            <div class="profile">
+              <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile" id="header-profile-pic" />
+              <span>{{ session.get('user_email', 'User').split('@')[0] }}</span>
+              <i class="ri-arrow-down-s-line"></i>
+            </div>
+            <div class="dropdown-content">
+              <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
+              <a href="{{ url_for('settings') }}"><i class="ri-settings-3-line"></i> Settings</a>
+              <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
+            </div>
           </div>
         </header>
 
@@ -92,13 +101,6 @@
             <canvas id="confidenceChart"></canvas>
           </div>
         </section>
-
-        <section class="insights-section">
-          <h2><i class="ri-lightbulb-line"></i> AI Insights</h2>
-          <div class="insights-content">
-            You're becoming more positive over time. Keep journaling daily to maintain your streak!
-          </div>
-        </section>
       </main>
 
       <footer>
@@ -106,5 +108,7 @@
       </footer>
     </div>
   </div>
+  <script src="{{ url_for('static', filename='js/dropdown.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/welcome.js') }}"></script>
 </body>
 </html>
