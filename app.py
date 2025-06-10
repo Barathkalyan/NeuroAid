@@ -437,26 +437,19 @@ def recommend_music():
         5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWY4xHQp97fN6'   # Party/High Energy
     },
     'telugu': {
-        1: 'https://open.spotify.com/embed/playlist/67IVQUDrbuMhvxxK9lrIa9',  # Sad Telugu melodies :contentReference[oaicite:1]{index=1}
-        2: 'https://open.spotify.com/embed/playlist/76mFoskdHnS6nKOnRADkjR',  # Feel‑good Telugu :contentReference[oaicite:2]{index=2}
-        3: 'https://open.spotify.com/embed/playlist/3P5zX9Fe79o22kCOPNaWUB',  # Classic SPB Telugu :contentReference[oaicite:3]{index=3}
-        4: 'https://open.spotify.com/embed/playlist/1CKQ49PC0AzUrssR4MtwmL',  # Curated Rahman Telugu :contentReference[oaicite:4]{index=4}
-        5: 'https://open.spotify.com/embed/playlist/0jHJ6pmtdu3dI4gtF5BCdb'   # DSP Telugu hits :contentReference[oaicite:5]{index=5}
+        1: 'https://open.spotify.com/embed/playlist/67IVQUDrbuMhvxxK9lrIa9',  # Sad Telugu melodies 
+        2: 'https://open.spotify.com/embed/playlist/76mFoskdHnS6nKOnRADkjR',  # Feel‑good Telugu 
+        3: 'https://open.spotify.com/embed/playlist/3P5zX9Fe79o22kCOPNaWUB',  # Classic SPB Telugu 
+        4: 'https://open.spotify.com/embed/playlist/1CKQ49PC0AzUrssR4MtwmL',  # Curated Rahman Telugu
+        5: 'https://open.spotify.com/embed/playlist/0jHJ6pmtdu3dI4gtF5BCdb'   # DSP Telugu hits
     },
     'malayalam': {
-        1: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWWhB4HOWKFQc',
-        2: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX6KYgZMe25iS',
-        3: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXbqXxdO1a3nX',
-        4: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWZz8QXaU2aX5',
-        5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWVoDnLC9PqaD'
+        1: 'https://open.spotify.com/embed/playlist/4DBKi4I9pyydqhSOMD4qrt',  # Sad Tamil/Malayalam mix 
+        2: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXbqXxdO1a3nX',  # Chill Malayalam vibes
+        3: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWZz8QXaU2aX5',  # Feel‑good Malayalam
+        4: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWVoDnLC9PqaD',  # Upbeat Malayalam
+        5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWWhB4HOWKFQc'   # Energetic hits Malayalam
     },
-    'kannada': {
-        1: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWXh3XHYZ7Sx1',
-        2: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX33aWnYYWvdf',
-        3: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWVXaB8Ox0zRJ',
-        4: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXe3a8d5bfgGk',
-        5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWUTJW8w3JNz2'
-    }
 }
 
 
