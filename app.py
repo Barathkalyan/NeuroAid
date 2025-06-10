@@ -644,12 +644,21 @@ def login():
         if not email or not password:
             error = 'Email and password are required.'
             return render_template('login.html', error=error), 400
-        supabase = get_supabase()
+        
+        # Normalize email to lowercase for the query
+        email = email.strip().lower()
+        logger.info(f"Attempting login for email: {email}")
+        
+        # Use service role to bypass RLS for login
+        supabase = get_supabase(use_service_role=True)
         try:
             user_response = supabase.table('users').select('id, email, password').eq('email', email).execute()
+            logger.info(f"Supabase query response for email {email}: {user_response.data}")
+            
             if not user_response.data:
                 error = 'User not found.'
                 return render_template('login.html', error=error), 401
+            
             user = user_response.data[0]
             stored_password = user['password'].encode('utf-8')
             if bcrypt.checkpw(password.encode('utf-8'), stored_password):
@@ -699,6 +708,10 @@ def signup():
         if password != confirm_password:
             error = 'Passwords do not match!'
             return render_template('signup.html', error=error), 400
+
+        # Normalize email to lowercase during signup
+        email = email.strip().lower()
+        logger.info(f"Attempting signup for email: {email}")
 
         # Use service role for signup to bypass RLS
         supabase = get_supabase(use_service_role=True)
@@ -965,6 +978,8 @@ def settings():
 
                 user_update = {}
                 if new_email:
+                    # Normalize new email to lowercase
+                    new_email = new_email.strip().lower()
                     existing_user = supabase.table('users').select('id').eq('email', new_email).neq('id', user_id).execute()
                     if existing_user.data:
                         error = "Email already in use by another account."
