@@ -4,17 +4,13 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>NeuroAid - Profile</title>
-  <!-- Remix Icons -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css" />
-  <!-- Google Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <!-- Link to external CSS -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/profile.css') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dropdown.css') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/welcome.css') }}" />
   <link id="theme-stylesheet" rel="stylesheet" href="{{ url_for('static', filename='css/themes/' + theme + '.css') }}">
-  <!-- Link to JavaScript -->
   <script src="{{ url_for('static', filename='js/utils.js') }}" defer></script>
   <script src="{{ url_for('static', filename='js/profile.js') }}" defer></script>
 </head>
@@ -71,7 +67,6 @@
           </div>
         </div>
 
-        <!-- Profile Overview -->
         <div class="card profile-overview">
           <div class="card-header">
             <h3>Profile Overview</h3>
@@ -109,7 +104,6 @@
           </div>
         </div>
 
-        <!-- Personal Details -->
         <div class="card personal-details">
           <div class="card-header">
             <h3>Personal Details</h3>
@@ -157,7 +151,6 @@
           </div>
         </div>
 
-        <!-- Mental Health Goals -->
         <div class="card mental-health-goals">
           <div class="card-header">
             <h3>Your Mental Health Goals</h3>
@@ -195,12 +188,12 @@
                   <label for="journaling">Journaling</label>
                 </div>
                 <div class="checkbox-option">
-                  <input type="checkbox" id="mood-tracking" name="activities" value="mood-tracking" aria-label="Mood Tracking" />
-                  <label for="mood-tracking">Mood Tracking</label>
+                  <input type="checkbox" id="mood-speech" name="mood-speech" value="mood-speech" aria-label="Mood Speech" />
+                  <label for="mood-speech">Mood Speech</label>
                 </div>
                 <div class="checkbox-option">
-                  <input type="checkbox" id="mindfulness" name="activities" value="mindfulness" aria-label="Mindfulness Exercises" />
-                  <label for="mindfulness">Mindfulness Exercises</label>
+                  <input type="checkbox" id="mindfulness" aria-label="Mindfulness Exercises">
+                  <label>Mindfulness Exercises</label>
                 </div>
               </div>
             </div>
@@ -210,7 +203,6 @@
           </div>
         </div>
 
-        <!-- Privacy & Security -->
         <div class="card privacy-security">
           <div class="card-header">
             <h3>Privacy & Security</h3>
@@ -222,7 +214,6 @@
           </div>
         </div>
 
-        <!-- Call-to-Action -->
         <div class="cta-message">
           <p>Complete your profile to unlock personalized features! Add your mental health goals to continue.</p>
         </div>
@@ -230,7 +221,7 @@
     </main>
 
     <footer>
-      <span>© 2025 NeuroAid. Your mental health companion.</span>
+      <span>© 2025 NeuroAid.</span>
     </footer>
   </div>
   <script src="{{ url_for('static', filename='js/dropdown.js') }}"></script>
