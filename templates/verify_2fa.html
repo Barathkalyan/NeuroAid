@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NeuroAid - Verify 2FA</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/signup.css') }}" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="login-container">
+    <div class="branding"></div>
+    <div class="login-box">
+      <h1>Neuro<span>Aid</span></h1>
+      <h2>Verify Two-Factor Authentication</h2>
+      {% if error %}
+        <p style="color: red; text-align: center;">{{ error }}</p>
+      {% endif %}
+      <form method="POST" action="{{ url_for('verify_2fa') }}">
+        <div class="input-group">
+          <input type="text" name="code" id="code" required placeholder=" " />
+          <label for="code">Enter 2FA Code</label>
+        </div>
+        <button type="submit">Verify</button>
+      </form>
+    </div>
+  </div>
+</body>
+</html>
