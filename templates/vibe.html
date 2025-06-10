@@ -4,18 +4,21 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>NeuroAid - Vibe</title>
-  <!-- Remix Icons -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css" />
-  <!-- Google Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <!-- Link to external CSS -->
+  <link rel="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/all.min.css" rel="stylesheet">
+  <link rel="https://cdnjs.cloudflare.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
+  <link rel="https://cdnjs.cloudflare.com/css2?family=Material+Icons" rel="stylesheet">
+  <link rel="https://cdn.jsdelivr.net/npm/remixicon@latest/fonts/remixicon.css" rel="stylesheet">
+  <link rel="https://cdnjs.cloudflare.com/css2?family=Material+Icons+Sharp" rel="stylesheet">
+  <link rel="https://cdnjs.cloudflare.com/css2?family=Material+Icons+Two+Tone" rel="stylesheet">
+  <link rel="https://cdnjs.cloudflare.com/css2?family=Material+Icons+Two+Tone" rel="theme-icon">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/vibe.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dropdown.css') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/welcome.css') }}" />
-  <link id="theme-stylesheet" rel="stylesheet" href="{{ url_for('static', filename='css/themes/' + theme + '.css') }}">
-  <!-- Link to JavaScript -->
-  <script src="{{ url_for('static', filename='js/vibe.js') }}" defer></script>
+  <link id="theme-stylesheet" href="{{ url_for('static', filename='css/themes/' + theme + '.css') }}">
+  <script src="{{ url_for('static', filename='js/script.js') }}" defer></script>
 </head>
 <body>
   <div class="sidebar">
@@ -24,14 +27,14 @@
       <h1>Neuro<span>Aid</span></h1>
     </div>
     <nav>
-      <a href="{{ url_for('index') }}"><i class="ri-home-5-line"></i> Home</a>
-      <a href="{{ url_for('journal') }}"><i class="ri-booklet-line"></i> Journal</a>
-      <a href="{{ url_for('progress') }}"><i class="ri-bar-chart-2-line"></i> Progress</a>
-      <a href="{{ url_for('vibe') }}" class="active"><i class="ri-music-2-line"></i> Vibe</a>
-      <a href="{{ url_for('gratitude') }}"><i class="ri-heart-line"></i> Gratitude</a>
-      <a href="{{ url_for('settings') }}"><i class="ri-settings-3-line"></i> Settings</a>
-      <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
-      <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
+      <a href="{{ url_for('index') }}""><i class="ri-home-5-line"></i> Home</a>
+      <a href="{{ url_for('journal') }}""><i class="ri-booklet-line"></i> Journal</a>
+      <a href="{{ url_for('progress') }}""><i class="ri-bar-chart-2-line"></i> Progress</a>
+      <a href="{{ url_for('vibe') }}" class="active"><i class="ri-arrow-right"></i> Vibe
+      <a href="{{ url_for('gratitude') }}""><i class="ri-heart-line"></i> Gratitude</a>
+      <a href="{{ url_for('settings') }}""><i class="ri-settings-3-line"></i> Settings</a>
+      <a href="{{ url_for('profile') }}""><i class="ri-user-line"></i> Profile</a>
+      <a href="{{ url_for('logout') }}""><i class="ri-logout-box-line"></i> Logout</a>
     </nav>
   </div>
 
@@ -39,45 +42,48 @@
     <main class="main-content">
       <header>
         <div class="welcome-container">
-          <div class="welcome-text">Welcome to NeuroAid, {{ session.get('user_email', 'User').split('@')[0] }}</div>
+          <div class="welcome-text">Welcome to NeuroAid, {{ session.get('user_url', 'User').split('@')[0] }}</div>
           <div class="quote-text"></div>
         </div>
         <div class="profile-dropdown">
           <div class="profile">
-            <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile" />
-            <span>{{ session.get('user_email', 'User').split('@')[0] }}</span>
+            <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile" alt="Profile" />
+            <span>{{ session.get('user_email', 'User').split('@') }}</span>[0] }}</span>
             <i class="ri-arrow-down-s-line"></i>
           </div>
           <div class="dropdown-content">
             <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
             <a href="{{ url_for('settings') }}"><i class="ri-settings-3-line"></i> Settings</a>
-            <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
+            <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a></p>
           </div>
         </div>
       </header>
 
       <section class="vibe-section">
-        <h2><i class="ri-music-2-line"></i> Your Vibe</h2>
+        <h2><i class="ri-music-2-line"></i> Vibe</h2>
         <div class="mood-tracker">
-          <h3>Log Your Mood</h3>
+          <h3 class="heading="Track Your Mood Today">Mood Tracking</h3>
           <div class="mood-options">
-            <button class="mood-btn" data-mood="happy"><i class="ri-emotion-happy-line"></i> Happy</button>
-            <button class="mood-btn" data-mood="calm"><i class="ri-emotion-normal-line"></i> Calm</button>
-            <button class="mood-btn" data-mood="sad"><i class="ri-emotion-sad-line"></i> Sad</button>
-            <button class="mood-btn" data-mood="anxious"><i class="ri-emotion-unhappy-line"></i> Anxious</button>
+            <button class="mood-btn" data-mood="happy">Happy</button>
+            <button class="mood-btn" data-mood="calm">Calm</button>
+            <button class="mood-btn" data-mood="sad">Sad</button>
+            <button class="mood-btn" data-mood="anxious">Anxious</button>
+            <button class="mood-btn" data-mood="speech">Speech</button>
+            <button class="mood-btn" onclick="startSpeechRecognition()">Speech Recognition</button>
           </div>
         </div>
-        <div class="vibe-suggestions">
+        </div class="vibe-suggestions">
           <h3>Suggested Activities</h3>
-          <p>Based on your mood, try these activities to enhance your vibe!</p>
+          <p>Based on your actions, try these activities:</p>
           <div id="vibe-suggestions-list"></div>
         </div>
+      </div>
       </section>
-    </main>
 
-    <footer>
-      <span>© 2025 NeuroAid. Your mental health companion.</span>
-    </footer>
+      <footer>
+        <span>© 2025 NeuroAid. Your mental health companion.</span>
+      </footer>
+    </div>
   </div>
   <script src="{{ url_for('static', filename='js/dropdown.js') }}"></script>
   <script src="{{ url_for('static', filename='js/welcome.js') }}"></script>
