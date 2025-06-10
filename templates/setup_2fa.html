@@ -4,37 +4,18 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>NeuroAid - Setup 2FA</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/signup.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/setup_2fa.css') }}" />
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
-  <style>
-    .qr-container {
-      text-align: center;
-      margin: 20px 0;
-    }
-    .qr-container img {
-      max-width: 200px;
-    }
-    .secret-code {
-      font-family: monospace;
-      background-color: #f0f0f0;
-      padding: 10px;
-      border-radius: 5px;
-      margin: 10px 0;
-    }
-
-    .abc{
-        margin-top: 70px;
-    }
-  </style>
 </head>
 <body>
   <div class="login-container">
-    <div class="branding"></div>
-    <div class="login-box">
+    <div class="branding">
       <h1>Neuro<span>Aid</span></h1>
+    </div>
+    <div class="login-box">
       <h2>Setup Two-Factor Authentication</h2>
       {% if error %}
-        <p style="color: red; text-align: center;">{{ error }}</p>
+        <p class="error">{{ error }}</p>
       {% endif %}
       {% if qr_code %}
         <p>Scan this QR code with your authenticator app (e.g., Google Authenticator):</p>
