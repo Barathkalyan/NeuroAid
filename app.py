@@ -423,32 +423,25 @@ def recommend_music():
 
         MOOD_PLAYLISTS = {
     'tamil': {
-        1: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWX3SoTqhs2rq',
-        2: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWVV27DiNWxkR',
-        3: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWXz6ZFxA5jKQ',
-        4: 'https://open.spotify.com/embed/playlist/2Yra1CyIYaJ2YNz49yjh4i',
-        5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWUnAwRxD2pxH'
+        1: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX3bcfiyW6qms',  # Sad Melodies Tamil
+        2: 'https://open.spotify.com/embed/playlist/6B0SLRkQYmJtzwoS5wHgN4',  # Emotional Tamil Songs
+        3: 'https://open.spotify.com/embed/playlist/3CcmQHMCqHgiK4jmENG01A',  # Tamil Feel-Good Hits
+        4: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX2x1COalpsUi',  # Happy Vibes Tamil
+        5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX1i3hvzHpcQV'   # Hot Hits Tamil
     },
     'english': {
-        1: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX9sIqqvKsjG8',
-        2: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX3rxVfibe1L0',
-        3: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX0BcQWzuB7ZO',
-        4: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXcBWIGoYBM5M',
-        5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWUa8ZRTfalSI'
-    },
-    'hindi': {
-        1: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWYkaDif7Ztbp',
-        2: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWUVpAXiEPK8P',
-        3: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX4dyzvuaRJ0n',
-        4: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX4SBhb3fqCJd',
-        5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX4ZrmoTDh6zJ'
+        1: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWVrtsSlLKzro',  # Deep Sad
+        2: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX5E9RNXcX4hv',  # Low Mood
+        3: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX1dxtpdzxvIa',  # Feel‑Good Pop
+        4: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXcBWIGoYBM5M',  # Happy Hits
+        5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWY4xHQp97fN6'   # Party/High Energy
     },
     'telugu': {
-        1: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWXLeA8Omikj7',
-        2: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXapHi7gXtXo2',
-        3: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXdbXrPNafg9d',
-        4: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXaKIA8E7WcJj',
-        5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWXi7h5CniH97'
+        1: 'https://open.spotify.com/embed/playlist/67IVQUDrbuMhvxxK9lrIa9',  # Sad Telugu melodies :contentReference[oaicite:1]{index=1}
+        2: 'https://open.spotify.com/embed/playlist/76mFoskdHnS6nKOnRADkjR',  # Feel‑good Telugu :contentReference[oaicite:2]{index=2}
+        3: 'https://open.spotify.com/embed/playlist/3P5zX9Fe79o22kCOPNaWUB',  # Classic SPB Telugu :contentReference[oaicite:3]{index=3}
+        4: 'https://open.spotify.com/embed/playlist/1CKQ49PC0AzUrssR4MtwmL',  # Curated Rahman Telugu :contentReference[oaicite:4]{index=4}
+        5: 'https://open.spotify.com/embed/playlist/0jHJ6pmtdu3dI4gtF5BCdb'   # DSP Telugu hits :contentReference[oaicite:5]{index=5}
     },
     'malayalam': {
         1: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWWhB4HOWKFQc',
