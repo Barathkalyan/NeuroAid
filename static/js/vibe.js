@@ -47,11 +47,40 @@ async function setCurrentLanguage() {
     }
 }
 
+function startSpeechRecognition() {
+    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+    recognition.lang = 'en-US';
+    recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript.toLowerCase();
+        const moodMap = {
+            'happy': 'happy',
+            'calm': 'calm',
+            'sad': 'sad',
+            'anxious': 'anxious'
+        };
+        const detectedMood = Object.keys(moodMap).find(mood => transcript.includes(mood));
+        if (detectedMood) {
+            document.querySelector(`.mood-btn[data-mood="${detectedMood}"]`).click();
+        } else {
+            document.getElementById('current-mood').textContent = 'Unknown (from speech)';
+        }
+    };
+    recognition.onerror = () => {
+        document.getElementById('current-mood').textContent = 'Speech recognition failed';
+    };
+    recognition.start();
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     const languageSelect = document.getElementById('language-select');
+    const moodButtons = document.querySelectorAll('.mood-btn');
+    const currentMoodDisplay = document.getElementById('current-mood');
+    const suggestionsList = document.getElementById('vibe-suggestions-list');
 
+    // Initialize language and load Spotify embed
     setCurrentLanguage().then(() => loadSpotifyEmbed());
 
+    // Handle language change
     languageSelect.addEventListener('change', async () => {
         const language = languageSelect.value;
         try {
@@ -70,5 +99,32 @@ document.addEventListener('DOMContentLoaded', () => {
                 <h3>Now Playing</h3>
                 <p>Error updating language: ${error.message}</p>`;
         }
+    });
+
+    // Handle mood selection
+    moodButtons.forEach(button => {
+        button.addEventListener('click', async () => {
+            const mood = button.getAttribute('data-mood');
+            if (mood !== 'speech') {
+                currentMoodDisplay.textContent = mood.charAt(0).toUpperCase() + mood.slice(1);
+                
+                // Map button moods to app.py mood scores (1-5)
+                const moodMap = { happy: 5, calm: 4, sad: 1, anxious: 2 };
+                const moodScore = moodMap[mood] || 3;
+
+                // Update suggested activities
+                suggestionsList.innerHTML = '<p>Loading suggestions...</p>';
+                const suggestions = {
+                    happy: ['Go for a walk in nature.', 'Call a friend to share your joy.'],
+                    calm: ['Try a 5-minute meditation.', 'Read a relaxing book.'],
+                    sad: ['Write down your feelings in your journal.', 'Watch a comforting movie.'],
+                    anxious: ['Practice deep breathing exercises.', 'Listen to soothing music.']
+                };
+                suggestionsList.innerHTML = suggestions[mood].map(s => `<p>${s}</p>`).join('');
+
+                // Refresh Spotify embed based on the latest mood
+                await loadSpotifyEmbed();
+            }
+        });
     });
 });
