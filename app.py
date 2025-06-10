@@ -11,17 +11,26 @@ import pyotp
 import qrcode
 from io import BytesIO
 import base64
+import os
 
 app = Flask(__name__)
-app.secret_key = 'your-secret-key'
+app.secret_key = os.getenv('FLASK_SECRET_KEY', 'your-secret-key')
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-SUPABASE_URL = 'https://kkzymljvdzbydqugbwuw.supabase.co'
-SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtrenltbGp2ZHpieWRxdWdid3V3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ5OTcyMzgsImV4cCI6MjA2MDU3MzIzOH0.d6Xb4PrfYlcilkLOGWbPIG2WZ2c2rocZZEKCojwWfgs'
-HF_API_KEY = "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"
+# Supabase configuration
+SUPABASE_URL = os.getenv('SUPABASE_URL', 'https://kkzymljvdzbydqugbwuw.supabase.co')
+SUPABASE_ANON_KEY = os.getenv('SUPABASE_ANON_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtrenltbGp2ZHpieWRxdWdid3V3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ5OTcyMzgsImV4cCI6MjA2MDU3MzIzOH0.d6Xb4PrfYlcilkLOGWbPIG2WZ2c2rocZZEKCojwWfgs')
+SUPABASE_SERVICE_KEY = os.getenv('SUPABASE_SERVICE_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtrenltbGp2ZHpieWRxdWdid3V3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0NDk5NzIzOCwiZXhwIjoyMDYwNTczMjM4fQ.yuRT1q-FigehZoeFccdP_zk4m5sgHulpbg_us1IgpRw')  # Replace with actual service role key
+HF_API_KEY = os.getenv('HF_API_KEY', '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')
+
+# Initialize Supabase clients
+supabase_anon: Client = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
+supabase_service: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+
+logger.info("Supabase clients initialized: anon_key and service_key")
 
 def query_huggingface(model: str, payload: dict, retries=3, backoff_factor=1):
     headers = {"Authorization": f"Bearer {HF_API_KEY}"}
@@ -172,15 +181,22 @@ def analyze_journal_entry(text, supabase, user_id):
         "confidence": confidence
     }
 
-def get_supabase():
-    if 'supabase' not in g:
-        g.supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
-    return g.supabase
+def get_supabase(use_service_role=False):
+    if use_service_role:
+        if 'supabase_service' not in g:
+            g.supabase_service = supabase_service
+        return g.supabase_service
+    else:
+        if 'supabase_anon' not in g:
+            g.supabase_anon = supabase_anon
+        return g.supabase_anon
 
 @app.teardown_appcontext
 def teardown_supabase(exception):
-    if 'supabase' in g:
-        g.pop('supabase')
+    if 'supabase_anon' in g:
+        g.pop('supabase_anon')
+    if 'supabase_service' in g:
+        g.pop('supabase_service')
 
 @app.before_request
 def make_session_permanent():
@@ -684,7 +700,8 @@ def signup():
             error = 'Passwords do not match!'
             return render_template('signup.html', error=error), 400
 
-        supabase = get_supabase()
+        # Use service role for signup to bypass RLS
+        supabase = get_supabase(use_service_role=True)
         try:
             existing_user = supabase.table('users').select('id').eq('email', email).execute()
             if existing_user.data:

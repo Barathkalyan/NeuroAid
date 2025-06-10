@@ -1763,6 +1763,165 @@ footer {
 }
 ```
 
+# File: static/css/dropdown.css
+```css
+.profile-dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.profile {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    padding: 5px 10px;
+    border-radius: 5px;
+    transition: background-color 0.3s;
+}
+
+.profile:hover {
+    background-color: #f0f0f0;
+}
+
+.profile img {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+}
+
+.profile span {
+    font-size: 16px;
+    font-weight: 500;
+    color: #2d2d2d;
+}
+
+.dropdown-content {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background-color: #ffffff;
+    min-width: 200px;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    z-index: 1;
+    overflow: hidden;
+}
+
+.dropdown-content .user-info {
+    padding: 12px 16px;
+    border-bottom: 1px solid #eee;
+}
+
+.dropdown-content .user-info p {
+    margin: 4px 0;
+    font-size: 14px;
+    color: #2d2d2d;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.dropdown-content .user-info p i {
+    font-size: 16px;
+    color: #7c3aed;
+}
+
+.dropdown-content a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    color: #2d2d2d;
+    text-decoration: none;
+    font-size: 14px;
+    transition: background-color 0.3s;
+}
+
+.dropdown-content a:hover {
+    background-color: #f7f7f7;
+}
+
+.dropdown-content a i {
+    font-size: 16px;
+    color: #7c3aed;
+}
+
+/* Theme-specific styles */
+.theme-dark .profile span {
+    color: #ffffff;
+}
+
+.theme-dark .profile:hover {
+    background-color: #444;
+}
+
+.theme-dark .dropdown-content {
+    background-color: #333;
+}
+
+.theme-dark .dropdown-content .user-info {
+    border-bottom: 1px solid #555;
+}
+
+.theme-dark .dropdown-content .user-info p {
+    color: #ffffff;
+}
+
+.theme-dark .dropdown-content .user-info p i {
+    color: #a78bfa;
+}
+
+.theme-dark .dropdown-content a {
+    color: #ffffff;
+}
+
+.theme-dark .dropdown-content a:hover {
+    background-color: #555;
+}
+
+.theme-dark .dropdown-content a i {
+    color: #a78bfa;
+}
+
+.theme-calming .profile span {
+    color: #7c3aed;
+}
+
+.theme-calming .profile:hover {
+    background-color: #e8e1fa;
+}
+
+.theme-calming .dropdown-content {
+    background-color: #f4f0fa;
+}
+
+.theme-calming .dropdown-content .user-info {
+    border-bottom: 1px solid #d1c4e9;
+}
+
+.theme-calming .dropdown-content .user-info p {
+    color: #5b2cb3;
+}
+
+.theme-calming .dropdown-content .user-info p i {
+    color: #7c3aed;
+}
+
+.theme-calming .dropdown-content a {
+    color: #5b2cb3;
+}
+
+.theme-calming .dropdown-content a:hover {
+    background-color: #e8e1fa;
+}
+
+.theme-calming .dropdown-content a i {
+    color: #7c3aed;
+}
+```
+
 # File: static/css/gratitude.css
 ```css
 .gratitude-section {
@@ -3739,6 +3898,61 @@ button:hover {
 }
 ```
 
+# File: static/css/welcome.css
+```css
+.welcome-container {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex-grow: 1;
+}
+
+.welcome-text {
+    font-size: 18px;
+    font-weight: 600;
+    color: #2d2d2d;
+    opacity: 1;
+    animation: fadeOut 5s ease-in-out forwards;
+}
+
+@keyframes fadeOut {
+    0% { opacity: 1; }
+    80% { opacity: 1; }
+    100% { opacity: 0; visibility: hidden; }
+}
+
+.quote-text {
+    font-size: 16px;
+    font-style: italic;
+    color: #666;
+    opacity: 0;
+    visibility: hidden;
+    animation: fadeIn 1s ease-in-out 5s forwards;
+}
+
+@keyframes fadeIn {
+    0% { opacity: 0; visibility: hidden; }
+    100% { opacity: 1; visibility: visible; }
+}
+
+/* Theme-specific styles */
+.theme-dark .welcome-text {
+    color: #ffffff;
+}
+
+.theme-dark .quote-text {
+    color: #cccccc;
+}
+
+.theme-calming .welcome-text {
+    color: #7c3aed;
+}
+
+.theme-calming .quote-text {
+    color: #5b2cb3;
+}
+```
+
 # File: static/css/themes/calming.css
 ```css
 :root {
@@ -3806,6 +4020,30 @@ button:hover {
   --text-secondary: #6b7280;
   --background: #f3f4f6;
 }
+```
+
+# File: static/js/dropdown.js
+```js
+document.addEventListener('DOMContentLoaded', () => {
+    const profile = document.querySelector('.profile');
+    const dropdownContent = document.querySelector('.dropdown-content');
+
+    if (!profile || !dropdownContent) {
+        console.error('Dropdown elements not found');
+        return;
+    }
+
+    profile.addEventListener('click', (e) => {
+        e.stopPropagation();
+        dropdownContent.style.display = dropdownContent.style.display === 'block' ? 'none' : 'block';
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!profile.contains(e.target) && !dropdownContent.contains(e.target)) {
+            dropdownContent.style.display = 'none';
+        }
+    });
+});
 ```
 
 # File: static/js/gratitude.js
@@ -4758,94 +4996,131 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 ```
 
+# File: static/js/welcome.js
+```js
+document.addEventListener('DOMContentLoaded', () => {
+    const quoteText = document.querySelector('.quote-text');
+    if (!quoteText) {
+        console.error('Quote text element not found');
+        return;
+    }
+    try {
+        const quotes = [
+            "You are stronger than you know.",
+            "Every day is a new opportunity to grow.",
+            "Take a deep breath and keep moving forward.",
+            "Your mind is a powerful tool—use it wisely.",
+            "Small steps lead to big changes.",
+            "Embrace your journey with kindness.",
+            "You are enough, just as you are.",
+            "Progress, not perfection, is the goal.",
+            "Find joy in the little moments.",
+            "Your resilience is your superpower."
+        ];
+        const today = new Date();
+        const dayOfYear = Math.floor((today - new Date(today.getFullYear(), 0, 0)) / (1000 * 60 * 60 * 24));
+        const quoteIndex = dayOfYear % quotes.length;
+        quoteText.textContent = `"${quotes[quoteIndex]}"`;
+        quoteText.style.display = 'block'; // Ensure visibility
+    } catch (error) {
+        console.error('Error setting quote:', error);
+        quoteText.textContent = '"Keep going, you’ve got this!"';
+    }
+});
+```
+
 # File: templates/gratitude.html
 ```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NeuroAid - Gratitude Journal</title>
-    <!-- Remix Icons -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css">
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Link to external CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/gratitude.css') }}">
-    <link id="theme-stylesheet" rel="stylesheet" href="{{ url_for('static', filename='css/themes/' + theme + '.css') }}">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NeuroAid - Gratitude Journal</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/gratitude.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dropdown.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/welcome.css') }}">
+  <link id="theme-stylesheet" rel="stylesheet" href="{{ url_for('static', filename='css/themes/' + theme + '.css') }}">
 </head>
 <body>
-    <div class="app-container">
-        <!-- Sidebar -->
-        <div class="sidebar">
-            <div class="logo">
-                <i class="ri-brain-line"></i>
-                <h1>Neuro<span>Aid</span></h1>
-            </div>
-                <nav>
-                  <a href="{{ url_for('index') }}" ><i class="ri-home-5-line"></i> Home</a>
-                  <a href="{{ url_for('journal') }}" ><i class="ri-booklet-line"></i> Journal</a>
-                  <a href="{{ url_for('progress') }}"><i class="ri-bar-chart-2-line"></i> Progress</a>
-                  <a href="{{ url_for('vibe') }}"><i class="ri-music-2-line"></i> Vibe</a>
-                  <a href="{{ url_for('gratitude') }}" class="active"><i class="ri-heart-line"></i> Gratitude</a>
-                  <a href="{{ url_for('settings')}}"><i class="ri-settings-3-line"></i> Settings</a>
-                  <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
-                  <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
-                </nav>
-        </div>
-
-        <!-- Main Content -->
-        <div class="wrapper">
-            <main class="main-content">
-                <header>
-                    <div class="search-bar">
-                        <i class="ri-search-line"></i>
-                        <input type="text" placeholder="Search...">
-                    </div>
-                    <div class="profile">
-                        <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile">
-                        <span>{{ session.get('user_email', 'User').split('@')[0] }}</span>
-                        <i class="ri-arrow-down-s-line"></i>
-                    </div>
-                </header>
-
-                <section class="gratitude-section">
-                    <h2><i class="ri-heart-line"></i> Gratitude Journal</h2>
-                    <div class="gratitude-form">
-                        <h3>Record Three Good Things Today</h3>
-                        <form id="gratitude-form">
-                            <label for="thing1">1. What made you smile today?</label>
-                            <textarea id="thing1" name="thing1" rows="2" placeholder="E.g., A kind word from a friend..."></textarea>
-                            <label for="thing2">2. What are you thankful for today?</label>
-                            <textarea id="thing2" name="thing2" rows="2" placeholder="E.g., A sunny morning walk..."></textarea>
-                            <label for="thing3">3. What went well today?</label>
-                            <textarea id="thing3" name="thing3" rows="2" placeholder="E.g., Finished a task early..."></textarea>
-                            <button type="submit" class="neuroaid-btn"><i class="ri-save-line"></i> Save Entry</button>
-                            <p class="suggestions">Not sure what to write? How about a small win, like enjoying a warm cup of tea?</p>
-                        </form>
-                    </div>
-
-                    <div class="streak-counter">
-                        <i class="ri-calendar-line"></i>
-                        <p><strong>Gratitude Streak:</strong> <span id="gratitude-streak">0 Days</span></p>
-                    </div>
-
-                    <div class="timeline">
-                        <h3>Your Positivity Log</h3>
-                        <div id="gratitude-timeline">
-                            <!-- Timeline entries will be populated by gratitude.js -->
-                        </div>
-                    </div>
-                </section>
-            </main>
-
-            <footer>
-                <span>© 2025 NeuroAid. Your mental health companion.</span>
-            </footer>
-        </div>
+  <div class="app-container">
+    <div class="sidebar">
+      <div class="logo">
+        <i class="ri-brain-line"></i>
+        <h1>Neuro<span>Aid</span></h1>
+      </div>
+      <nav>
+        <a href="{{ url_for('index') }}"><i class="ri-home-5-line"></i> Home</a>
+        <a href="{{ url_for('journal') }}"><i class="ri-booklet-line"></i> Journal</a>
+        <a href="{{ url_for('progress') }}"><i class="ri-bar-chart-2-line"></i> Progress</a>
+        <a href="{{ url_for('vibe') }}"><i class="ri-music-2-line"></i> Vibe</a>
+        <a href="{{ url_for('gratitude') }}" class="active"><i class="ri-heart-line"></i> Gratitude</a>
+        <a href="{{ url_for('settings')}}"><i class="ri-settings-3-line"></i> Settings</a>
+        <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
+        <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
+      </nav>
     </div>
-    <script src="{{ url_for('static', filename='js/gratitude.js') }}"></script>
+
+    <div class="wrapper">
+      <main class="main-content">
+        <header>
+          <div class="welcome-container">
+            <div class="welcome-text">Welcome to NeuroAid, {{ session.get('user_email', 'User').split('@')[0] }}</div>
+            <div class="quote-text"></div>
+          </div>
+          <div class="profile-dropdown">
+            <div class="profile">
+              <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile" />
+              <span>{{ session.get('user_email', 'User').split('@')[0] }}</span>
+              <i class="ri-arrow-down-s-line"></i>
+            </div>
+            <div class="dropdown-content">
+              <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
+              <a href="{{ url_for('settings') }}"><i class="ri-settings-3-line"></i> Settings</a>
+              <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
+            </div>
+          </div>
+        </header>
+
+        <section class="gratitude-section">
+          <h2><i class="ri-heart-line"></i> Gratitude Journal</h2>
+          <div class="gratitude-form">
+            <h3>Record Three Good Things Today</h3>
+            <form id="gratitude-form">
+              <label for="thing1">1. What made you smile today?</label>
+              <textarea id="thing1" name="thing1" rows="2" placeholder="E.g., A kind word from a friend..."></textarea>
+              <label for="thing2">2. What are you thankful for today?</label>
+              <textarea id="thing2" name="thing2" rows="2" placeholder="E.g., A sunny morning walk..."></textarea>
+              <label for="thing3">3. What went well today?</label>
+              <textarea id="thing3" name="thing3" rows="2" placeholder="E.g., Finished a task early..."></textarea>
+              <button type="submit" class="neuroaid-btn"><i class="ri-save-line"></i> Save Entry</button>
+              <p class="suggestions">Not sure what to write? How about a small win, like enjoying a warm cup of tea?</p>
+            </form>
+          </div>
+
+          <div class="streak-counter">
+            <i class="ri-calendar-line"></i>
+            <p><strong>Gratitude Streak:</strong> <span id="gratitude-streak">0 Days</span></p>
+          </div>
+
+          <div class="timeline">
+            <h3>Your Positivity Log</h3>
+            <div id="gratitude-timeline"></div>
+          </div>
+        </section>
+      </main>
+
+      <footer>
+        <span>© 2025 NeuroAid. Your mental health companion.</span>
+      </footer>
+    </div>
+  </div>
+  <script src="{{ url_for('static', filename='js/gratitude.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/dropdown.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/welcome.js') }}"></script>
 </body>
 </html>
 ```
@@ -4858,12 +5133,11 @@ document.addEventListener('DOMContentLoaded', () => {
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>NeuroAid - Home</title>
-  <!-- Remix Icons -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css" />
-  <!-- Google Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <!-- Link to external CSS -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dropdown.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/welcome.css') }}" />
   <link id="theme-stylesheet" rel="stylesheet" href="{{ url_for('static', filename='css/themes/' + theme + '.css') }}">
 </head>
 <body>
@@ -4887,14 +5161,26 @@ document.addEventListener('DOMContentLoaded', () => {
   <div class="wrapper">
     <main class="main-content">
       <header>
-        <div class="search-bar">
-          <i class="ri-search-line"></i>
-          <input type="text" placeholder="Search..." />
+        <div class="welcome-container">
+          <div class="welcome-text">Welcome to NeuroAid, {{ session.get('user_email', 'User').split('@')[0] }}</div>
+          <div class="quote-text"></div>
         </div>
-        <div class="profile">
-          <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile" />
-          <span>{{ session.get('user_email', 'User').split('@')[0] }}</span>
-          <i class="ri-arrow-down-s-line"></i>
+        <div class="profile-dropdown">
+          <div class="profile">
+            <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile" />
+            <span>{{ session.get('user_email', 'User').split('@')[0] }}</span>
+            <i class="ri-arrow-down-s-line"></i>
+          </div>
+          <div class="dropdown-content">
+            <div class="user-info">
+              <p><i class="ri-user-line"></i> {{ user_name | default('Barath Bk') }}</p>
+              <p><i class="ri-mail-line"></i> {{ user_email | default('barath@example.com') }}</p>
+              <p><i class="ri-calendar-line"></i> Joined: {{ joined_date | default('2025-01-01') }}</p>
+            </div>
+            <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
+            <a href="{{ url_for('settings') }}"><i class="ri-settings-3-line"></i> Settings</a>
+            <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
+          </div>
         </div>
       </header>
 
@@ -4904,8 +5190,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <p style="color: #666; font-size:25px; margin-top:15px;">Your companion for mental health and self-reflection.</p>
         </div>
 
-        <!-- Today's Suggestions Widget -->
-        <div class="suggestions-card debug-suggestions" style="background-color: #e8e1fa; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); margin-bottom: 30px;">
+        <div class="suggestions-card" style="background-color: #e8e1fa; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); margin-bottom: 30px;">
           <h3 style="color: #2d2d2d; margin-bottom: 15px; font-size:30px;"><i class="ri-lightbulb-line"></i> Today's Suggestions</h3>
           {% if suggestions is defined and suggestions %}
             <ul style="list-style-type: disc; padding-left: 20px; margin-top:25px; color: #2d2d2d; font-size: 22px;">
@@ -4918,12 +5203,11 @@ document.addEventListener('DOMContentLoaded', () => {
           {% endif %}
         </div>
 
-        <!-- Recent Reflections Section -->
-        <div class="recent-reflections debug-reflections" style="margin-bottom: 30px;">
+        <div class="recent-reflections" style="margin-bottom: 30px;">
           <h3 style="color: #2d2d2d; margin-bottom: 15px; font-size:30px;"><i class="ri-booklet-line"></i> Recent Reflections</h3>
           {% if recent_entries is defined and recent_entries %}
             {% for entry in recent_entries %}
-              <div class="entry-preview" style="background-color: #ffffff; border: 1px solid #c7bbe4; border-radius: 10px; padding: 15px;  margin-bottom: 10px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.07);">
+              <div class="entry-preview" style="background-color: #ffffff; border: 1px solid #c7bbe4; border-radius: 10px; padding: 15px; margin-bottom: 10px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.07);">
                 <div class="entry-meta" style="font-size: 20px; color: #7c3aed; margin-bottom: 5px;">
                   {{ entry.created_at }}
                 </div>
@@ -4942,12 +5226,10 @@ document.addEventListener('DOMContentLoaded', () => {
           {% endif %}
         </div>
 
-        <!-- Quick Actions -->
         <div class="quick-actions">
           <a href="{{ url_for('journal') }}" class="neuroaid-btn"><i class="ri-booklet-line"></i> Write a Journal Entry</a>
-         <a href="{{ url_for('progress') }}" class="neuroaid-btn"><i class="ri-bar-chart-2-line"></i> View Progress</a>
+          <a href="{{ url_for('progress') }}" class="neuroaid-btn"><i class="ri-bar-chart-2-line"></i> View Progress</a>
         </div>
-
       </section>
     </main>
 
@@ -4955,6 +5237,8 @@ document.addEventListener('DOMContentLoaded', () => {
       <span>© 2025 NeuroAid. Your mental health companion.</span>
     </footer>
   </div>
+  <script src="{{ url_for('static', filename='js/dropdown.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/welcome.js') }}"></script>
 </body>
 </html>
 ```
@@ -4967,17 +5251,14 @@ document.addEventListener('DOMContentLoaded', () => {
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>NeuroAid - Journal</title>
-  <!-- Remix Icons -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css" />
-  <!-- Google Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <!-- Quill CSS -->
   <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet" />
-  <!-- Link to external CSS -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/journal.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dropdown.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/welcome.css') }}" />
   <link id="theme-stylesheet" rel="stylesheet" href="{{ url_for('static', filename='css/themes/' + theme + '.css') }}">
-  <!-- Link to JavaScript -->
   <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
   <script src="{{ url_for('static', filename='js/journal.js') }}" defer></script>
   <script>
@@ -4988,7 +5269,6 @@ document.addEventListener('DOMContentLoaded', () => {
             method: 'DELETE',
           });
           if (response.ok) {
-            // Remove the entry card from the DOM
             document.getElementById(`entry-${entryId}`).remove();
             alert("Journal entry deleted successfully!");
           } else {
@@ -5009,7 +5289,7 @@ document.addEventListener('DOMContentLoaded', () => {
       <h1>Neuro<span>Aid</span></h1>
     </div>
     <nav>
-      <a href="{{ url_for('index') }}" ><i class="ri-home-5-line"></i> Home</a>
+      <a href="{{ url_for('index') }}"><i class="ri-home-5-line"></i> Home</a>
       <a href="{{ url_for('journal') }}" class="active"><i class="ri-booklet-line"></i> Journal</a>
       <a href="{{ url_for('progress') }}"><i class="ri-bar-chart-2-line"></i> Progress</a>
       <a href="{{ url_for('vibe') }}"><i class="ri-music-2-line"></i> Vibe</a>
@@ -5023,14 +5303,21 @@ document.addEventListener('DOMContentLoaded', () => {
   <div class="wrapper">
     <main class="main-content">
       <header>
-        <div class="search-bar">
-          <i class="ri-search-line"></i>
-          <input type="text" placeholder="Search journals..." />
+        <div class="welcome-container">
+          <div class="welcome-text">Welcome to NeuroAid, {{ session.get('user_email', 'User').split('@')[0] }}</div>
+          <div class="quote-text"></div>
         </div>
-        <div class="profile">
-          <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile" />
-          <span>{{ session.get('user_email', 'User').split('@')[0] }}</span>
-          <i class="ri-arrow-down-s-line"></i>
+        <div class="profile-dropdown">
+          <div class="profile">
+            <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile" />
+            <span>{{ session.get('user_email', 'User').split('@')[0] }}</span>
+            <i class="ri-arrow-down-s-line"></i>
+          </div>
+          <div class="dropdown-content">
+            <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
+            <a href="{{ url_for('settings') }}"><i class="ri-settings-3-line"></i> Settings</a>
+            <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
+          </div>
         </div>
       </header>
 
@@ -5049,16 +5336,14 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
         </div>
 
-        <!-- Editor Container -->
         <form id="journal-form" method="POST" action="{{ url_for('journal') }}">
           <div id="editor"></div>
           <input type="hidden" name="content" id="journal-content">
-            <div class="journal-actions">
+          <div class="journal-actions">
             <button type="submit" class="neuroaid-btn"><i class="ri-save-line"></i> Save Entry</button>
-            </div>
+          </div>
         </form>
 
-        <!-- Display Saved Entries -->
         {% if entries %}
           <div class="entries-section">
             <h3 style="color: #2d2d2d; margin-top: 40px; margin-bottom: 20px; font-size:28px;">Your Journal Entries</h3>
@@ -5080,10 +5365,12 @@ document.addEventListener('DOMContentLoaded', () => {
       </section>
     </main>
 
-    <footer>
+    <footer>  
       <span>© 2025 NeuroAid. Your mental health companion.</span>
     </footer>
   </div>
+  <script src="{{ url_for('static', filename='js/dropdown.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/welcome.js') }}"></script>
 </body>
 </html>
 ```
@@ -5159,15 +5446,13 @@ document.addEventListener('DOMContentLoaded', () => {
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>NeuroAid - Profile</title>
-  <!-- Remix Icons -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css" />
-  <!-- Google Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <!-- Link to external CSS -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/profile.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dropdown.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/welcome.css') }}" />
   <link id="theme-stylesheet" rel="stylesheet" href="{{ url_for('static', filename='css/themes/' + theme + '.css') }}">
-  <!-- Link to JavaScript -->
   <script src="{{ url_for('static', filename='js/utils.js') }}" defer></script>
   <script src="{{ url_for('static', filename='js/profile.js') }}" defer></script>
 </head>
@@ -5192,14 +5477,21 @@ document.addEventListener('DOMContentLoaded', () => {
   <div class="wrapper">
     <main class="main-content">
       <header>
-        <div class="search-bar">
-          <i class="ri-search-line"></i>
-          <input type="text" placeholder="Search features, journals..." />
+        <div class="welcome-container">
+          <div class="welcome-text">Welcome to NeuroAid, {{ session.get('user_email', 'User').split('@')[0] }}</div>
+          <div class="quote-text"></div>
         </div>
-        <div class="profile">
-          <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile" id="header-profile-pic" />
-          <span>{{ session.get('user_email', 'User').split('@')[0] }}</span>
-          <i class="ri-arrow-down-s-line"></i>
+        <div class="profile-dropdown">
+          <div class="profile">
+            <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile" id="header-profile-pic" />
+            <span>{{ session.get('user_email', 'User').split('@')[0] }}</span>
+            <i class="ri-arrow-down-s-line"></i>
+          </div>
+          <div class="dropdown-content">
+            <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
+            <a href="{{ url_for('settings') }}"><i class="ri-settings-3-line"></i> Settings</a>
+            <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
+          </div>
         </div>
       </header>
 
@@ -5217,7 +5509,6 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
         </div>
 
-        <!-- Profile Overview -->
         <div class="card profile-overview">
           <div class="card-header">
             <h3>Profile Overview</h3>
@@ -5255,7 +5546,6 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
         </div>
 
-        <!-- Personal Details -->
         <div class="card personal-details">
           <div class="card-header">
             <h3>Personal Details</h3>
@@ -5303,7 +5593,6 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
         </div>
 
-        <!-- Mental Health Goals -->
         <div class="card mental-health-goals">
           <div class="card-header">
             <h3>Your Mental Health Goals</h3>
@@ -5341,12 +5630,12 @@ document.addEventListener('DOMContentLoaded', () => {
                   <label for="journaling">Journaling</label>
                 </div>
                 <div class="checkbox-option">
-                  <input type="checkbox" id="mood-tracking" name="activities" value="mood-tracking" aria-label="Mood Tracking" />
-                  <label for="mood-tracking">Mood Tracking</label>
+                  <input type="checkbox" id="mood-speech" name="mood-speech" value="mood-speech" aria-label="Mood Speech" />
+                  <label for="mood-speech">Mood Speech</label>
                 </div>
                 <div class="checkbox-option">
-                  <input type="checkbox" id="mindfulness" name="activities" value="mindfulness" aria-label="Mindfulness Exercises" />
-                  <label for="mindfulness">Mindfulness Exercises</label>
+                  <input type="checkbox" id="mindfulness" aria-label="Mindfulness Exercises">
+                  <label>Mindfulness Exercises</label>
                 </div>
               </div>
             </div>
@@ -5356,7 +5645,6 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
         </div>
 
-        <!-- Privacy & Security -->
         <div class="card privacy-security">
           <div class="card-header">
             <h3>Privacy & Security</h3>
@@ -5368,7 +5656,6 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
         </div>
 
-        <!-- Call-to-Action -->
         <div class="cta-message">
           <p>Complete your profile to unlock personalized features! Add your mental health goals to continue.</p>
         </div>
@@ -5376,9 +5663,11 @@ document.addEventListener('DOMContentLoaded', () => {
     </main>
 
     <footer>
-      <span>© 2025 NeuroAid. Your mental health companion.</span>
+      <span>© 2025 NeuroAid.</span>
     </footer>
   </div>
+  <script src="{{ url_for('static', filename='js/dropdown.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/welcome.js') }}"></script>
 </body>
 </html>
 ```
@@ -5391,51 +5680,53 @@ document.addEventListener('DOMContentLoaded', () => {
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>NeuroAid - Progress</title>
-  <!-- Remix Icons -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css" />
-  <!-- Google Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <!-- Link to external CSS -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/progress.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dropdown.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/welcome.css') }}" />
   <link id="theme-stylesheet" rel="stylesheet" href="{{ url_for('static', filename='css/themes/' + theme + '.css') }}">
-  <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- Link to JavaScript -->
-  <script src="{{ url_for('static', filename='js/progress.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/script.js') }}" defer></script>
 </head>
 <body>
   <div class="app-container">
-    <!-- Sidebar -->
     <div class="sidebar">
       <div class="logo">
         <i class="ri-brain-line"></i>
         <h1>Neuro<span>Aid</span></h1>
       </div>
-        <nav>
-          <a href="{{ url_for('index') }}" ><i class="ri-home-5-line"></i> Home</a>
-          <a href="{{ url_for('journal') }}" ><i class="ri-booklet-line"></i> Journal</a>
-          <a href="{{ url_for('progress') }}" class="active"><i class="ri-bar-chart-2-line"></i> Progress</a>
-          <a href="{{ url_for('vibe') }}"><i class="ri-music-2-line"></i> Vibe</a>
-          <a href="{{ url_for('gratitude') }}"><i class="ri-heart-line"></i> Gratitude</a>
-          <a href="{{ url_for('settings')}}"><i class="ri-settings-3-line"></i> Settings</a>
-          <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
-          <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
-        </nav>
+      <nav>
+        <a href="{{ url_for('index') }}"><i class="ri-home-5-line"></i> Home</a>
+        <a href="{{ url_for('journal') }}"><i class="ri-booklet-line"></i> Journal</a>
+        <a href="{{ url_for('progress') }}" class="active"><i class="ri-bar-chart-2-line"></i> Progress</a>
+        <a href="{{ url_for('vibe') }}"><i class="ri-music-2-line"></i> Vibe</a>
+        <a href="{{ url_for('gratitude') }}"><i class="ri-heart-line"></i> Gratitude</a>
+        <a href="{{ url_for('settings')}}"><i class="ri-settings-3-line"></i> Settings</a>
+        <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
+        <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
+      </nav>
     </div>
 
-    <!-- Main Content -->
     <div class="wrapper">
       <main class="main-content">
         <header>
-          <div class="search-bar">
-            <i class="ri-search-line"></i>
-            <input type="text" placeholder="Search progress..." />
+          <div class="welcome-container">
+            <div class="welcome-text">Welcome to NeuroAid, {{ session.get('user_email', 'User').split('@')[0] }}</div>
+            <div class="quote-text"></div>
           </div>
-          <div class="profile">
-            <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile" id="header-profile-pic" />
-            <span>{{ session.get('user_email', 'User').split('@')[0] }}</span>
-            <i class="ri-arrow-down-s-line"></i>
+          <div class="profile-dropdown">
+            <div class="profile">
+              <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile" id="header-profile-pic" />
+              <span>{{ session.get('user_email', 'User').split('@')[0] }}</span>
+              <i class="ri-arrow-down-s-line"></i>
+            </div>
+            <div class="dropdown-content">
+              <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
+              <a href="{{ url_for('settings') }}"><i class="ri-settings-3-line"></i> Settings</a>
+              <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
+            </div>
           </div>
         </header>
 
@@ -5479,13 +5770,6 @@ document.addEventListener('DOMContentLoaded', () => {
             <canvas id="confidenceChart"></canvas>
           </div>
         </section>
-
-        <section class="insights-section">
-          <h2><i class="ri-lightbulb-line"></i> AI Insights</h2>
-          <div class="insights-content">
-            You're becoming more positive over time. Keep journaling daily to maintain your streak!
-          </div>
-        </section>
       </main>
 
       <footer>
@@ -5493,6 +5777,8 @@ document.addEventListener('DOMContentLoaded', () => {
       </footer>
     </div>
   </div>
+  <script src="{{ url_for('static', filename='js/dropdown.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/welcome.js') }}"></script>
 </body>
 </html>
 ```
@@ -5512,6 +5798,8 @@ document.addEventListener('DOMContentLoaded', () => {
   <!-- Link to external CSS -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/settings.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dropdown.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/welcome.css') }}" />
   <!-- Dynamic Theme -->
   <link id="theme-stylesheet" rel="stylesheet" href="{{ url_for('static', filename='css/themes/' + theme + '.css') }}">
 </head>
@@ -5536,14 +5824,21 @@ document.addEventListener('DOMContentLoaded', () => {
   <div class="wrapper">
     <main class="main-content">
       <header>
-        <div class="search-bar">
-          <i class="ri-search-line"></i>
-          <input type="text" placeholder="Search..." />
+        <div class="welcome-container">
+          <div class="welcome-text">Welcome to NeuroAid, {{ session.get('user_email', 'User').split('@')[0] }}</div>
+          <div class="quote-text"></div>
         </div>
-        <div class="profile">
-          <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile" />
-          <span>{{ session.get('user_email', 'User').split('@')[0] }}</span>
-          <i class="ri-arrow-down-s-line"></i>
+        <div class="profile-dropdown">
+          <div class="profile">
+            <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile" />
+            <span>{{ session.get('user_email', 'User').split('@')[0] }}</span>
+            <i class="ri-arrow-down-s-line"></i>
+          </div>
+          <div class="dropdown-content">
+            <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
+            <a href="{{ url_for('settings') }}"><i class="ri-settings-3-line"></i> Settings</a>
+            <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
+          </div>
         </div>
       </header>
 
@@ -5562,7 +5857,7 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
         {% endif %}
 
-<!-- Settings Form -->
+        <!-- Settings Form -->
         <div class="settings-card">
           <form id="settings-form" method="POST" action="{{ url_for('settings') }}">
             <!-- Account Settings -->
@@ -5634,6 +5929,8 @@ document.addEventListener('DOMContentLoaded', () => {
     </footer>
   </div>
 
+  <script src="{{ url_for('static', filename='js/dropdown.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/welcome.js') }}"></script>
   <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
 </body>
 </html>
@@ -5771,68 +6068,92 @@ document.addEventListener('DOMContentLoaded', () => {
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NeuroAid - Vibe</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/vibe.css') }}">
-    <link id="theme-stylesheet" rel="stylesheet" href="{{ url_for('static', filename='css/themes/' + theme + '.css') }}">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>NeuroAid - Vibe</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/all.min.css" rel="stylesheet">
+  <link rel="https://cdnjs.cloudflare.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
+  <link rel="https://cdnjs.cloudflare.com/css2?family=Material+Icons" rel="stylesheet">
+  <link rel="https://cdn.jsdelivr.net/npm/remixicon@latest/fonts/remixicon.css" rel="stylesheet">
+  <link rel="https://cdnjs.cloudflare.com/css2?family=Material+Icons+Sharp" rel="stylesheet">
+  <link rel="https://cdnjs.cloudflare.com/css2?family=Material+Icons+Two+Tone" rel="stylesheet">
+  <link rel="https://cdnjs.cloudflare.com/css2?family=Material+Icons+Two+Tone" rel="theme-icon">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dropdown.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/welcome.css') }}" />
+  <link id="theme-stylesheet" href="{{ url_for('static', filename='css/themes/' + theme + '.css') }}">
+  <script src="{{ url_for('static', filename='js/script.js') }}" defer></script>
 </head>
 <body>
-    <div class="app-container">
-        <aside class="sidebar">
-            <div class="logo">
-                <i class="ri-brain-line" aria-hidden="true"></i>
-                <h1>Neuro<span>Aid</span></h1>
-            </div>
-            <nav aria-label="Main navigation">
-                <a href="{{ url_for('index') }}"><i class="ri-home-5-line" aria-hidden="true"></i> Home</a>
-                <a href="{{ url_for('journal') }}"><i class="ri-booklet-line" aria-hidden="true"></i> Journal</a>
-                <a href="{{ url_for('progress') }}"><i class="ri-bar-chart-2-line" aria-hidden="true"></i> Progress</a>
-                <a href="{{ url_for('vibe') }}" class="active" aria-current="page"><i class="ri-music-2-line" aria-hidden="true"></i> Vibe</a>
-                <a href="{{ url_for('gratitude') }}"><i class="ri-heart-line" aria-hidden="true"></i> Gratitude</a>
-                <a href="{{ url_for('settings') }}"><i class="ri-settings-3-line" aria-hidden="true"></i> Settings</a>
-                <a href="{{ url_for('profile') }}"><i class="ri-user-line" aria-hidden="true"></i> Profile</a>
-                <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line" aria-hidden="true"></i> Logout</a>
-            </nav>
-        </aside>
-
-        <div class="wrapper">
-            <main class="main-content" role="main">
-                <header class="main-header">
-                    <div class="profile" aria-label="User profile">
-                        <span>{{ session.get('user_email', 'User').split('@')[0] }}</span>
-                        <i class="ri-arrow-down-s-line" aria-hidden="true"></i>
-                    </div>
-                </header>
-
-                <section class="music-recommendations-section" aria-labelledby="music-recommendations-title">
-                    <h2 id="music-recommendations-title"><i class="ri-music-2-line" aria-hidden="true"></i> Music Recommendations</h2>
-                    <div class="selector-group">
-                        <label for="language-select">Select Language:</label>
-                        <select id="language-select" aria-label="Select music language">
-                            <option value="tamil">Tamil</option>
-                            <option value="telugu">Telugu</option>
-                            <option value="malayalam">Malayalam</option>
-                            <option value="english">English</option>
-                        </select>
-                    </div>
-                    <div class="music-box" id="spotify-player" role="region" aria-live="polite">
-                        <h3>Now Playing</h3>
-                        <p>Loading your personalized playlist...</p>
-                    </div>
-                </section>
-            </main>
-
-            <footer>
-                <span>© 2025 NeuroAid. Your mental health companion.</span>
-            </footer>
-        </div>
+  <div class="sidebar">
+    <div class="logo">
+      <i class="ri-brain-line"></i>
+      <h1>Neuro<span>Aid</span></h1>
     </div>
+    <nav>
+      <a href="{{ url_for('index') }}""><i class="ri-home-5-line"></i> Home</a>
+      <a href="{{ url_for('journal') }}""><i class="ri-booklet-line"></i> Journal</a>
+      <a href="{{ url_for('progress') }}""><i class="ri-bar-chart-2-line"></i> Progress</a>
+      <a href="{{ url_for('vibe') }}" class="active"><i class="ri-arrow-right"></i> Vibe
+      <a href="{{ url_for('gratitude') }}""><i class="ri-heart-line"></i> Gratitude</a>
+      <a href="{{ url_for('settings') }}""><i class="ri-settings-3-line"></i> Settings</a>
+      <a href="{{ url_for('profile') }}""><i class="ri-user-line"></i> Profile</a>
+      <a href="{{ url_for('logout') }}""><i class="ri-logout-box-line"></i> Logout</a>
+    </nav>
+  </div>
 
-    <script src="{{ url_for('static', filename='js/vibe.js') }}"></script>
+  <div class="wrapper">
+    <main class="main-content">
+      <header>
+        <div class="welcome-container">
+          <div class="welcome-text">Welcome to NeuroAid, {{ session.get('user_url', 'User').split('@')[0] }}</div>
+          <div class="quote-text"></div>
+        </div>
+        <div class="profile-dropdown">
+          <div class="profile">
+            <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile" alt="Profile" />
+            <span>{{ session.get('user_email', 'User').split('@') }}</span>[0] }}</span>
+            <i class="ri-arrow-down-s-line"></i>
+          </div>
+          <div class="dropdown-content">
+            <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
+            <a href="{{ url_for('settings') }}"><i class="ri-settings-3-line"></i> Settings</a>
+            <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a></p>
+          </div>
+        </div>
+      </header>
+
+      <section class="vibe-section">
+        <h2><i class="ri-music-2-line"></i> Vibe</h2>
+        <div class="mood-tracker">
+          <h3 class="heading="Track Your Mood Today">Mood Tracking</h3>
+          <div class="mood-options">
+            <button class="mood-btn" data-mood="happy">Happy</button>
+            <button class="mood-btn" data-mood="calm">Calm</button>
+            <button class="mood-btn" data-mood="sad">Sad</button>
+            <button class="mood-btn" data-mood="anxious">Anxious</button>
+            <button class="mood-btn" data-mood="speech">Speech</button>
+            <button class="mood-btn" onclick="startSpeechRecognition()">Speech Recognition</button>
+          </div>
+        </div>
+        </div class="vibe-suggestions">
+          <h3>Suggested Activities</h3>
+          <p>Based on your actions, try these activities:</p>
+          <div id="vibe-suggestions-list"></div>
+        </div>
+      </div>
+      </section>
+
+      <footer>
+        <span>© 2025 NeuroAid. Your mental health companion.</span>
+      </footer>
+    </div>
+  </div>
+  <script src="{{ url_for('static', filename='js/dropdown.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/welcome.js') }}"></script>
 </body>
 </html>
 ```
