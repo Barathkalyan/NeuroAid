@@ -1,0 +1,155 @@
+.profile-dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.profile {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    padding: 5px 10px;
+    border-radius: 5px;
+    transition: background-color 0.3s;
+}
+
+.profile:hover {
+    background-color: #f0f0f0;
+}
+
+.profile img {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+}
+
+.profile span {
+    font-size: 16px;
+    font-weight: 500;
+    color: #2d2d2d;
+}
+
+.dropdown-content {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background-color: #ffffff;
+    min-width: 200px;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    z-index: 1;
+    overflow: hidden;
+}
+
+.dropdown-content .user-info {
+    padding: 12px 16px;
+    border-bottom: 1px solid #eee;
+}
+
+.dropdown-content .user-info p {
+    margin: 4px 0;
+    font-size: 14px;
+    color: #2d2d2d;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.dropdown-content .user-info p i {
+    font-size: 16px;
+    color: #7c3aed;
+}
+
+.dropdown-content a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    color: #2d2d2d;
+    text-decoration: none;
+    font-size: 14px;
+    transition: background-color 0.3s;
+}
+
+.dropdown-content a:hover {
+    background-color: #f7f7f7;
+}
+
+.dropdown-content a i {
+    font-size: 16px;
+    color: #7c3aed;
+}
+
+/* Theme-specific styles */
+.theme-dark .profile span {
+    color: #ffffff;
+}
+
+.theme-dark .profile:hover {
+    background-color: #444;
+}
+
+.theme-dark .dropdown-content {
+    background-color: #333;
+}
+
+.theme-dark .dropdown-content .user-info {
+    border-bottom: 1px solid #555;
+}
+
+.theme-dark .dropdown-content .user-info p {
+    color: #ffffff;
+}
+
+.theme-dark .dropdown-content .user-info p i {
+    color: #a78bfa;
+}
+
+.theme-dark .dropdown-content a {
+    color: #ffffff;
+}
+
+.theme-dark .dropdown-content a:hover {
+    background-color: #555;
+}
+
+.theme-dark .dropdown-content a i {
+    color: #a78bfa;
+}
+
+.theme-calming .profile span {
+    color: #7c3aed;
+}
+
+.theme-calming .profile:hover {
+    background-color: #e8e1fa;
+}
+
+.theme-calming .dropdown-content {
+    background-color: #f4f0fa;
+}
+
+.theme-calming .dropdown-content .user-info {
+    border-bottom: 1px solid #d1c4e9;
+}
+
+.theme-calming .dropdown-content .user-info p {
+    color: #5b2cb3;
+}
+
+.theme-calming .dropdown-content .user-info p i {
+    color: #7c3aed;
+}
+
+.theme-calming .dropdown-content a {
+    color: #5b2cb3;
+}
+
+.theme-calming .dropdown-content a:hover {
+    background-color: #e8e1fa;
+}
+
+.theme-calming .dropdown-content a i {
+    color: #7c3aed;
+}
