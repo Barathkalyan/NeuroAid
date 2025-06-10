@@ -7,6 +7,10 @@ from datetime import datetime, timedelta
 import time
 from zoneinfo import ZoneInfo
 import uuid
+import pyotp
+import qrcode
+from io import BytesIO
+import base64
 
 app = Flask(__name__)
 app.secret_key = 'your-secret-key'
@@ -393,7 +397,7 @@ def recommend_music():
 
     supabase = get_supabase()
     user_id = session['user']
-    date = request.args.get('date')  # Get optional date parameter
+    date = request.args.get('date')
 
     try:
         query = supabase.table('journal_entries')\
@@ -402,7 +406,6 @@ def recommend_music():
         
         if date:
             try:
-                # Parse the date (expected format: YYYY-MM-DD)
                 start_date = datetime.fromisoformat(date.replace('Z', '+00:00')).replace(tzinfo=ZoneInfo("UTC"))
                 end_date = start_date.replace(hour=23, minute=59, second=59, microsecond=999999)
                 query = query.gte('created_at', start_date.isoformat()).lte('created_at', end_date.isoformat())
@@ -413,7 +416,7 @@ def recommend_music():
         query = query.order('created_at', desc=True).limit(1)
         entries = query.execute()
         
-        mood = entries.data[0]['mood'] if entries.data else 3  # Default to neutral if no entries
+        mood = entries.data[0]['mood'] if entries.data else 3
         
         preferences = supabase.table('user_preferences')\
             .select('language')\
@@ -423,35 +426,48 @@ def recommend_music():
 
         MOOD_PLAYLISTS = {
     'tamil': {
-        1: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX3bcfiyW6qms',  # Sad Melodies Tamil
-        2: 'https://open.spotify.com/embed/playlist/6B0SLRkQYmJtzwoS5wHgN4',  # Emotional Tamil Songs
-        3: 'https://open.spotify.com/embed/playlist/3CcmQHMCqHgiK4jmENG01A',  # Tamil Feel-Good Hits
-        4: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX2x1COalpsUi',  # Happy Vibes Tamil
-        5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX1i3hvzHpcQV'   # Hot Hits Tamil
+        1: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWX3SoTqhs2rq',
+        2: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWVV27DiNWxkR',
+        3: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWXz6ZFxA5jKQ',
+        4: 'https://open.spotify.com/embed/playlist/2Yra1CyIYaJ2YNz49yjh4i',
+        5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWUnAwRxD2pxH'
     },
     'english': {
-        1: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWVrtsSlLKzro',  # Deep Sad
-        2: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX5E9RNXcX4hv',  # Low Mood
-        3: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX1dxtpdzxvIa',  # Feel‑Good Pop
-        4: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXcBWIGoYBM5M',  # Happy Hits
-        5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWY4xHQp97fN6'   # Party/High Energy
+        1: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX9sIqqvKsjG8',
+        2: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX3rxVfibe1L0',
+        3: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX0BcQWzuB7ZO',
+        4: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXcBWIGoYBM5M',
+        5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWUa8ZRTfalSI'
+    },
+    'hindi': {
+        1: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWYkaDif7Ztbp',
+        2: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWUVpAXiEPK8P',
+        3: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX4dyzvuaRJ0n',
+        4: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX4SBhb3fqCJd',
+        5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX4ZrmoTDh6zJ'
     },
     'telugu': {
-        1: 'https://open.spotify.com/embed/playlist/67IVQUDrbuMhvxxK9lrIa9',  # Sad Telugu melodies 
-        2: 'https://open.spotify.com/embed/playlist/76mFoskdHnS6nKOnRADkjR',  # Feel‑good Telugu 
-        3: 'https://open.spotify.com/embed/playlist/3P5zX9Fe79o22kCOPNaWUB',  # Classic SPB Telugu 
-        4: 'https://open.spotify.com/embed/playlist/1CKQ49PC0AzUrssR4MtwmL',  # Curated Rahman Telugu
-        5: 'https://open.spotify.com/embed/playlist/0jHJ6pmtdu3dI4gtF5BCdb'   # DSP Telugu hits
+        1: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWXLeA8Omikj7',
+        2: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXapHi7gXtXo2',
+        3: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXdbXrPNafg9d',
+        4: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXaKIA8E7WcJj',
+        5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWXi7h5CniH97'
     },
     'malayalam': {
-        1: 'https://open.spotify.com/embed/playlist/4DBKi4I9pyydqhSOMD4qrt',  # Sad Tamil/Malayalam mix 
-        2: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXbqXxdO1a3nX',  # Chill Malayalam vibes
-        3: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWZz8QXaU2aX5',  # Feel‑good Malayalam
-        4: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWVoDnLC9PqaD',  # Upbeat Malayalam
-        5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWWhB4HOWKFQc'   # Energetic hits Malayalam
+        1: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWWhB4HOWKFQc',
+        2: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX6KYgZMe25iS',
+        3: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXbqXxdO1a3nX',
+        4: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWZz8QXaU2aX5',
+        5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWVoDnLC9PqaD'
     },
+    'kannada': {
+        1: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWXh3XHYZ7Sx1',
+        2: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX33aWnYYWvdf',
+        3: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWVXaB8Ox0zRJ',
+        4: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXe3a8d5bfgGk',
+        5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWUTJW8w3JNz2'
+    }
 }
-
 
         playlist_url = MOOD_PLAYLISTS.get(language, MOOD_PLAYLISTS['tamil']).get(mood)
         
@@ -465,7 +481,6 @@ def recommend_music():
         logger.error(f"Error recommending Spotify playlist: {str(e)}")
         return jsonify({'error': 'Internal server error'}), 500
 
-    
 @app.route('/api/update_language', methods=['GET', 'POST'])
 def update_language():
     if 'user' not in session:
@@ -475,59 +490,111 @@ def update_language():
     supabase = get_supabase()
     user_id = session['user']
 
-    def ensure_user_preferences():
-        try:
-            preferences = supabase.table('user_preferences').select('language').eq('user_id', user_id).execute()
-            if not preferences.data:
-                default_prefs = {
-                    'user_id': user_id,
-                    'language': 'tamil',
-                    'theme': 'light',
-                    'two_factor_enabled': False,
-                    'reminder_time': '09:00',
-                    'notification_preference': 'email'
-                }
-                logger.debug(f"Inserting default preferences for {user_id}: {default_prefs}")
-                response = supabase.table('user_preferences').insert(default_prefs).execute()
-                if not response.data:
-                    logger.error(f"Failed to insert default preferences for {user_id}")
-                    raise Exception("No data returned from preferences insert")
-                logger.info(f"Created default preferences for user {user_id}")
-                return 'tamil'
-            return preferences.data[0]['language']
-        except Exception as e:
-            logger.error(f"Error ensuring preferences for {user_id}: {str(e)}")
-            raise e
-
     if request.method == 'GET':
         try:
-            language = ensure_user_preferences()
-            logger.info(f"Fetched language for user {user_id}: {language}")
+            preferences = supabase.table('user_preferences')\
+                .select('language')\
+                .eq('user_id', user_id)\
+                .execute()
+            language = preferences.data[0]['language'] if preferences.data else 'tamil'
             return jsonify({'language': language}), 200
         except Exception as e:
             logger.error(f"Error fetching user language: {str(e)}")
             return jsonify({'error': 'Failed to fetch language'}), 500
-
+                                  
     try:
         data = request.get_json()
         language = data.get('language', 'tamil')
         valid_languages = ['tamil', 'hindi', 'telugu', 'malayalam', 'kannada', 'english']
         if language not in valid_languages:
-            logger.warning(f"Invalid language attempted: {language}")
             return jsonify({'error': 'Invalid language'}), 400
 
-        ensure_user_preferences()
-        logger.debug(f"Updating language to {language} for {user_id}")
-        response = supabase.table('user_preferences').update({'language': language}).eq('user_id', user_id).execute()
-        if not response.data:
-            logger.error(f"No data returned from language update for {user_id}")
-            return jsonify({'error': 'Failed to update language'}), 500
+        supabase.table('user_preferences').update({'language': language}).eq('user_id', user_id).execute()
         logger.info(f"Language updated to {language} for user {user_id}")
-        return jsonify({'success': True, 'language': language}), 200
+        return jsonify({'success': True}), 200
     except Exception as e:
         logger.error(f"Error updating language: {str(e)}")
         return jsonify({'error': 'Failed to update language'}), 500
+
+@app.route('/setup_2fa', methods=['GET', 'POST'])
+def setup_2fa():
+    if 'user' not in session:
+        return redirect(url_for('login'))
     
+    supabase = get_supabase()
+    user_id = session['user']
+    
+    if request.method == 'POST':
+        try:
+            totp = pyotp.TOTP(pyotp.random_base32())
+            secret = totp.secret
+            supabase.table('user_preferences').update({
+                'two_factor_secret': secret,
+                'two_factor_enabled': True
+            }).eq('user_id', user_id).execute()
+            
+            provisioning_uri = totp.provisioning_uri(
+                name=session['user_email'],
+                issuer_name='NeuroAid'
+            )
+            
+            img = qrcode.make(provisioning_uri)
+            buffered = BytesIO()
+            img.save(buffered)
+            qr_code = base64.b64encode(buffered.getvalue()).decode('utf-8')
+            
+            return render_template('setup_2fa.html', qr_code=qr_code, secret=secret)
+        except Exception as e:
+            logger.error(f"Error setting up 2FA: {str(e)}")
+            return render_template('setup_2fa.html', error="Failed to set up 2FA.")
+    
+    try:
+        preferences = supabase.table('user_preferences')\
+            .select('two_factor_secret')\
+            .eq('user_id', user_id)\
+            .execute()
+        
+        if preferences.data and preferences.data[0]['two_factor_secret']:
+            return redirect(url_for('verify_2fa'))
+        
+        return render_template('setup_2fa.html')
+    except Exception as e:
+        logger.error(f"Error checking 2FA setup: {str(e)}")
+        return render_template('setup_2fa.html', error="Error checking 2FA status.")
+
+@app.route('/verify_2fa', methods=['GET', 'POST'])
+def verify_2fa():
+    if 'user' not in session:
+        return redirect(url_for('login'))
+    
+    supabase = get_supabase()
+    user_id = session['user']
+    
+    if request.method == 'POST':
+        try:
+            code = request.form.get('code')
+            preferences = supabase.table('user_preferences')\
+                .select('two_factor_secret')\
+                .eq('user_id', user_id)\
+                .execute()
+            
+            if not preferences.data or not preferences.data[0]['two_factor_secret']:
+                return render_template('verify_2fa.html', error="2FA not set up.")
+            
+            secret = preferences.data[0]['two_factor_secret']
+            totp = pyotp.TOTP(secret)
+            
+            if totp.verify(code):
+                session['2fa_verified'] = True
+                return redirect(url_for('index'))
+            else:
+                return render_template('verify_2fa.html', error="Invalid 2FA code.")
+        except Exception as e:
+            logger.error(f"Error verifying 2FA: {str(e)}")
+            return render_template('verify_2fa.html', error="Error verifying 2FA code.")
+    
+    return render_template('verify_2fa.html')
+
 @app.route('/', methods=['GET', 'POST'])
 def login():
     error = None
@@ -549,12 +616,13 @@ def login():
                 session['user'] = str(user['id'])
                 session['user_email'] = email
                 session['last_activity'] = datetime.now(ZoneInfo("UTC")).isoformat()
-                # Load user preferences (theme) into session
                 preferences = supabase.table('user_preferences')\
-                    .select('theme')\
+                    .select('theme, two_factor_enabled, two_factor_secret')\
                     .eq('user_id', user['id'])\
                     .execute()
                 session['theme'] = preferences.data[0]['theme'] if preferences.data else 'light'
+                if preferences.data and preferences.data[0]['two_factor_enabled'] and preferences.data[0]['two_factor_secret']:
+                    return redirect(url_for('verify_2fa'))
                 logger.info(f"User {email} logged in successfully, user_id: {user['id']}, theme: {session['theme']}")
                 return redirect(url_for('index'))
             else:
@@ -576,60 +644,51 @@ def signup():
 
         if not email or not password or not confirm_password:
             error = 'Email, password, and confirm password are required.'
-            logger.warning(f"Signup failed: Missing required fields")
             return render_template('signup.html', error=error), 400
 
         if password != confirm_password:
             error = 'Passwords do not match!'
-            logger.warning(f"Signup failed: Passwords do not match for {email}")
             return render_template('signup.html', error=error), 400
 
         supabase = get_supabase()
         try:
-            # Check if email already exists
             existing_user = supabase.table('users').select('id').eq('email', email).execute()
             if existing_user.data:
                 error = 'Email already exists.'
-                logger.warning(f"Signup failed: Email {email} already exists")
                 return render_template('signup.html', error=error), 400
 
-            # Generate a UUID for the user
             user_id = str(uuid.uuid4())
             hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
             user_data = {'id': user_id, 'email': email, 'password': hashed_password}
-            logger.debug(f"Inserting user: {user_data}")
-            user_response = supabase.table('users').insert(user_data).execute()
-            logger.info(f"User inserted: {user_id}")
+            supabase.table('users').insert(user_data).execute()
 
-            # Insert default preferences
             preferences_data = {
                 'user_id': user_id,
-                'language': 'tamil',
                 'two_factor_enabled': False,
+                'two_factor_secret': None,
                 'theme': 'light',
                 'reminder_time': '09:00',
                 'notification_preference': 'email'
             }
-            logger.debug(f"Inserting preferences: {preferences_data}")
-            pref_response = supabase.table('user_preferences').insert(preferences_data).execute()
-            if not pref_response.data:
-                logger.error(f"No data returned from user_preferences insert for {user_id}")
-                supabase.table('users').delete().eq('id', user_id).execute()
-                raise Exception("Failed to create user preferences: No data returned")
+            supabase.table('user_preferences').insert(preferences_data).execute()
 
             logger.info(f"User {email} signed up successfully with user_id: {user_id}")
             return redirect(url_for('login'))
         except Exception as e:
-            error = f'Unable to sign up: {str(e)}. Please try again later.'
-            logger.error(f"Signup error for {email}: {str(e)}")
+            error = 'Unable to sign up right now. Please try again later.'
+            logger.error(f"Signup error: {str(e)}")
             return render_template('signup.html', error=error), 400
 
     return render_template('signup.html', error=error)
+
 @app.route('/index')
 def index():
     if 'user' not in session:
         logger.info("User not logged in, redirecting to login.")
         return redirect(url_for('login'))
+
+    if session.get('two_factor_enabled') and not session.get('2fa_verified'):
+        return redirect(url_for('verify_2fa'))
 
     supabase = get_supabase()
     user_id = session['user']
@@ -714,6 +773,9 @@ def journal():
         logger.info("User not logged in, redirecting to login.")
         return redirect(url_for('login'))
 
+    if session.get('two_factor_enabled') and not session.get('2fa_verified'):
+        return redirect(url_for('verify_2fa'))
+
     supabase = get_supabase()
     user_id = session['user']
     current_date = datetime.now(ZoneInfo("UTC")).astimezone(ZoneInfo("Asia/Kolkata")).strftime('%B %d, %Y')
@@ -786,6 +848,10 @@ def progress():
     if 'user' not in session:
         logger.info("User not logged in, redirecting to login.")
         return redirect(url_for('login'))
+
+    if session.get('two_factor_enabled') and not session.get('2fa_verified'):
+        return redirect(url_for('verify_2fa'))
+
     return render_template('progress.html', theme=session.get('theme', 'light'))
 
 @app.route('/vibe')
@@ -793,6 +859,10 @@ def vibe():
     if 'user' not in session:
         logger.info("User not logged in, redirecting to login.")
         return redirect(url_for('login'))
+
+    if session.get('two_factor_enabled') and not session.get('2fa_verified'):
+        return redirect(url_for('verify_2fa'))
+
     return render_template('vibe.html', theme=session.get('theme', 'light'))
 
 @app.route('/gratitude')
@@ -800,6 +870,9 @@ def gratitude():
     if 'user' not in session:
         logger.info("User not logged in, redirecting to login.")
         return redirect(url_for('login'))
+
+    if session.get('two_factor_enabled') and not session.get('2fa_verified'):
+        return redirect(url_for('verify_2fa'))
 
     return render_template('gratitude.html', theme=session.get('theme', 'light'))
 
@@ -809,6 +882,9 @@ def profile():
         logger.info("User not logged in, redirecting to login.")
         return redirect(url_for('login'))
 
+    if session.get('two_factor_enabled') and not session.get('2fa_verified'):
+        return redirect(url_for('verify_2fa'))
+
     return render_template('profile.html', theme=session.get('theme', 'light'))
 
 @app.route('/settings', methods=['GET', 'POST'])
@@ -817,6 +893,9 @@ def settings():
         logger.info("User not logged in, redirecting to login.")
         return redirect(url_for('login'))
 
+    if session.get('two_factor_enabled') and not session.get('2fa_verified'):
+        return redirect(url_for('verify_2fa'))
+
     supabase = get_supabase()
     user_id = session['user']
     error = None
@@ -824,7 +903,6 @@ def settings():
 
     if request.method == 'POST':
         try:
-            # Handle email/password change (updates users table)
             new_email = request.form.get('email')
             new_password = request.form.get('password')
             confirm_password = request.form.get('confirm_password')
@@ -832,17 +910,14 @@ def settings():
             if new_email or new_password:
                 if new_password and new_password != confirm_password:
                     error = "Passwords do not match!"
-                    return render_template('settings.html', error=error, success=success, theme=session.get('theme', 'light')
-)
+                    return render_template('settings.html', error=error, success=success, theme=session.get('theme', 'light'))
 
                 user_update = {}
                 if new_email:
-                    # Check if the new email already exists
                     existing_user = supabase.table('users').select('id').eq('email', new_email).neq('id', user_id).execute()
                     if existing_user.data:
                         error = "Email already in use by another account."
-                        return render_template('settings.html', error=error, success=success, theme=session.get('theme', 'light')
-)
+                        return render_template('settings.html', error=error, success=success, theme=session.get('theme', 'light'))
                     user_update['email'] = new_email
                     session['user_email'] = new_email
 
@@ -854,7 +929,6 @@ def settings():
                     supabase.table('users').update(user_update).eq('id', user_id).execute()
                     logger.info(f"User {user_id} updated email/password.")
 
-            # Handle preferences update (updates user_preferences table)
             two_factor_enabled = request.form.get('two_factor_enabled') == 'on'
             theme = request.form.get('theme')
             reminder_time = request.form.get('reminder_time')
@@ -869,15 +943,22 @@ def settings():
             supabase.table('user_preferences').update(preferences_update).eq('user_id', user_id).execute()
             logger.info(f"Preferences updated for user {user_id}: {preferences_update}")
 
-            # Update session theme
             session['theme'] = theme
+            session['two_factor_enabled'] = two_factor_enabled
+
+            if two_factor_enabled:
+                preferences = supabase.table('user_preferences')\
+                    .select('two_factor_secret')\
+                    .eq('user_id', user_id)\
+                    .execute()
+                if not preferences.data or not preferences.data[0]['two_factor_secret']:
+                    return redirect(url_for('setup_2fa'))
 
             success = "Settings updated successfully!"
         except Exception as e:
             error = "Failed to update settings. Please try again."
             logger.error(f"Settings update error: {str(e)}")
 
-    # Fetch current user data and preferences
     try:
         user_data = supabase.table('users').select('email').eq('id', user_id).execute()
         preferences_data = supabase.table('user_preferences')\
@@ -915,6 +996,8 @@ def logout():
         session.pop('user_email', None)
         session.pop('last_activity', None)
         session.pop('theme', None)
+        session.pop('2fa_verified', None)
+        session.pop('two_factor_enabled', None)
         logger.info(f"User {user_email} logged out.")
     return redirect(url_for('login'))
 
