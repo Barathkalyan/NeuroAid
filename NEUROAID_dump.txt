@@ -9,6 +9,10 @@ from datetime import datetime, timedelta
 import time
 from zoneinfo import ZoneInfo
 import uuid
+import pyotp
+import qrcode
+from io import BytesIO
+import base64
 
 app = Flask(__name__)
 app.secret_key = 'your-secret-key'
@@ -190,6 +194,8 @@ def make_session_permanent():
             session.pop('user_email', None)
             session.pop('access_token', None)
             session.pop('last_activity', None)
+            session.pop('two_factor_enabled', None)
+            session.pop('2fa_verified', None)
             logger.info("Session expired, user logged out.")
             return redirect(url_for('login'))
     if 'user' in session:
@@ -395,7 +401,7 @@ def recommend_music():
 
     supabase = get_supabase()
     user_id = session['user']
-    date = request.args.get('date')  # Get optional date parameter
+    date = request.args.get('date')
 
     try:
         query = supabase.table('journal_entries')\
@@ -404,7 +410,6 @@ def recommend_music():
         
         if date:
             try:
-                # Parse the date (expected format: YYYY-MM-DD)
                 start_date = datetime.fromisoformat(date.replace('Z', '+00:00')).replace(tzinfo=ZoneInfo("UTC"))
                 end_date = start_date.replace(hour=23, minute=59, second=59, microsecond=999999)
                 query = query.gte('created_at', start_date.isoformat()).lte('created_at', end_date.isoformat())
@@ -415,7 +420,7 @@ def recommend_music():
         query = query.order('created_at', desc=True).limit(1)
         entries = query.execute()
         
-        mood = entries.data[0]['mood'] if entries.data else 3  # Default to neutral if no entries
+        mood = entries.data[0]['mood'] if entries.data else 3
         
         preferences = supabase.table('user_preferences')\
             .select('language')\
@@ -468,7 +473,6 @@ def recommend_music():
     }
 }
 
-
         playlist_url = MOOD_PLAYLISTS.get(language, MOOD_PLAYLISTS['tamil']).get(mood)
         
         if not playlist_url:
@@ -481,7 +485,6 @@ def recommend_music():
         logger.error(f"Error recommending Spotify playlist: {str(e)}")
         return jsonify({'error': 'Internal server error'}), 500
 
-    
 @app.route('/api/update_language', methods=['GET', 'POST'])
 def update_language():
     if 'user' not in session:
@@ -503,7 +506,6 @@ def update_language():
             logger.error(f"Error fetching user language: {str(e)}")
             return jsonify({'error': 'Failed to fetch language'}), 500
                                   
-    # POST request (already implemented)
     try:
         data = request.get_json()
         language = data.get('language', 'tamil')
@@ -518,8 +520,107 @@ def update_language():
         logger.error(f"Error updating language: {str(e)}")
         return jsonify({'error': 'Failed to update language'}), 500
 
+@app.route('/setup_2fa', methods=['GET', 'POST'])
+def setup_2fa():
+    if 'user' not in session:
+        return redirect(url_for('login'))
     
+    supabase = get_supabase()
+    user_id = session['user']
     
+    if request.method == 'POST':
+        try:
+            totp = pyotp.TOTP(pyotp.random_base32())
+            secret = totp.secret
+            supabase.table('user_preferences').update({
+                'two_factor_secret': secret,
+                'two_factor_enabled': True
+            }).eq('user_id', user_id).execute()
+            
+            provisioning_uri = totp.provisioning_uri(
+                name=session['user_email'],
+                issuer_name='NeuroAid'
+            )
+            
+            img = qrcode.make(provisioning_uri)
+            buffered = BytesIO()
+            img.save(buffered)
+            qr_code = base64.b64encode(buffered.getvalue()).decode('utf-8')
+            
+            return render_template('setup_2fa.html', qr_code=qr_code, secret=secret)
+        except Exception as e:
+            logger.error(f"Error setting up 2FA: {str(e)}")
+            supabase.table('user_preferences').update({
+                'two_factor_enabled': False,
+                'two_factor_secret': None
+            }).eq('user_id', user_id).execute()
+            session['two_factor_enabled'] = False
+            return render_template('setup_2fa.html', error="Failed to set up 2FA. Please try again.")
+    
+    try:
+        preferences = supabase.table('user_preferences')\
+            .select('two_factor_secret')\
+            .eq('user_id', user_id)\
+            .execute()
+        
+        if preferences.data and preferences.data[0].get('two_factor_secret'):
+            return redirect(url_for('verify_2fa'))
+        
+        return render_template('setup_2fa.html')
+    except Exception as e:
+        logger.error(f"Error checking 2FA setup: {str(e)}")
+        return render_template('setup_2fa.html', error="Error checking 2FA status.")
+
+@app.route('/verify_2fa', methods=['GET', 'POST'])
+def verify_2fa():
+    if 'user' not in session:
+        return redirect(url_for('login'))
+    
+    supabase = get_supabase()
+    user_id = session['user']
+    
+    if request.method == 'POST':
+        try:
+            code = request.form.get('code')
+            preferences = supabase.table('user_preferences')\
+                .select('two_factor_secret')\
+                .eq('user_id', user_id)\
+                .execute()
+            
+            if not preferences.data or not preferences.data[0].get('two_factor_secret'):
+                return render_template('verify_2fa.html', error="2FA not set up.")
+            
+            secret = preferences.data[0]['two_factor_secret']
+            totp = pyotp.TOTP(secret)
+            
+            if totp.verify(code):
+                session['2fa_verified'] = True
+                return redirect(url_for('index'))
+            else:
+                return render_template('verify_2fa.html', error="Invalid 2FA code.")
+        except Exception as e:
+            logger.error(f"Error verifying 2FA: {str(e)}")
+            return render_template('verify_2fa.html', error="Error verifying 2FA code.")
+    
+    try:
+        preferences = supabase.table('user_preferences')\
+            .select('two_factor_enabled, two_factor_secret')\
+            .eq('user_id', user_id)\
+            .execute()
+        
+        if not preferences.data or not preferences.data[0].get('two_factor_enabled') or not preferences.data[0].get('two_factor_secret'):
+            supabase.table('user_preferences').update({
+                'two_factor_enabled': False,
+                'two_factor_secret': None
+            }).eq('user_id', user_id).execute()
+            session['two_factor_enabled'] = False
+            return redirect(url_for('index'))
+        
+        return render_template('verify_2fa.html')
+    except Exception as e:
+        logger.error(f"Error checking 2FA status on verify: {str(e)}")
+        return render_template('verify_2fa.html', error="Error checking 2FA status.")
+
 @app.route('/', methods=['GET', 'POST'])
 def login():
     error = None
@@ -541,14 +642,25 @@ def login():
                 session['user'] = str(user['id'])
                 session['user_email'] = email
                 session['last_activity'] = datetime.now(ZoneInfo("UTC")).isoformat()
-                # Load user preferences (theme) into session
-                preferences = supabase.table('user_preferences')\
-                    .select('theme')\
-                    .eq('user_id', user['id'])\
-                    .execute()
-                session['theme'] = preferences.data[0]['theme'] if preferences.data else 'light'
-                logger.info(f"User {email} logged in successfully, user_id: {user['id']}, theme: {session['theme']}")
-                return redirect(url_for('index'))
+                try:
+                    preferences = supabase.table('user_preferences')\
+                        .select('theme, two_factor_enabled, two_factor_secret')\
+                        .eq('user_id', user['id'])\
+                        .execute()
+                    session['theme'] = preferences.data[0].get('theme', 'light') if preferences.data else 'light'
+                    two_factor_enabled = preferences.data[0].get('two_factor_enabled', False) if preferences.data else False
+                    two_factor_secret = preferences.data[0].get('two_factor_secret') if preferences.data else None
+                    session['two_factor_enabled'] = two_factor_enabled
+                    if two_factor_enabled and two_factor_secret:
+                        return redirect(url_for('verify_2fa'))
+                    logger.info(f"User {email} logged in successfully, user_id: {user['id']}, theme: {session['theme']}")
+                    return redirect(url_for('index'))
+                except Exception as e:
+                    logger.error(f"Error fetching user preferences: {str(e)}")
+                    session['theme'] = 'light'
+                    session['two_factor_enabled'] = False
+                    logger.info(f"User {email} logged in with default preferences, user_id: {user['id']}")
+                    return redirect(url_for('index'))
             else:
                 error = 'Invalid credentials.'
                 return render_template('login.html', error=error), 401
@@ -576,22 +688,20 @@ def signup():
 
         supabase = get_supabase()
         try:
-            # Check if email already exists
             existing_user = supabase.table('users').select('id').eq('email', email).execute()
             if existing_user.data:
                 error = 'Email already exists.'
                 return render_template('signup.html', error=error), 400
 
-            # Generate a UUID for the user
             user_id = str(uuid.uuid4())
             hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
             user_data = {'id': user_id, 'email': email, 'password': hashed_password}
             supabase.table('users').insert(user_data).execute()
 
-            # Insert default preferences for the new user
             preferences_data = {
                 'user_id': user_id,
                 'two_factor_enabled': False,
+                'two_factor_secret': None,
                 'theme': 'light',
                 'reminder_time': '09:00',
                 'notification_preference': 'email'
@@ -612,6 +722,9 @@ def index():
     if 'user' not in session:
         logger.info("User not logged in, redirecting to login.")
         return redirect(url_for('login'))
+
+    if session.get('two_factor_enabled') and not session.get('2fa_verified'):
+        return redirect(url_for('verify_2fa'))
 
     supabase = get_supabase()
     user_id = session['user']
@@ -696,6 +809,9 @@ def journal():
         logger.info("User not logged in, redirecting to login.")
         return redirect(url_for('login'))
 
+    if session.get('two_factor_enabled') and not session.get('2fa_verified'):
+        return redirect(url_for('verify_2fa'))
+
     supabase = get_supabase()
     user_id = session['user']
     current_date = datetime.now(ZoneInfo("UTC")).astimezone(ZoneInfo("Asia/Kolkata")).strftime('%B %d, %Y')
@@ -768,6 +884,10 @@ def progress():
     if 'user' not in session:
         logger.info("User not logged in, redirecting to login.")
         return redirect(url_for('login'))
+
+    if session.get('two_factor_enabled') and not session.get('2fa_verified'):
+        return redirect(url_for('verify_2fa'))
+
     return render_template('progress.html', theme=session.get('theme', 'light'))
 
 @app.route('/vibe')
@@ -775,6 +895,10 @@ def vibe():
     if 'user' not in session:
         logger.info("User not logged in, redirecting to login.")
         return redirect(url_for('login'))
+
+    if session.get('two_factor_enabled') and not session.get('2fa_verified'):
+        return redirect(url_for('verify_2fa'))
+
     return render_template('vibe.html', theme=session.get('theme', 'light'))
 
 @app.route('/gratitude')
@@ -782,6 +906,9 @@ def gratitude():
     if 'user' not in session:
         logger.info("User not logged in, redirecting to login.")
         return redirect(url_for('login'))
+
+    if session.get('two_factor_enabled') and not session.get('2fa_verified'):
+        return redirect(url_for('verify_2fa'))
 
     return render_template('gratitude.html', theme=session.get('theme', 'light'))
 
@@ -791,6 +918,9 @@ def profile():
         logger.info("User not logged in, redirecting to login.")
         return redirect(url_for('login'))
 
+    if session.get('two_factor_enabled') and not session.get('2fa_verified'):
+        return redirect(url_for('verify_2fa'))
+
     return render_template('profile.html', theme=session.get('theme', 'light'))
 
 @app.route('/settings', methods=['GET', 'POST'])
@@ -799,6 +929,9 @@ def settings():
         logger.info("User not logged in, redirecting to login.")
         return redirect(url_for('login'))
 
+    if session.get('two_factor_enabled') and not session.get('2fa_verified'):
+        return redirect(url_for('verify_2fa'))
+
     supabase = get_supabase()
     user_id = session['user']
     error = None
@@ -806,7 +939,6 @@ def settings():
 
     if request.method == 'POST':
         try:
-            # Handle email/password change (updates users table)
             new_email = request.form.get('email')
             new_password = request.form.get('password')
             confirm_password = request.form.get('confirm_password')
@@ -814,17 +946,14 @@ def settings():
             if new_email or new_password:
                 if new_password and new_password != confirm_password:
                     error = "Passwords do not match!"
-                    return render_template('settings.html', error=error, success=success, theme=session.get('theme', 'light')
-)
+                    return render_template('settings.html', error=error, success=success, theme=session.get('theme', 'light'))
 
                 user_update = {}
                 if new_email:
-                    # Check if the new email already exists
                     existing_user = supabase.table('users').select('id').eq('email', new_email).neq('id', user_id).execute()
                     if existing_user.data:
                         error = "Email already in use by another account."
-                        return render_template('settings.html', error=error, success=success, theme=session.get('theme', 'light')
-)
+                        return render_template('settings.html', error=error, success=success, theme=session.get('theme', 'light'))
                     user_update['email'] = new_email
                     session['user_email'] = new_email
 
@@ -836,7 +965,6 @@ def settings():
                     supabase.table('users').update(user_update).eq('id', user_id).execute()
                     logger.info(f"User {user_id} updated email/password.")
 
-            # Handle preferences update (updates user_preferences table)
             two_factor_enabled = request.form.get('two_factor_enabled') == 'on'
             theme = request.form.get('theme')
             reminder_time = request.form.get('reminder_time')
@@ -851,15 +979,22 @@ def settings():
             supabase.table('user_preferences').update(preferences_update).eq('user_id', user_id).execute()
             logger.info(f"Preferences updated for user {user_id}: {preferences_update}")
 
-            # Update session theme
             session['theme'] = theme
+            session['two_factor_enabled'] = two_factor_enabled
+
+            if two_factor_enabled:
+                preferences = supabase.table('user_preferences')\
+                    .select('two_factor_secret')\
+                    .eq('user_id', user_id)\
+                    .execute()
+                if not preferences.data or not preferences.data[0].get('two_factor_secret'):
+                    return redirect(url_for('setup_2fa'))
 
             success = "Settings updated successfully!"
         except Exception as e:
             error = "Failed to update settings. Please try again."
             logger.error(f"Settings update error: {str(e)}")
 
-    # Fetch current user data and preferences
     try:
         user_data = supabase.table('users').select('email').eq('id', user_id).execute()
         preferences_data = supabase.table('user_preferences')\
@@ -897,6 +1032,8 @@ def logout():
         session.pop('user_email', None)
         session.pop('last_activity', None)
         session.pop('theme', None)
+        session.pop('2fa_verified', None)
+        session.pop('two_factor_enabled', None)
         logger.info(f"User {user_email} logged out.")
     return redirect(url_for('login'))
 
@@ -2936,6 +3073,197 @@ footer {
 }
 ```
 
+# File: static/css/setup_2fa.css
+```css
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Poppins', sans-serif;
+  background-color: #D6E0FA;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+
+.login-container {
+  display: flex;
+  width: 100%;
+  max-width: 1200px; /* Increased from 900px to make layout bigger */
+  min-height: 650px; /* Increased from 500px */
+  background-color: #fff;
+  box-shadow: 20px 20px 20px rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.branding {
+  flex: 1;
+  background-color: #e0dddd;
+  display: flex; /* Added to center the h1 */
+  justify-content: center;
+  align-items: center;
+}
+
+.branding h1 {
+  font-size: 85px; /* Increased from 36px to make it bigger */
+  font-weight: 600;
+  text-align: center;
+  margin-bottom: 0; /* No margin needed since it's centered */
+}
+
+.branding h1 span {
+  color: #3F51B5;
+}
+
+.login-box {
+  flex: 1;
+  padding: 20px; /* Reduced from 40px to reduce white space */
+  display: flex;
+  border-radius: 30px;
+  flex-direction: column;
+  justify-content: center;
+  background-color: #fff;
+}
+
+.login-box h2 {
+  font-size: 30px; /* Increased from 24px */
+  font-weight: 500;
+  text-align: center;
+  margin-bottom: 10px; /* Reduced from 20px to reduce white space */
+}
+
+.login-box p {
+  font-size: 18px; /* Increased from 16px */
+  color: #666;
+  text-align: center;
+  margin-bottom: 10px; /* Reduced from 20px */
+}
+
+.qr-container {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 10px; /* Reduced from 20px */
+}
+
+.qr-container img {
+  max-width: 300px; /* Increased from 200px to make it bigger */
+  height: auto;
+}
+
+.secret-code {
+  font-family: 'Poppins', monospace;
+  background-color: #f5f5f5;
+  padding: 12px; /* Slightly increased for larger appearance */
+  border-radius: 5px;
+  text-align: center;
+  margin-bottom: 10px; /* Reduced from 20px */
+  font-size: 18px; /* Increased from 16px */
+  color: #333;
+  word-break: break-all;
+}
+
+button,
+a {
+  width: 100%;
+  padding: 15px; /* Increased from 12px */
+  background-color: #3F51B5;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  font-size: 18px; /* Increased from 16px */
+  font-weight: 500;
+  cursor: pointer;
+  text-align: center;
+  text-decoration: none;
+  transition: background-color 0.3s ease;
+  margin-top: 0;
+}
+
+button:hover,
+a:hover {
+  background-color: #2c3e50;
+}
+
+.login-link,
+.signup-link {
+  text-align: center;
+  margin-top: 10px; /* Reduced from 20px */
+  font-size: 16px; /* Increased from 14px */
+  color: #666;
+}
+
+.login-link a,
+.signup-link a {
+  color: #3F51B5;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.login-link a:hover,
+.signup-link a:hover {
+  text-decoration: underline;
+}
+
+.error {
+  font-size: 16px; /* Increased from 14px */
+  color: #b71c1c;
+  text-align: center;
+  margin-bottom: 10px; /* Reduced from 20px */
+}
+
+.abc {
+  margin-bottom: 10px; /* Reduced from 20px */
+}
+
+@media (max-width: 768px) {
+  .login-container {
+    flex-direction: column;
+    max-width: 100%;
+    min-height: auto;
+    border-radius: 0;
+  }
+
+  .branding {
+    display: none; /* Hide branding on mobile to save space */
+  }
+
+  .login-box {
+    padding: 20px;
+    width: 100%;
+  }
+
+  .login-box h2 {
+    font-size: 26px; /* Adjusted for mobile */
+  }
+
+  .login-box p {
+    font-size: 16px; /* Adjusted for mobile */
+  }
+
+  .qr-container img {
+    max-width: 200px; /* Adjusted for mobile */
+  }
+
+  .secret-code {
+    font-size: 16px; /* Adjusted for mobile */
+  }
+
+  button,
+  a {
+    font-size: 16px; /* Adjusted for mobile */
+  }
+
+  .error {
+    font-size: 14px; /* Adjusted for mobile */
+  }
+}
+```
+
 # File: static/css/signup.css
 ```css
 :root {
@@ -3184,144 +3512,230 @@ button:hover {
 
 ```
 
+# File: static/css/verify_2fa.css
+```css
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Poppins', sans-serif;
+  background-color: #D6E0FA;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+
+.login-container {
+  display: flex;
+  width: 100%;
+  max-width: 900px;
+  min-height: 400px;
+  background-color: #fff;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.branding {
+  flex: 1;
+  background-color: #f5f5f5;
+}
+
+.login-box {
+  flex: 1;
+  padding: 30px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  background-color: #fff;
+}
+
+.login-box h1 {
+  font-size: 32px;
+  font-weight: 600;
+  text-align: center;
+  margin-bottom: 8px;
+  color: #2D2D2D;
+}
+
+.login-box h1 span {
+  color: #3F51B5;
+}
+
+.login-box p {
+  font-size: 15px;
+  color: #666;
+  text-align: center;
+  margin-bottom: 15px;
+}
+
+.login-box h2 {
+  font-size: 22px;
+  font-weight: 500;
+  text-align: center;
+  margin-bottom: 15px;
+  color: #3F51B5;
+}
+
+.input-group {
+  position: relative;
+  margin-bottom: 20px;
+}
+
+.input-group input {
+  width: 100%;
+  padding: 12px 15px; /* Increased padding for more space */
+  font-size: 16px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  outline: none;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  text-align: center;
+}
+
+.input-group input:focus {
+  border-color: #3F51B5;
+  box-shadow: 0 0 5px rgba(63, 81, 181, 0.3);
+}
+
+.input-group label {
+  position: absolute;
+  top: 50%;
+  left: 15px;
+  transform: translateY(-50%);
+  font-size: 16px;
+  color: #999;
+  pointer-events: none;
+  transition: all 0.3s ease;
+  background-color: transparent;
+}
+
+.input-group input:focus + label,
+.input-group input:not(:placeholder-shown) + label {
+  top: -12px; /* Moved higher to avoid overlap */
+  font-size: 12px;
+  color: #3F51B5;
+  background-color: #fff;
+  padding: 2px 6px; /* Increased padding for better coverage */
+}
+
+button {
+  width: 100%;
+  padding: 10px;
+  background-color: #3F51B5;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.1s ease;
+  margin-top: 10px;
+}
+
+button:hover {
+  background-color: #2c3e50;
+  transform: translateY(-2px);
+}
+
+.error {
+  color: #b71c1c;
+  text-align: center;
+  margin-top: 10px;
+  font-size: 14px;
+  background-color: #ffebee;
+  padding: 5px 10px;
+  border-radius: 5px;
+}
+
+@media (max-width: 768px) {
+  .login-container {
+    flex-direction: column;
+    max-width: 100%;
+    min-height: auto;
+    border-radius: 0;
+  }
+
+  .branding {
+    display: none;
+  }
+
+  .login-box {
+    padding: 20px;
+    width: 100%;
+  }
+
+  .login-box h1 {
+    font-size: 28px;
+  }
+
+  .login-box h2 {
+    font-size: 20px;
+  }
+}
+```
+
 # File: static/css/vibe.css
 ```css
-.music-recommendations-section {
-    margin-top: 30px;
-    padding: 30px;
-    background-color: #f5f3ff;
-    border-radius: 16px;
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
+.music-box {
+    background: var(--card-bg, #ffffff);
+    border-radius: 12px;
+    padding: 20px;
+    margin-top: 20px;
+    text-align: center;
+    box-shadow: var(--shadow, 0 2px 5px rgba(0, 0, 0, 0.1));
+}
+
+.music-box h3 {
+    margin: 0 0 10px;
+    font-size: 1.5rem;
+    color: var(--text-primary, #1f2937);
+}
+
+.music-box p {
+    color: var(--text-secondary, #6b7280);
+    font-size: 1rem;
+}
+
+.selector-group {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
+    align-items: center;
+    justify-content: center;
+}
+
+.selector-group label {
+    font-weight: 500;
+    color: var(--text-primary, #1f2937);
+    margin-right: 10px;
+}
+
+.selector-group select {
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--glass-border, #e5e7eb);
+    background: var(--secondary, #f9faff);
+    color: var(--text-primary, #1f2937);
+    font-size: 1rem;
+    cursor: pointer;
+}
+
+.selector-group select:focus {
+    outline: none;
+    border-color: var(--primary, #7c3aed);
 }
 
 .music-recommendations-section h2 {
-    font-size: 32px;
-    margin-bottom: 20px;
-    color: #2b2b2b;
-}
-
-/* Removed .mood-selector styles */
-
-.recommendations-content {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 25px;
-    margin-top: 30px; /* keep margin for spacing */
-}
-
-.song-card {
-    background-color: #fff;
-    border: 1px solid #e0dcf5;
-    border-radius: 12px;
-    padding: 20px;
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.04);
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    transition: transform 0.2s;
-}
-
-.song-card:hover {
-    transform: translateY(-4px);
-}
-
-.song-card p {
-    margin: 0;
-    color: #222;
-    font-size: 16px;
-    line-height: 1.4;
-}
-
-.play-btn {
-    align-self: flex-start;
-    background-color: #7c3aed;
-    color: white;
-    border: none;
-    padding: 10px 16px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: 500;
-    transition: background-color 0.3s;
-}
-
-.play-btn:hover {
-    background-color: #5b21b6;
-}
-
-.music-player {
-    margin-top: 40px;
-    padding: 25px;
-    background: linear-gradient(135deg, #e3d7fd, #c9b6ff);
-    border-radius: 16px;
-    box-shadow: 0 10px 30px rgba(124, 58, 237, 0.1);
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-    align-items: center;
-    text-align: center;
-}
-
-.music-player h3 {
-    margin: 0;
-    font-size: 20px;
-    color: #322f3d;
-}
-
-#now-playing {
-    font-size: 16px;
-    color: #4b445a;
-    font-weight: 500;
-}
-
-#audio-player {
-    width: 100%;
-    max-width: 500px;
-    margin-top: 10px;
-    border-radius: 8px;
-    outline: none;
-    background-color: #fff;
-}
-
-.load-more-btn {
-    margin: 30px auto 0;
-    display: block;
-    background-color: #7c3aed;
-    color: white;
-    border: none;
-    padding: 12px 24px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 16px;
-    font-weight: 600;
-    transition: background-color 0.3s;
-}
-
-.load-more-btn:hover {
-    background-color: #5b21b6;
-}
-
-.language-selector {
-    margin-bottom: 20px;
     display: flex;
     align-items: center;
-    gap: 10px;
-}
-
-.language-selector label {
-    color: var(--text-primary);
-    font-size: 1rem;
-    font-weight: 500;
-}
-
-.language-selector select {
-    padding: 8px;
-    border-radius: 8px;
-    border: 1px solid var(--glass-border);
-    background: var(--glass-bg);
-    color: var(--text-primary);
-    font-size: 1rem;
-    cursor: pointer;
+    gap: 8px;
+    font-size: 1.75rem;
+    color: var(--text-primary, #1f2937);
 }
 ```
 
@@ -4268,150 +4682,78 @@ const updateProgressBar = (percentage) => {
 
 # File: static/js/vibe.js
 ```js
-document.addEventListener('DOMContentLoaded', function () {
-    let currentLimit = 7;
-    let currentGenre = 'tamil-folk';
-    let moodData = null;
-
-    // Map mood to genre (handled server-side, kept for reference)
-    function mapMoodToGenre(mood) {
-        const genres = {
-            1: 'sad',
-            2: 'melody',
-            3: 'folk',
-            4: 'pop',
-            5: 'dance'
-        };
-        return genres[Math.round(mood)] || 'folk';
-    }
-
-    // Update recommendations UI with Spotify embed
-    function updateRecommendations(data) {
-        const recommendationsElement = document.getElementById('tamil-music-recommendations');
-        recommendationsElement.innerHTML = '';
-
-        if (!data || !data.embedUrl) {
-            recommendationsElement.innerHTML = 'No playlist found. Try logging your mood!';
-            document.getElementById('load-more-btn').style.display = 'none';
-            return;
+async function loadSpotifyEmbed() {
+    const playerContainer = document.getElementById('spotify-player');
+    try {
+        const response = await fetch('/api/recommend_music');
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to fetch music');
         }
-
-        // Update Spotify iframe src
-        const spotifyIframe = document.getElementById('spotify-player');
-        if (spotifyIframe) {
-            spotifyIframe.src = data.embedUrl;
+        const data = await response.json();
+        if (data.embedUrl) {
+            playerContainer.innerHTML = `
+                <h3>Now Playing (Mood Score: ${data.mood})</h3>
+                <div id="iframe-wrapper">
+                    <iframe style="border-radius:12px" 
+                            src="${data.embedUrl}" 
+                            width="100%" 
+                            height="380" 
+                            frameborder="0" 
+                            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
+                            loading="lazy"></iframe>
+                </div>`;
         } else {
-            recommendationsElement.innerHTML = `
-                <iframe id="spotify-player" style="border-radius:12px" src="${data.embedUrl}" 
-                    width="100%" height="380" frameBorder="0" allowfullscreen=""
-                    allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
-                    loading="lazy"></iframe>
-            `;
+            playerContainer.innerHTML = `
+                <h3>Now Playing</h3>
+                <p>No songs found. Try journaling to log your mood!</p>`;
         }
-
-        document.getElementById('load-more-btn').style.display = 'none'; // Hide load more, as it's a single playlist
+    } catch (error) {
+        console.error('Error loading Spotify playlist:', error);
+        playerContainer.innerHTML = `
+            <h3>Now Playing</h3>
+            <p>Error loading playlist: ${error.message}</p>`;
     }
+}
 
-    // Fetch recommendations from backend
-    function fetchRecommendations(limit) {
-        fetch(`/api/recommend_music?limit=${limit}`)
-            .then(response => response.json())
-            .then(data => {
-                if (data.error) {
-                    console.error('Error:', data.error);
-                    document.getElementById('tamil-music-recommendations').innerHTML = 'Unable to fetch playlist. Try later!';
-                    document.getElementById('load-more-btn').style.display = 'none';
-                    return;
-                }
-                updateRecommendations(data);
-            })
-            .catch(error => {
-                console.error('Error fetching recommendations:', error);
-                document.getElementById('tamil-music-recommendations').innerHTML = 'Unable to fetch playlist. Try later!';
-                document.getElementById('load-more-btn').style.display = 'none';
-            });
-    }
-
-    // Populate mood day selector
-    fetch('/api/mood_data')
-        .then(response => response.json())
-        .then(data => {
-            moodData = data;
-            const moodDaySelect = document.getElementById('mood-day');
-            moodDaySelect.innerHTML = '<option value="">Select a day</option>';
-
-            data.labels.forEach((label, index) => {
-                if (data.data[index] > 0) {
-                    const option = document.createElement('option');
-                    option.value = index;
-                    option.textContent = `${label} (Mood: ${data.data[index].toFixed(1)})`;
-                    moodDaySelect.appendChild(option);
-                }
-            });
-
-            // Fetch initial recommendations
-            let latestMood = 0;
-            for (let i = data.data.length - 1; i >= 0; i--) {
-                if (data.data[i] > 0) {
-                    latestMood = data.data[i];
-                    break;
-                }
-            }
-
-            if (latestMood === 0) {
-                updateRecommendations({});
-                document.getElementById('tamil-music-recommendations').innerHTML = 'Log your mood to get playlist recommendations!';
-                document.getElementById('load-more-btn').style.display = 'none';
-                return;
-            }
-
-            currentGenre = mapMoodToGenre(latestMood);
-            fetchRecommendations(currentLimit);
-        })
-        .catch(error => {
-            console.error('Error fetching mood data:', error);
-            document.getElementById('tamil-music-recommendations').innerHTML = 'Log your mood to get playlist recommendations!';
-            document.getElementById('load-more-btn').style.display = 'none';
-        });
-
-    // Language filter
+async function setCurrentLanguage() {
     const languageSelect = document.getElementById('language-select');
-    if (languageSelect) {
-        languageSelect.addEventListener('change', async () => {
-            const language = languageSelect.value;
-            try {
-                const response = await fetch('/api/update_language', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ language })
-                });
-                if (response.ok) {
-                    fetchRecommendations(currentLimit);
-                } else {
-                    console.error('Error updating language');
-                }
-            } catch (error) {
-                console.error('Error updating language:', error);
-            }
-        });
+    try {
+        const response = await fetch('/api/update_language');
+        if (!response.ok) throw new Error('Failed to fetch current language');
+        const data = await response.json();
+        if (data.language) {
+            languageSelect.value = data.language;
+        }
+    } catch (error) {
+        console.error('Error fetching current language:', error);
+        languageSelect.value = 'tamil';
     }
+}
 
-    // Mood day selector change
-    const moodDaySelect = document.getElementById('mood-day');
-    if (moodDaySelect) {
-        moodDaySelect.addEventListener('change', () => {
-            const selectedIndex = moodDaySelect.value;
-            if (selectedIndex !== '') {
-                currentGenre = mapMoodToGenre(moodData.data[selectedIndex]);
-                fetchRecommendations(currentLimit);
+document.addEventListener('DOMContentLoaded', () => {
+    const languageSelect = document.getElementById('language-select');
+
+    setCurrentLanguage().then(() => loadSpotifyEmbed());
+
+    languageSelect.addEventListener('change', async () => {
+        const language = languageSelect.value;
+        try {
+            const response = await fetch('/api/update_language', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ language })
+            });
+            if (!response.ok) {
+                throw new Error('Error updating language');
             }
-        });
-    }
-
-    // Load More button (optional, if you want to support fetching more playlists)
-    document.getElementById('load-more-btn').addEventListener('click', () => {
-        currentLimit += 7;
-        fetchRecommendations(currentLimit);
+            await loadSpotifyEmbed();
+        } catch (error) {
+            console.error('Error updating language:', error);
+            document.getElementById('spotify-player').innerHTML = `
+                <h3>Now Playing</h3>
+                <p>Error updating language: ${error.message}</p>`;
+        }
     });
 });
 ```
@@ -5297,6 +5639,47 @@ document.addEventListener('DOMContentLoaded', function () {
 </html>
 ```
 
+# File: templates/setup_2fa.html
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NeuroAid - Setup 2FA</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/setup_2fa.css') }}" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="login-container">
+    <div class="branding">
+      <h1>Neuro<span>Aid</span></h1>
+    </div>
+    <div class="login-box">
+      <h2>Setup Two-Factor Authentication</h2>
+      {% if error %}
+        <p class="error">{{ error }}</p>
+      {% endif %}
+      {% if qr_code %}
+        <p>Scan this QR code with your authenticator app (e.g., Google Authenticator):</p>
+        <div class="qr-container">
+          <img src="data:image/png;base64,{{ qr_code }}" alt="2FA QR Code" />
+        </div>
+        <p>Or enter this secret key manually:</p>
+        <div class="secret-code">{{ secret }}</div>
+        <p>Once set up, return to the <a href="{{ url_for('verify_2fa') }}">verification page</a>.</p>
+      {% else %}
+        <form method="POST" action="{{ url_for('setup_2fa') }}">
+          <p class="abc">Click below to generate a QR code for your authenticator app.</p>
+          <button type="submit">Generate QR Code</button>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+</body>
+</html>
+```
+
 # File: templates/signup.html
 ```html
 <!DOCTYPE html>
@@ -5350,6 +5733,39 @@ document.addEventListener('DOMContentLoaded', function () {
 </html>
 ```
 
+# File: templates/verify_2fa.html
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NeuroAid - Verify 2FA</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/signup.css') }}" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="login-container">
+    <div class="branding"></div>
+    <div class="login-box">
+      <h1>Neuro<span>Aid</span></h1>
+      <h2>Verify Two-Factor Authentication</h2>
+      {% if error %}
+        <p style="color: red; text-align: center;">{{ error }}</p>
+      {% endif %}
+      <form method="POST" action="{{ url_for('verify_2fa') }}">
+        <div class="input-group">
+          <input type="text" name="code" id="code" required placeholder=" " />
+          <label for="code">Enter 2FA Code</label>
+        </div>
+        <button type="submit">Verify</button>
+      </form>
+    </div>
+  </div>
+</body>
+</html>
+```
+
 # File: templates/vibe.html
 ```html
 <!DOCTYPE html>
@@ -5363,207 +5779,60 @@ document.addEventListener('DOMContentLoaded', function () {
     <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/vibe.css') }}">
     <link id="theme-stylesheet" rel="stylesheet" href="{{ url_for('static', filename='css/themes/' + theme + '.css') }}">
-    <style>
-        .music-box {
-            background: var(--card-bg);
-            border-radius: 12px;
-            padding: 20px;
-            margin-top: 20px;
-            text-align: center;
-        }
-        .music-box h3 {
-            margin: 0 0 10px;
-            font-size: 1.2rem;
-            color: var(--text-color);
-        }
-        .music-box p {
-            color: var(--text-color-secondary);
-        }
-        .selector-group {
-            display: flex;
-            gap: 20px;
-            margin-bottom: 20px;
-            align-items: center;
-        }
-        .selector-group label {
-            font-weight: 500;
-            color: var(--text-color);
-            margin-right: 10px;
-        }
-        .selector-group select {
-            padding: 8px;
-            border-radius: 8px;
-            border: 1px solid var(--border-color);
-            background: var(--input-bg);
-            color: var(--text-color);
-        }
-    </style>
 </head>
 <body>
     <div class="app-container">
-        <div class="sidebar">
+        <aside class="sidebar">
             <div class="logo">
-                <i class="ri-brain-line"></i>
+                <i class="ri-brain-line" aria-hidden="true"></i>
                 <h1>Neuro<span>Aid</span></h1>
             </div>
-            <nav>
-                <a href="{{ url_for('index') }}"><i class="ri-home-5-line"></i> Home</a>
-                <a href="{{ url_for('journal') }}"><i class="ri-booklet-line"></i> Journal</a>
-                <a href="{{ url_for('progress') }}"><i class="ri-bar-chart-2-line"></i> Progress</a>
-                <a href="{{ url_for('vibe') }}" class="active"><i class="ri-music-2-line"></i> Vibe</a>
-                <a href="{{ url_for('gratitude') }}"><i class="ri-heart-line"></i> Gratitude</a>
-                <a href="{{ url_for('settings') }}"><i class="ri-settings-3-line"></i> Settings</a>
-                <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
-                <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
+            <nav aria-label="Main navigation">
+                <a href="{{ url_for('index') }}"><i class="ri-home-5-line" aria-hidden="true"></i> Home</a>
+                <a href="{{ url_for('journal') }}"><i class="ri-booklet-line" aria-hidden="true"></i> Journal</a>
+                <a href="{{ url_for('progress') }}"><i class="ri-bar-chart-2-line" aria-hidden="true"></i> Progress</a>
+                <a href="{{ url_for('vibe') }}" class="active" aria-current="page"><i class="ri-music-2-line" aria-hidden="true"></i> Vibe</a>
+                <a href="{{ url_for('gratitude') }}"><i class="ri-heart-line" aria-hidden="true"></i> Gratitude</a>
+                <a href="{{ url_for('settings') }}"><i class="ri-settings-3-line" aria-hidden="true"></i> Settings</a>
+                <a href="{{ url_for('profile') }}"><i class="ri-user-line" aria-hidden="true"></i> Profile</a>
+                <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line" aria-hidden="true"></i> Logout</a>
             </nav>
-        </div>
+        </aside>
 
         <div class="wrapper">
-            <main class="main-content">
-                <header>
-                    <div class="search-bar">
-                        <i class="ri-search-line"></i>
-                        <input type="text" placeholder="Search...">
-                    </div>
-                    <div class="profile">
-                        <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile">
+            <main class="main-content" role="main">
+                <header class="main-header">
+                    <div class="profile" aria-label="User profile">
                         <span>{{ session.get('user_email', 'User').split('@')[0] }}</span>
-                        <i class="ri-arrow-down-s-line"></i>
+                        <i class="ri-arrow-down-s-line" aria-hidden="true"></i>
                     </div>
                 </header>
 
-                <section class="music-recommendations-section">
-                    <h2><i class="ri-music-2-line"></i> Vibe - Tamil Music Recommendations</h2>
+                <section class="music-recommendations-section" aria-labelledby="music-recommendations-title">
+                    <h2 id="music-recommendations-title"><i class="ri-music-2-line" aria-hidden="true"></i> Music Recommendations</h2>
                     <div class="selector-group">
-                        <div>
-                            <label for="language-select">Select Language:</label>
-                            <select id="language-select">
-                                <option value="tamil" selected>Tamil</option>
-                                <option value="hindi">Hindi</option>
-                                <option value="telugu">Telugu</option>
-                                <option value="malayalam">Malayalam</option>
-                                <option value="kannada">Kannada</option>
-                                <option value="english">English</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label for="mood-day">Select Mood from Day:</label>
-                            <select id="mood-day">
-                                <option value="">Latest Mood</option>
-                            </select>
-                        </div>
+                        <label for="language-select">Select Language:</label>
+                        <select id="language-select" aria-label="Select music language">
+                            <option value="tamil">Tamil</option>
+                            <option value="telugu">Telugu</option>
+                            <option value="malayalam">Malayalam</option>
+                            <option value="english">English</option>
+                        </select>
                     </div>
-                    <div class="music-box" id="spotify-player">
+                    <div class="music-box" id="spotify-player" role="region" aria-live="polite">
                         <h3>Now Playing</h3>
-                        <p>Loading music...</p>
+                        <p>Loading your personalized playlist...</p>
                     </div>
                 </section>
             </main>
+
+            <footer>
+                <span>© 2025 NeuroAid. Your mental health companion.</span>
+            </footer>
         </div>
     </div>
 
-    <script>
-        // Load Spotify embed for the latest mood or selected day
-        async function loadSpotifyEmbed(date = null) {
-            const playerContainer = document.getElementById('spotify-player');
-            try {
-                const url = date ? `/api/recommend_music?date=${date}` : '/api/recommend_music';
-                const response = await fetch(url);
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || 'Failed to fetch music');
-                }
-                const data = await response.json();
-                if (data.embedUrl) {
-                     playerContainer.innerHTML = `<h3>Now Playing (Mood: ${data.mood})</h3><div id="iframe-wrapper"></div>`;
-                        const iframeWrapper = document.getElementById('iframe-wrapper');
-                        setTimeout(() => {
-                             iframeWrapper.innerHTML = `
-                                <iframe style="border-radius:12px" 
-                                   src="${data.embedUrl}" 
-                                   width="100%" 
-                                 height="380" 
-                                    frameborder="0" 
-                                    allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
-                                    loading="lazy">
-                                </iframe>`;
-                        }, 50);
-                    } else {
-                         playerContainer.innerHTML = `<h3>Now Playing</h3><p>No songs found. Try logging your mood!</p>`;
-                    }
-
-            } catch (error) {
-                console.error('Error loading Spotify playlist:', error);
-                playerContainer.innerHTML = `<h3>Now Playing</h3><p>${error.message}</p>`;
-            }
-        }
-
-        // Populate the mood selector with the last 7 days of mood data
-        async function populateMoodSelector() {
-            const moodDaySelect = document.getElementById('mood-day');
-            try {
-                // Fetch mood data for the last 7 days
-                const response = await fetch('/api/mood_data');
-                if (!response.ok) throw new Error('Failed to fetch mood data');
-                const data = await response.json();
-
-                if (data.labels && data.moods) {
-                    const today = new Date('2025-06-07'); // Hardcoded to match the screenshot date
-                    for (let i = 0; i < data.labels.length; i++) {
-                        const date = new Date(today);
-                        date.setDate(today.getDate() - (6 - i)); // Last 7 days
-                        const dateStr = date.toISOString().split('T')[0]; // YYYY-MM-DD
-                        const mood = data.moods[i] || 'N/A';
-                        const label = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                        const option = document.createElement('option');
-                        option.value = dateStr;
-                        option.textContent = `${label} (Mood: ${mood})`;
-                        moodDaySelect.appendChild(option);
-                    }
-                }
-            } catch (error) {
-                console.error('Error populating mood selector:', error);
-                moodDaySelect.innerHTML = '<option value="">Latest Mood</option>';
-            }
-        }
-
-        // Update language preference and reload playlist
-        document.addEventListener('DOMContentLoaded', () => {
-            const languageSelect = document.getElementById('language-select');
-            const moodDaySelect = document.getElementById('mood-day');
-
-            // Populate mood selector
-            populateMoodSelector();
-
-            // Load initial playlist
-            loadSpotifyEmbed();
-
-            // Handle language change
-            languageSelect.addEventListener('change', async () => {
-                const language = languageSelect.value;
-                try {
-                    const response = await fetch('/api/update_language', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ language })
-                    });
-                    if (response.ok) {
-                        loadSpotifyEmbed(moodDaySelect.value || null);
-                    } else {
-                        throw new Error('Error updating language');
-                    }
-                } catch (error) {
-                    console.error('Error updating language:', error);
-                }
-            });
-
-            // Handle mood day selection
-            moodDaySelect.addEventListener('change', () => {
-                const selectedDate = moodDaySelect.value;
-                loadSpotifyEmbed(selectedDate || null);
-            });
-        });
-    </script>
+    <script src="{{ url_for('static', filename='js/vibe.js') }}"></script>
 </body>
 </html>
 ```
