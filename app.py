@@ -192,6 +192,8 @@ def make_session_permanent():
             session.pop('user_email', None)
             session.pop('access_token', None)
             session.pop('last_activity', None)
+            session.pop('two_factor_enabled', None)
+            session.pop('2fa_verified', None)
             logger.info("Session expired, user logged out.")
             return redirect(url_for('login'))
     if 'user' in session:
@@ -546,7 +548,12 @@ def setup_2fa():
             return render_template('setup_2fa.html', qr_code=qr_code, secret=secret)
         except Exception as e:
             logger.error(f"Error setting up 2FA: {str(e)}")
-            return render_template('setup_2fa.html', error="Failed to set up 2FA.")
+            supabase.table('user_preferences').update({
+                'two_factor_enabled': False,
+                'two_factor_secret': None
+            }).eq('user_id', user_id).execute()
+            session['two_factor_enabled'] = False
+            return render_template('setup_2fa.html', error="Failed to set up 2FA. Please try again.")
     
     try:
         preferences = supabase.table('user_preferences')\
@@ -554,7 +561,7 @@ def setup_2fa():
             .eq('user_id', user_id)\
             .execute()
         
-        if preferences.data and preferences.data[0]['two_factor_secret']:
+        if preferences.data and preferences.data[0].get('two_factor_secret'):
             return redirect(url_for('verify_2fa'))
         
         return render_template('setup_2fa.html')
@@ -578,7 +585,7 @@ def verify_2fa():
                 .eq('user_id', user_id)\
                 .execute()
             
-            if not preferences.data or not preferences.data[0]['two_factor_secret']:
+            if not preferences.data or not preferences.data[0].get('two_factor_secret'):
                 return render_template('verify_2fa.html', error="2FA not set up.")
             
             secret = preferences.data[0]['two_factor_secret']
@@ -593,7 +600,24 @@ def verify_2fa():
             logger.error(f"Error verifying 2FA: {str(e)}")
             return render_template('verify_2fa.html', error="Error verifying 2FA code.")
     
-    return render_template('verify_2fa.html')
+    try:
+        preferences = supabase.table('user_preferences')\
+            .select('two_factor_enabled, two_factor_secret')\
+            .eq('user_id', user_id)\
+            .execute()
+        
+        if not preferences.data or not preferences.data[0].get('two_factor_enabled') or not preferences.data[0].get('two_factor_secret'):
+            supabase.table('user_preferences').update({
+                'two_factor_enabled': False,
+                'two_factor_secret': None
+            }).eq('user_id', user_id).execute()
+            session['two_factor_enabled'] = False
+            return redirect(url_for('index'))
+        
+        return render_template('verify_2fa.html')
+    except Exception as e:
+        logger.error(f"Error checking 2FA status on verify: {str(e)}")
+        return render_template('verify_2fa.html', error="Error checking 2FA status.")
 
 @app.route('/', methods=['GET', 'POST'])
 def login():
@@ -616,15 +640,25 @@ def login():
                 session['user'] = str(user['id'])
                 session['user_email'] = email
                 session['last_activity'] = datetime.now(ZoneInfo("UTC")).isoformat()
-                preferences = supabase.table('user_preferences')\
-                    .select('theme, two_factor_enabled, two_factor_secret')\
-                    .eq('user_id', user['id'])\
-                    .execute()
-                session['theme'] = preferences.data[0]['theme'] if preferences.data else 'light'
-                if preferences.data and preferences.data[0]['two_factor_enabled'] and preferences.data[0]['two_factor_secret']:
-                    return redirect(url_for('verify_2fa'))
-                logger.info(f"User {email} logged in successfully, user_id: {user['id']}, theme: {session['theme']}")
-                return redirect(url_for('index'))
+                try:
+                    preferences = supabase.table('user_preferences')\
+                        .select('theme, two_factor_enabled, two_factor_secret')\
+                        .eq('user_id', user['id'])\
+                        .execute()
+                    session['theme'] = preferences.data[0].get('theme', 'light') if preferences.data else 'light'
+                    two_factor_enabled = preferences.data[0].get('two_factor_enabled', False) if preferences.data else False
+                    two_factor_secret = preferences.data[0].get('two_factor_secret') if preferences.data else None
+                    session['two_factor_enabled'] = two_factor_enabled
+                    if two_factor_enabled and two_factor_secret:
+                        return redirect(url_for('verify_2fa'))
+                    logger.info(f"User {email} logged in successfully, user_id: {user['id']}, theme: {session['theme']}")
+                    return redirect(url_for('index'))
+                except Exception as e:
+                    logger.error(f"Error fetching user preferences: {str(e)}")
+                    session['theme'] = 'light'
+                    session['two_factor_enabled'] = False
+                    logger.info(f"User {email} logged in with default preferences, user_id: {user['id']}")
+                    return redirect(url_for('index'))
             else:
                 error = 'Invalid credentials.'
                 return render_template('login.html', error=error), 401
@@ -951,7 +985,7 @@ def settings():
                     .select('two_factor_secret')\
                     .eq('user_id', user_id)\
                     .execute()
-                if not preferences.data or not preferences.data[0]['two_factor_secret']:
+                if not preferences.data or not preferences.data[0].get('two_factor_secret'):
                     return redirect(url_for('setup_2fa'))
 
             success = "Settings updated successfully!"

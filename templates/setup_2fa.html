@@ -21,6 +21,11 @@
       border-radius: 5px;
       margin: 10px 0;
     }
+
+    .abc{
+        margin-top:40px;
+        padding-top: 25px;
+    }
   </style>
 </head>
 <body>
@@ -42,7 +47,7 @@
         <p>Once set up, return to the <a href="{{ url_for('verify_2fa') }}">verification page</a>.</p>
       {% else %}
         <form method="POST" action="{{ url_for('setup_2fa') }}">
-          <p>Click below to generate a QR code for your authenticator app.</p>
+          <p class="abc">Click below to generate a QR code for your authenticator app.</p>
           <button type="submit">Generate QR Code</button>
         </form>
       {% endif %}
