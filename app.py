@@ -978,8 +978,8 @@ def profile():
 
         if profile_data.data:
             profile = profile_data.data[0]
-            name = profile['name'] or 'Unknown'
-            username = profile['username'] or '@unknown'
+            name = profile['name'] if profile['name'] else 'Unknown'
+            username = profile['username'] if profile['username'] else '@unknown'
             profile_info = {
                 'age': profile['age'],
                 'gender': profile['gender'],
@@ -993,7 +993,8 @@ def profile():
             logger.info(f"Profile data fetched: {profile_info}")
         else:
             logger.info(f"No profile found for user_id: {user_id}, creating a new profile")
-            supabase.table('profiles').insert({'user_id': user_id, 'name': 'Unknown', 'username': '@unknown'}).execute()
+            default_name = email.split('@')[0]
+            supabase.table('profiles').insert({'user_id': user_id, 'name': default_name, 'username': f"@{default_name}"}).execute()
             profile_data = supabase.table('profiles')\
                 .select('name, username, age, gender, location, preferred_language, primary_goal, engagement_frequency, preferred_activities, profile_pic_url')\
                 .eq('user_id', user_id)\
@@ -1063,6 +1064,44 @@ def profile():
                               profile_data={},
                               completion_percentage=0)
 
+@app.route('/update_profile_field', methods=['POST'])
+def update_profile_field():
+    if 'user' not in session:
+        return jsonify({'success': False, 'error': 'User not logged in'}), 401
+
+    data = request.get_json()
+    field = data.get('field')
+    value = data.get('value')
+    user_id = session['user']
+    supabase = get_supabase()
+
+    try:
+        if field == 'email':
+            # Update email in the users table
+            response = supabase.table('users')\
+                .update({'email': value})\
+                .eq('id', user_id)\
+                .execute()
+            if response.data:
+                return jsonify({'success': True}), 200
+            else:
+                return jsonify({'success': False, 'error': 'Failed to update email'}), 500
+        elif field in ['name', 'username']:
+            # Update name or username in the profiles table
+            response = supabase.table('profiles')\
+                .update({field: value})\
+                .eq('user_id', user_id)\
+                .execute()
+            if response.data:
+                return jsonify({'success': True}), 200
+            else:
+                return jsonify({'success': False, 'error': f'Failed to update {field}'}), 500
+        else:
+            return jsonify({'success': False, 'error': 'Invalid field'}), 400
+    except Exception as e:
+        logger.error(f"Error updating profile field {field}: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/upload_profile_pic', methods=['POST'])
 def upload_profile_pic():
     if 'user' not in session:
@@ -1081,30 +1120,6 @@ def upload_profile_pic():
     except Exception as e:
         logger.error(f"Error uploading profile picture: {str(e)}")
         return jsonify({'error': 'Upload failed'}), 500
-
-@app.route('/update_profile_field', methods=['POST'])
-def update_profile_field():
-    if 'user' not in session:
-        return jsonify({'error': 'Unauthorized'}), 401
-    supabase = get_supabase()
-    user_id = session['user']
-    data = request.get_json()
-    field = data.get('field')
-    value = data.get('value')
-
-    if field not in ['name', 'email', 'username']:
-        return jsonify({'error': 'Invalid field'}), 400
-
-    try:
-        if field == 'email':
-            supabase.table('users').update({'email': value}).eq('id', user_id).execute()
-            session['user_email'] = value
-        else:
-            supabase.table('profiles').update({field: value}).eq('user_id', user_id).execute()
-        return jsonify({'success': True}), 200
-    except Exception as e:
-        logger.error(f"Error updating profile field {field}: {str(e)}")
-        return jsonify({'error': 'Failed to update field'}), 500
 
 @app.route('/update_personal_details', methods=['POST'])
 def update_personal_details():
