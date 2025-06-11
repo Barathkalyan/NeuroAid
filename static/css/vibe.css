@@ -9,7 +9,7 @@
 
 .music-box h3 {
     margin: 0 0 10px;
-    font-size: 1.5rem;
+    font-size: 2rem;
     color: var(--text-primary, #1f2937);
 }
 
@@ -28,18 +28,21 @@
 
 .selector-group label {
     font-weight: 500;
+    font-size: 26px;
     color: var(--text-primary, #1f2937);
     margin-right: 10px;
+    margin-top: 25px;
 }
 
 .selector-group select {
-    padding: 8px 12px;
+    padding: 12px 18px;
     border-radius: 8px;
     border: 1px solid var(--glass-border, #e5e7eb);
     background: var(--secondary, #f9faff);
     color: var(--text-primary, #1f2937);
     font-size: 1rem;
     cursor: pointer;
+    margin-top:25px;
 }
 
 .selector-group select:focus {
@@ -48,9 +51,9 @@
 }
 
 .music-recommendations-section h2 {
+    font-size: 42px;
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 1.75rem;
     color: var(--text-primary, #1f2937);
 }

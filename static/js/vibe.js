@@ -9,12 +9,12 @@ async function loadSpotifyEmbed() {
         const data = await response.json();
         if (data.embedUrl) {
             playerContainer.innerHTML = `
-                <h3>Now Playing (Mood Score: ${data.mood})</h3>
+                <h3>Now Playing </h3>
                 <div id="iframe-wrapper">
                     <iframe style="border-radius:12px" 
                             src="${data.embedUrl}" 
                             width="100%" 
-                            height="380" 
+                            height="420" 
                             frameborder="0" 
                             allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
                             loading="lazy"></iframe>
