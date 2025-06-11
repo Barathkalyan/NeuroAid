@@ -8,6 +8,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/vibe.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dropdown.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/welcome.css') }}" />
     <link id="theme-stylesheet" rel="stylesheet" href="{{ url_for('static', filename='css/themes/' + theme + '.css') }}">
 </head>
 <body>
@@ -68,6 +70,8 @@
         </div>
     </div>
 
+    <script src="{{ url_for('static', filename='js/welcome.js') }}"></script>
     <script src="{{ url_for('static', filename='js/vibe.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/dropdown.js') }}"></script>
 </body>
 </html>

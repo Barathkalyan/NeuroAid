@@ -6,11 +6,11 @@
 }
 
 .welcome-text {
-    font-size: 18px;
+    font-size: 25px;
     font-weight: 600;
     color: #2d2d2d;
-    opacity: 1;
-    animation: fadeOut 5s ease-in-out forwards;
+    animation: fadeIn 2.5s ease-in-out forwards;
+    animation: fadeOut 2.5s ease-in-out forwards;
 }
 
 @keyframes fadeOut {
@@ -20,12 +20,11 @@
 }
 
 .quote-text {
-    font-size: 16px;
-    font-style: italic;
-    color: #666;
+    font-size: 24px;
+    color: #333131;
     opacity: 0;
     visibility: hidden;
-    animation: fadeIn 1s ease-in-out 5s forwards;
+    animation: fadeIn 1s ease-in-out 3.5s forwards;
 }
 
 @keyframes fadeIn {
