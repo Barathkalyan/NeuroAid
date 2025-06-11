@@ -951,24 +951,25 @@ def profile():
 
     supabase = get_supabase()
     user_id = session['user']
+    logger.info(f"Fetching profile for user_id: {user_id}")
 
     try:
-        # Fetch email and joined_date from the users table
+        # Fetch email from the users table
         user_data = supabase.table('users')\
-            .select('email, joined_date')\
+            .select('email')\
             .eq('id', user_id)\
             .limit(1)\
             .execute()
 
         if not user_data.data:
             logger.error(f"No user found for user_id: {user_id}")
-            return render_template('profile.html', theme=session.get('theme', 'light'), name='Unknown', email='Not found', joined_date='Not found', username='@unknown', profile_data={})
+            return render_template('profile.html', theme=session.get('theme', 'light'), name='Unknown', email='Not found', username='@unknown', profile_data={}, completion_percentage=0)
 
         user = user_data.data[0]
-        email = user['email']
-        joined_date = user['joined_date']
+        email = user['email'] or 'Not found'
+        logger.info(f"User data fetched: email={email}")
 
-        # Fetch profile data (name, username, age, gender, location, language, goals, etc.) from the profiles table
+        # Fetch profile data from the profiles table
         profile_data = supabase.table('profiles')\
             .select('name, username, age, gender, location, preferred_language, primary_goal, engagement_frequency, preferred_activities, profile_pic_url')\
             .eq('user_id', user_id)\
@@ -989,9 +990,18 @@ def profile():
                 'preferred_activities': profile['preferred_activities'] or [],
                 'profile_pic_url': profile['profile_pic_url']
             }
+            logger.info(f"Profile data fetched: {profile_info}")
         else:
-            name = 'Unknown'
-            username = '@unknown'
+            logger.info(f"No profile found for user_id: {user_id}, creating a new profile")
+            supabase.table('profiles').insert({'user_id': user_id, 'name': 'Unknown', 'username': '@unknown'}).execute()
+            profile_data = supabase.table('profiles')\
+                .select('name, username, age, gender, location, preferred_language, primary_goal, engagement_frequency, preferred_activities, profile_pic_url')\
+                .eq('user_id', user_id)\
+                .limit(1)\
+                .execute()
+            profile = profile_data.data[0]
+            name = profile['name']
+            username = profile['username']
             profile_info = {
                 'age': None,
                 'gender': None,
@@ -1002,40 +1012,43 @@ def profile():
                 'preferred_activities': [],
                 'profile_pic_url': None
             }
-
-        # Format joined_date (even though it's not displayed, we fetch it for potential use elsewhere)
-        if joined_date:
-            if '.' in joined_date:
-                joined_date = joined_date.split('.')[0] + '+00:00'
-            else:
-                joined_date = joined_date.replace('Z', '+00:00')
-            joined_date = datetime.fromisoformat(joined_date).strftime('%b %d, %Y')
+            logger.info(f"New profile created: {profile_info}")
 
         # Calculate profile completion percentage
-        # Sections: Profile Overview (name, username, email), Personal Details (age, gender, location, preferred_language), Mental Health Goals (primary_goal, engagement_frequency, preferred_activities)
         required_fields = ['name', 'username', 'email']
         optional_fields = ['age', 'gender', 'location', 'preferred_language', 'primary_goal', 'engagement_frequency']
         activity_fields = ['preferred_activities']
 
         # Check Profile Overview section
-        filled_required = sum(1 for field in required_fields if locals().get(field) and locals().get(field) != 'Unknown' and locals().get(field) != '@unknown' and locals().get(field) != 'Not found')
+        filled_required = 0
+        for field in required_fields:
+            value = locals().get(field)
+            if field == 'email':
+                if value and value != 'Not found':
+                    filled_required += 1
+            else:
+                if value and value not in ['Unknown', '@unknown']:
+                    filled_required += 1
+        logger.info(f"Filled required fields: {filled_required}/{len(required_fields)}")
 
         # Check Personal Details section
         filled_optional = sum(1 for field in optional_fields if profile_info[field])
+        logger.info(f"Filled optional fields: {filled_optional}/{len(optional_fields)}")
 
-        # Check Mental Health Goals section (count preferred_activities separately)
+        # Check Mental Health Goals section
         filled_activities = 1 if profile_info['preferred_activities'] else 0
+        logger.info(f"Filled activities: {filled_activities}/{len(activity_fields)}")
 
         # Total fields across all sections
         total_fields = len(required_fields) + len(optional_fields) + len(activity_fields)
         filled_fields = filled_required + filled_optional + filled_activities
         completion_percentage = int((filled_fields / total_fields) * 100)
+        logger.info(f"Completion percentage: {completion_percentage}% (Filled: {filled_fields}/{total_fields})")
 
         return render_template('profile.html', 
                               theme=session.get('theme', 'light'),
                               name=name,
                               email=email,
-                              joined_date=joined_date,
                               username=username,
                               profile_data=profile_info,
                               completion_percentage=completion_percentage)
@@ -1046,7 +1059,6 @@ def profile():
                               theme=session.get('theme', 'light'),
                               name='Unknown',
                               email='Not found',
-                              joined_date='Not found',
                               username='@unknown',
                               profile_data={},
                               completion_percentage=0)

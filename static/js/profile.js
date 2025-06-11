@@ -44,14 +44,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 button.textContent = 'Edit';
 
                 // Save the updated field to Supabase
+                const value = input.value;
+                console.log(`Saving ${field}: ${value}`); // Log the data being sent
                 try {
                     const response = await fetch('/update_profile_field', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ field, value: input.value })
+                        body: JSON.stringify({ field, value })
                     });
                     const data = await response.json();
-                    if (!data.success) {
+                    if (data.success) {
+                        console.log(`${field} saved successfully`);
+                    } else {
+                        console.error(`Error saving ${field}:`, data.error);
                         alert(data.error);
                     }
                 } catch (error) {
@@ -70,7 +75,7 @@ document.addEventListener('DOMContentLoaded', () => {
             location: document.getElementById('location-input').value || null,
             preferred_language: document.getElementById('language-input').value || null
         };
-
+        console.log('Saving personal details:', personalDetails); // Log the data being sent
         try {
             const response = await fetch('/update_personal_details', {
                 method: 'POST',
@@ -79,9 +84,11 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             const data = await response.json();
             if (data.success) {
+                console.log('Personal details saved successfully');
                 alert('Personal details saved successfully!');
                 window.location.reload();
             } else {
+                console.error('Error saving personal details:', data.error);
                 alert(data.error);
             }
         } catch (error) {
@@ -98,7 +105,7 @@ document.addEventListener('DOMContentLoaded', () => {
             engagement_frequency: document.getElementById('frequency').value || null,
             preferred_activities: activities
         };
-
+        console.log('Saving mental health goals:', goals); // Log the data being sent
         try {
             const response = await fetch('/update_mental_health_goals', {
                 method: 'POST',
@@ -107,9 +114,11 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             const data = await response.json();
             if (data.success) {
+                console.log('Mental health goals saved successfully');
                 alert('Mental health goals saved successfully!');
                 window.location.reload();
             } else {
+                console.error('Error saving mental health goals:', data.error);
                 alert(data.error);
             }
         } catch (error) {
