@@ -134,7 +134,7 @@
   transform: translateX(26px);
 }
 
-.card-button {
+.neuroaid-btn {
   background-color: var(--primary);
   color: white;
   border: none;
@@ -144,9 +144,12 @@
   font-size: 16px;
   font-weight: 600;
   transition: background-color 0.3s ease, transform 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.card-button:hover {
+.neuroaid-btn:hover {
   background-color: #6d28d9;
   transform: translateY(-2px);
 }
@@ -169,6 +172,38 @@
   color: #10b981;
 }
 
+/* Action Group for Privacy & Security */
+.action-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.action-btn {
+  background-color: var(--primary);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 500;
+  transition: background-color 0.3s ease, transform 0.3s ease;
+}
+
+.action-btn:hover {
+  background-color: #6d28d9;
+  transform: translateY(-2px);
+}
+
+.action-btn.delete {
+  background-color: #dc2626;
+}
+
+.action-btn.delete:hover {
+  background-color: #b91c1c;
+}
+
 /* Responsive Design */
 @media (max-width: 600px) {
   .settings-section h2 {
@@ -189,8 +224,13 @@
     padding: 10px;
   }
 
-  .card-button {
+  .neuroaid-btn {
     padding: 12px 20px;
+    font-size: 14px;
+  }
+
+  .action-btn {
+    padding: 8px 16px;
     font-size: 14px;
   }
 }

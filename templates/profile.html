@@ -211,28 +211,17 @@
             </div>
           </div>
         </div>
-
-        <div class="card privacy-security">
-          <div class="card-header">
-            <h3>Privacy & Security</h3>
-          </div>
-          <div class="action-group">
-            <button class="action-btn" id="change-password-btn">Change Password</button>
-            <button class="action-btn" id="export-data-btn">Export Data</button>
-            <button class="action-btn delete" id="delete-account-btn">Delete Account</button>
-          </div>
-        </div>
-
         <div class="cta-message">
           <p>Complete your profile to unlock personalized features! Add your mental health goals to continue.</p>
         </div>
       </section>
-    </main>
+    </main>   
 
     <footer>
       <span>© 2025 NeuroAid.</span>
     </footer>
   </div>
+  <script src="{{ url_for('static', filename='js/profile.js') }}"></script>
   <script src="{{ url_for('static', filename='js/dropdown.js') }}"></script>
   <script src="{{ url_for('static', filename='js/welcome.js') }}"></script>
 </body>

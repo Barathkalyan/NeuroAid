@@ -43,7 +43,7 @@
         </div>
         <div class="profile-dropdown">
           <div class="profile">
-            <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile" />
+            <img src="{{ profile_data.profile_pic_url if profile_data.get('profile_pic_url') else 'https://randomuser.me/api/portraits/men/32.jpg' }}" alt="Profile" id="header-profile-pic" />
             <span>{{ session.get('user_email', 'User').split('@')[0] }}</span>
             <i class="ri-arrow-down-s-line"></i>
           </div>
@@ -133,6 +133,17 @@
 
             <button type="submit" class="neuroaid-btn"><i class="ri-save-line"></i> Save Changes</button>
           </form>
+        </div>
+
+        <!-- Privacy & Security -->
+        <div class="settings-card">
+          <div class="settings-group">
+            <h3><i class="ri-lock-line"></i> Privacy & Security</h3>
+            <div class="action-group">
+              <button type="button" class="action-btn" id="export-data-btn">Export Data</button>
+              <button type="button" class="action-btn delete" id="delete-account-btn">Delete Account</button>
+            </div>
+          </div>
         </div>
       </section>
     </main>
