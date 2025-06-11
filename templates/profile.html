@@ -36,13 +36,13 @@
     <main class="main-content">
       <header>
         <div class="welcome-container">
-          <div class="welcome-text">Welcome to NeuroAid, {{ session.get('user_email', 'User').split('@')[0] }}</div>
+          <div class="welcome-text">Welcome to NeuroAid, {{ name }}</div>
           <div class="quote-text"></div>
         </div>
         <div class="profile-dropdown">
           <div class="profile">
-            <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile" id="header-profile-pic" />
-            <span>{{ session.get('user_email', 'User').split('@')[0] }}</span>
+            <img src="{{ profile_data.profile_pic_url if profile_data.get('profile_pic_url') else 'https://randomuser.me/api/portraits/men/32.jpg' }}" alt="Profile" id="header-profile-pic" />
+            <span>{{ name }}</span>
             <i class="ri-arrow-down-s-line"></i>
           </div>
           <div class="dropdown-content">
@@ -60,9 +60,9 @@
           <div class="progress-container">
             <div class="progress-circle">
               <svg class="progress-ring" width="100" height="100">
-                <circle class="progress-ring__circle" stroke="#7c3aed" stroke-width="8" fill="transparent" r="44" cx="50" cy="50"/>
+                <circle class="progress-ring__circle" stroke="#7c3aed" stroke-width="8" fill="transparent" r="44" cx="50" cy="50" style="stroke-dasharray: {{ 276.46 * (completion_percentage / 100) }} 276.46;" />
               </svg>
-              <span class="progress-text">0% Complete</span>
+              <span class="progress-text">{{ completion_percentage }}% Complete</span>
             </div>
           </div>
         </div>
@@ -70,11 +70,11 @@
         <div class="card profile-overview">
           <div class="card-header">
             <h3>Profile Overview</h3>
-            <p class="status-indicator complete">Basic Info: Complete</p>
+            <p class="status-indicator {{ 'complete' if name != 'Unknown' and email != 'Not found' and username != '@unknown' else 'incomplete' }}">Basic Info: {{ 'Complete' if name != 'Unknown' and email != 'Not found' and username != '@unknown' else 'Incomplete' }}</p>
           </div>
           <div class="profile-content">
             <div class="profile-picture">
-              <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile Picture" id="profile-pic" />
+              <img src="{{ profile_data.profile_pic_url if profile_data.get('profile_pic_url') else 'https://randomuser.me/api/portraits/men/32.jpg' }}" alt="Profile Picture" id="profile-pic" />
               <button class="edit-button" id="edit-picture-btn">Upload Photo</button>
               <input type="file" id="profile-pic-input" accept="image/*" style="display: none;" />
             </div>
@@ -82,21 +82,21 @@
               <div class="form-field">
                 <label for="name-input">Name</label>
                 <div class="input-container">
-                  <input type="text" id="name-input" value="John Doe" readonly aria-label="Name" />
+                  <input type="text" id="name-input" value="{{ name }}" readonly aria-label="Name" />
                   <button class="edit-field-btn" data-field="name">Edit</button>
                 </div>
               </div>
               <div class="form-field">
                 <label for="email-input">Email</label>
                 <div class="input-container">
-                  <input type="email" id="email-input" value="{{ session.get('user_email', 'john.doe@example.com') }}" readonly aria-label="Email" />
+                  <input type="email" id="email-input" value="{{ email }}" readonly aria-label="Email" />
                   <button class="edit-field-btn" data-field="email">Edit</button>
                 </div>
               </div>
               <div class="form-field">
                 <label for="username-input">Username</label>
                 <div class="input-container">
-                  <input type="text" id="username-input" value="@johndoe" readonly aria-label="Username" />
+                  <input type="text" id="username-input" value="{{ username }}" readonly aria-label="Username" />
                   <button class="edit-field-btn" data-field="username">Edit</button>
                 </div>
               </div>
@@ -107,41 +107,41 @@
         <div class="card personal-details">
           <div class="card-header">
             <h3>Personal Details</h3>
-            <p class="status-indicator incomplete">Personal Details: Not Started</p>
+            <p class="status-indicator {{ 'complete' if profile_data.age or profile_data.gender or profile_data.location or profile_data.preferred_language else 'incomplete' }}">Personal Details: {{ 'Complete' if profile_data.age or profile_data.gender or profile_data.location or profile_data.preferred_language else 'Not Started' }}</p>
           </div>
           <div class="form-container">
             <div class="form-field">
               <label for="age-input">Age (Optional)</label>
               <div class="input-container">
-                <input type="number" id="age-input" placeholder="Enter your age" aria-label="Age" />
+                <input type="number" id="age-input" value="{{ profile_data.age if profile_data.age else '' }}" placeholder="Enter your age" aria-label="Age" />
               </div>
             </div>
             <div class="form-field">
               <label for="gender-input">Gender</label>
               <div class="input-container">
                 <select id="gender-input" aria-label="Gender">
-                  <option value="">Select Gender</option>
-                  <option value="male">Male</option>
-                  <option value="female">Female</option>
-                  <option value="non-binary">Non-binary</option>
-                  <option value="prefer-not-to-say">Prefer not to say</option>
+                  <option value="" {{ 'selected' if not profile_data.gender }}>Select Gender</option>
+                  <option value="male" {{ 'selected' if profile_data.gender == 'male' }}>Male</option>
+                  <option value="female" {{ 'selected' if profile_data.gender == 'female' }}>Female</option>
+                  <option value="non-binary" {{ 'selected' if profile_data.gender == 'non-binary' }}>Non-binary</option>
+                  <option value="prefer-not-to-say" {{ 'selected' if profile_data.gender == 'prefer-not-to-say' }}>Prefer not to say</option>
                 </select>
               </div>
             </div>
             <div class="form-field">
               <label for="location-input">Location (Optional)</label>
               <div class="input-container">
-                <input type="text" id="location-input" placeholder="Enter your city/country" aria-label="Location" />
+                <input type="text" id="location-input" value="{{ profile_data.location if profile_data.location else '' }}" placeholder="Enter your city/country" aria-label="Location" />
               </div>
             </div>
             <div class="form-field">
               <label for="language-input">Preferred Language</label>
               <div class="input-container">
                 <select id="language-input" aria-label="Preferred Language">
-                  <option value="">Select Language</option>
-                  <option value="english">English</option>
-                  <option value="spanish">Spanish</option>
-                  <option value="french">French</option>
+                  <option value="" {{ 'selected' if not profile_data.preferred_language }}>Select Language</option>
+                  <option value="english" {{ 'selected' if profile_data.preferred_language == 'english' }}>English</option>
+                  <option value="spanish" {{ 'selected' if profile_data.preferred_language == 'spanish' }}>Spanish</option>
+                  <option value="french" {{ 'selected' if profile_data.preferred_language == 'french' }}>French</option>
                 </select>
               </div>
             </div>
@@ -154,18 +154,18 @@
         <div class="card mental-health-goals">
           <div class="card-header">
             <h3>Your Mental Health Goals</h3>
-            <p class="status-indicator incomplete">Goals: Not Started</p>
+            <p class="status-indicator {{ 'complete' if profile_data.primary_goal or profile_data.engagement_frequency or profile_data.preferred_activities else 'incomplete' }}">Goals: {{ 'Complete' if profile_data.primary_goal or profile_data.engagement_frequency or profile_data.preferred_activities else 'Not Started' }}</p>
           </div>
           <div class="form-container">
             <div class="form-field">
               <label for="primary-goal">Primary Goal</label>
               <div class="input-container">
                 <select id="primary-goal" aria-label="Primary Goal">
-                  <option value="">Select Goal</option>
-                  <option value="reduce-stress">Reduce Stress</option>
-                  <option value="improve-sleep">Improve Sleep</option>
-                  <option value="manage-anxiety">Manage Anxiety</option>
-                  <option value="build-mindfulness">Build Mindfulness</option>
+                  <option value="" {{ 'selected' if not profile_data.primary_goal }}>Select Goal</option>
+                  <option value="reduce-stress" {{ 'selected' if profile_data.primary_goal == 'reduce-stress' }}>Reduce Stress</option>
+                  <option value="improve-sleep" {{ 'selected' if profile_data.primary_goal == 'improve-sleep' }}>Improve Sleep</option>
+                  <option value="manage-anxiety" {{ 'selected' if profile_data.primary_goal == 'manage-anxiety' }}>Manage Anxiety</option>
+                  <option value="build-mindfulness" {{ 'selected' if profile_data.primary_goal == 'build-mindfulness' }}>Build Mindfulness</option>
                 </select>
               </div>
             </div>
@@ -173,10 +173,10 @@
               <label for="frequency">Engagement Frequency</label>
               <div class="input-container">
                 <select id="frequency" aria-label="Engagement Frequency">
-                  <option value="">Select Frequency</option>
-                  <option value="daily">Daily</option>
-                  <option value="weekly">Weekly</option>
-                  <option value="biweekly">Bi-weekly</option>
+                  <option value="" {{ 'selected' if not profile_data.engagement_frequency }}>Select Frequency</option>
+                  <option value="daily" {{ 'selected' if profile_data.engagement_frequency == 'daily' }}>Daily</option>
+                  <option value="weekly" {{ 'selected' if profile_data.engagement_frequency == 'weekly' }}>Weekly</option>
+                  <option value="biweekly" {{ 'selected' if profile_data.engagement_frequency == 'biweekly' }}>Bi-weekly</option>
                 </select>
               </div>
             </div>
@@ -184,16 +184,16 @@
               <label>Preferred Activities</label>
               <div class="checkbox-container">
                 <div class="checkbox-option">
-                  <input type="checkbox" id="journaling" name="activities" value="journaling" aria-label="Journaling" />
+                  <input type="checkbox" id="journaling" name="activities" value="journaling" {{ 'checked' if 'journaling' in profile_data.preferred_activities }} aria-label="Journaling" />
                   <label for="journaling">Journaling</label>
                 </div>
                 <div class="checkbox-option">
-                  <input type="checkbox" id="mood-speech" name="mood-speech" value="mood-speech" aria-label="Mood Speech" />
+                  <input type="checkbox" id="mood-speech" name="activities" value="mood-speech" {{ 'checked' if 'mood-speech' in profile_data.preferred_activities }} aria-label="Mood Speech" />
                   <label for="mood-speech">Mood Speech</label>
                 </div>
                 <div class="checkbox-option">
-                  <input type="checkbox" id="mindfulness" aria-label="Mindfulness Exercises">
-                  <label>Mindfulness Exercises</label>
+                  <input type="checkbox" id="mindfulness" name="activities" value="mindfulness" {{ 'checked' if 'mindfulness' in profile_data.preferred_activities }} aria-label="Mindfulness Exercises" />
+                  <label for="mindfulness">Mindfulness Exercises</label>
                 </div>
               </div>
             </div>
@@ -224,6 +224,7 @@
       <span>© 2025 NeuroAid.</span>
     </footer>
   </div>
+  <script src="{{ url_for('static', filename='js/profile.js') }}"></script>
   <script src="{{ url_for('static', filename='js/dropdown.js') }}"></script>
   <script src="{{ url_for('static', filename='js/welcome.js') }}"></script>
 </body>

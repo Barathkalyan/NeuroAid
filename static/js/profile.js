@@ -1,153 +1,120 @@
 document.addEventListener('DOMContentLoaded', () => {
-  // Load profile data from localStorage
-  let profileData = JSON.parse(localStorage.getItem('profileData')) || {
-    name: 'John Doe',
-    email: 'john.doe@example.com',
-    username: '@johndoe',
-    age: '',
-    gender: '',
-    location: '',
-    language: '',
-    primaryGoal: '',
-    frequency: '',
-    activities: [],
-    profilePic: 'https://randomuser.me/api/portraits/men/32.jpg'
-  };
-
-  // Initialize UI
-  const initializeUI = () => {
-    document.getElementById('name-input').value = profileData.name;
-    document.getElementById('email-input').value = profileData.email;
-    document.getElementById('username-input').value = profileData.username;
-    document.getElementById('age-input').value = profileData.age;
-    document.getElementById('gender-input').value = profileData.gender;
-    document.getElementById('location-input').value = profileData.location;
-    document.getElementById('language-input').value = profileData.language;
-    document.getElementById('primary-goal').value = profileData.primaryGoal;
-    document.getElementById('frequency').value = profileData.frequency;
-
-    const activitiesCheckboxes = document.querySelectorAll('input[name="activities"]');
-    activitiesCheckboxes.forEach(checkbox => {
-      checkbox.checked = profileData.activities.includes(checkbox.value);
+    // Profile picture upload
+    document.getElementById('edit-picture-btn').addEventListener('click', () => {
+        document.getElementById('profile-pic-input').click();
     });
 
-    const profilePic = document.getElementById('profile-pic');
-    const headerProfilePic = document.getElementById('header-profile-pic');
-    profilePic.src = profileData.profilePic;
-    headerProfilePic.src = profileData.profilePic;
-
-    updateProfileCompletion();
-  };
-
-  // Update profile completion status
-  const updateProfileCompletion = () => {
-    const percentage = calculateProfileCompletion(profileData);
-    updateProgressBar(percentage);
-
-    // Update status indicators
-    const personalDetailsStatus = document.querySelector('.personal-details .status-indicator');
-    const goalsStatus = document.querySelector('.mental-health-goals .status-indicator');
-    const ctaMessage = document.querySelector('.cta-message p');
-
-    const personalDetailsFilled = profileData.age || profileData.gender || profileData.location || profileData.language;
-    personalDetailsStatus.textContent = personalDetailsFilled ? 'Personal Details: Complete' : 'Personal Details: Not Started';
-    personalDetailsStatus.classList.toggle('complete', personalDetailsFilled);
-    personalDetailsStatus.classList.toggle('incomplete', !personalDetailsFilled);
-
-    const goalsFilled = profileData.primaryGoal || profileData.frequency || profileData.activities.length > 0;
-    goalsStatus.textContent = goalsFilled ? 'Goals: Complete' : 'Goals: Not Started';
-    goalsStatus.classList.toggle('complete', goalsFilled);
-    goalsStatus.classList.toggle('incomplete', !goalsFilled);
-
-    if (percentage < 100) {
-      ctaMessage.textContent = 'Complete your profile to unlock personalized features! Add your mental health goals to continue.';
-    } else {
-      ctaMessage.textContent = 'Great job! Your profile is fully complete. Enjoy a personalized NeuroAid experience.';
-    }
-  };
-
-  // Edit Profile Fields
-  const editFieldButtons = document.querySelectorAll('.edit-field-btn');
-  editFieldButtons.forEach(button => {
-    button.addEventListener('click', () => {
-      const field = button.dataset.field;
-      const input = document.getElementById(`${field}-input`);
-      const isEditing = !input.readOnly;
-
-      if (isEditing) {
-        input.readOnly = true;
-        button.textContent = 'Edit';
-        profileData[field] = input.value;
-        localStorage.setItem('profileData', JSON.stringify(profileData));
-        updateProfileCompletion();
-      } else {
-        input.readOnly = false;
-        input.focus();
-        button.textContent = 'Save';
-      }
+    document.getElementById('profile-pic-input').addEventListener('change', async (event) => {
+        const file = event.target.files[0];
+        if (file) {
+            const formData = new FormData();
+            formData.append('profile-pic', file);
+            try {
+                const response = await fetch('/upload_profile_pic', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                if (data.success) {
+                    document.getElementById('profile-pic').src = data.url;
+                    document.getElementById('header-profile-pic').src = data.url;
+                } else {
+                    alert(data.error);
+                }
+            } catch (error) {
+                console.error('Error uploading profile picture:', error);
+                alert('Failed to upload profile picture.');
+            }
+        }
     });
-  });
 
-  // Profile Picture Upload
-  const editPictureBtn = document.getElementById('edit-picture-btn');
-  const profilePicInput = document.getElementById('profile-pic-input');
-  editPictureBtn.addEventListener('click', () => {
-    profilePicInput.click();
-  });
+    // Edit field functionality
+    document.querySelectorAll('.edit-field-btn').forEach(button => {
+        button.addEventListener('click', async () => {
+            const field = button.getAttribute('data-field');
+            const input = document.getElementById(`${field}-input`);
+            const isEditing = input.hasAttribute('readonly');
 
-  profilePicInput.addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        profileData.profilePic = event.target.result;
-        document.getElementById('profile-pic').src = profileData.profilePic;
-        document.getElementById('header-profile-pic').src = profileData.profilePic;
-        localStorage.setItem('profileData', JSON.stringify(profileData));
-      };
-      reader.readAsDataURL(file);
-    }
-  });
+            if (isEditing) {
+                input.removeAttribute('readonly');
+                input.focus();
+                button.textContent = 'Save';
+            } else {
+                input.setAttribute('readonly', true);
+                button.textContent = 'Edit';
 
-  // Save Personal Details
-  const savePersonalDetailsBtn = document.getElementById('save-personal-details');
-  savePersonalDetailsBtn.addEventListener('click', () => {
-    profileData.age = document.getElementById('age-input').value;
-    profileData.gender = document.getElementById('gender-input').value;
-    profileData.location = document.getElementById('location-input').value;
-    profileData.language = document.getElementById('language-input').value;
-    localStorage.setItem('profileData', JSON.stringify(profileData));
-    updateProfileCompletion();
-  });
+                // Save the updated field to Supabase
+                try {
+                    const response = await fetch('/update_profile_field', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ field, value: input.value })
+                    });
+                    const data = await response.json();
+                    if (!data.success) {
+                        alert(data.error);
+                    }
+                } catch (error) {
+                    console.error(`Error updating ${field}:`, error);
+                    alert(`Failed to update ${field}.`);
+                }
+            }
+        });
+    });
 
-  // Save Mental Health Goals
-  const saveGoalsBtn = document.getElementById('save-goals');
-  saveGoalsBtn.addEventListener('click', () => {
-    profileData.primaryGoal = document.getElementById('primary-goal').value;
-    profileData.frequency = document.getElementById('frequency').value;
-    const activitiesCheckboxes = document.querySelectorAll('input[name="activities"]:checked');
-    profileData.activities = Array.from(activitiesCheckboxes).map(checkbox => checkbox.value);
-    localStorage.setItem('profileData', JSON.stringify(profileData));
-    updateProfileCompletion();
-  });
+    // Save personal details
+    document.getElementById('save-personal-details').addEventListener('click', async () => {
+        const personalDetails = {
+            age: document.getElementById('age-input').value || null,
+            gender: document.getElementById('gender-input').value || null,
+            location: document.getElementById('location-input').value || null,
+            preferred_language: document.getElementById('language-input').value || null
+        };
 
-  // Privacy & Security Actions (Placeholder Functionality)
-  document.getElementById('change-password-btn').addEventListener('click', () => {
-    alert('Change Password functionality coming soon!');
-  });
+        try {
+            const response = await fetch('/update_personal_details', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(personalDetails)
+            });
+            const data = await response.json();
+            if (data.success) {
+                alert('Personal details saved successfully!');
+                window.location.reload();
+            } else {
+                alert(data.error);
+            }
+        } catch (error) {
+            console.error('Error saving personal details:', error);
+            alert('Failed to save personal details.');
+        }
+    });
 
-  document.getElementById('export-data-btn').addEventListener('click', () => {
-    alert('Export Data functionality coming soon!');
-  });
+    // Save mental health goals
+    document.getElementById('save-goals').addEventListener('click', async () => {
+        const activities = Array.from(document.querySelectorAll('input[name="activities"]:checked')).map(input => input.value);
+        const goals = {
+            primary_goal: document.getElementById('primary-goal').value || null,
+            engagement_frequency: document.getElementById('frequency').value || null,
+            preferred_activities: activities
+        };
 
-  document.getElementById('delete-account-btn').addEventListener('click', () => {
-    if (confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
-      localStorage.removeItem('profileData');
-      alert('Account deleted successfully.');
-      window.location.href = 'index.html';
-    }
-  });
-
-  // Initialize the UI on page load
-  initializeUI();
+        try {
+            const response = await fetch('/update_mental_health_goals', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(goals)
+            });
+            const data = await response.json();
+            if (data.success) {
+                alert('Mental health goals saved successfully!');
+                window.location.reload();
+            } else {
+                alert(data.error);
+            }
+        } catch (error) {
+            console.error('Error saving mental health goals:', error);
+            alert('Failed to save mental health goals.');
+        }
+    });
 });

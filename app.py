@@ -949,7 +949,189 @@ def profile():
     if session.get('two_factor_enabled') and not session.get('2fa_verified'):
         return redirect(url_for('verify_2fa'))
 
-    return render_template('profile.html', theme=session.get('theme', 'light'))
+    supabase = get_supabase()
+    user_id = session['user']
+
+    try:
+        # Fetch email and joined_date from the users table
+        user_data = supabase.table('users')\
+            .select('email, joined_date')\
+            .eq('id', user_id)\
+            .limit(1)\
+            .execute()
+
+        if not user_data.data:
+            logger.error(f"No user found for user_id: {user_id}")
+            return render_template('profile.html', theme=session.get('theme', 'light'), name='Unknown', email='Not found', joined_date='Not found', username='@unknown', profile_data={})
+
+        user = user_data.data[0]
+        email = user['email']
+        joined_date = user['joined_date']
+
+        # Fetch profile data (name, username, age, gender, location, language, goals, etc.) from the profiles table
+        profile_data = supabase.table('profiles')\
+            .select('name, username, age, gender, location, preferred_language, primary_goal, engagement_frequency, preferred_activities, profile_pic_url')\
+            .eq('user_id', user_id)\
+            .limit(1)\
+            .execute()
+
+        if profile_data.data:
+            profile = profile_data.data[0]
+            name = profile['name'] or 'Unknown'
+            username = profile['username'] or '@unknown'
+            profile_info = {
+                'age': profile['age'],
+                'gender': profile['gender'],
+                'location': profile['location'],
+                'preferred_language': profile['preferred_language'],
+                'primary_goal': profile['primary_goal'],
+                'engagement_frequency': profile['engagement_frequency'],
+                'preferred_activities': profile['preferred_activities'] or [],
+                'profile_pic_url': profile['profile_pic_url']
+            }
+        else:
+            name = 'Unknown'
+            username = '@unknown'
+            profile_info = {
+                'age': None,
+                'gender': None,
+                'location': None,
+                'preferred_language': None,
+                'primary_goal': None,
+                'engagement_frequency': None,
+                'preferred_activities': [],
+                'profile_pic_url': None
+            }
+
+        # Format joined_date (even though it's not displayed, we fetch it for potential use elsewhere)
+        if joined_date:
+            if '.' in joined_date:
+                joined_date = joined_date.split('.')[0] + '+00:00'
+            else:
+                joined_date = joined_date.replace('Z', '+00:00')
+            joined_date = datetime.fromisoformat(joined_date).strftime('%b %d, %Y')
+
+        # Calculate profile completion percentage
+        # Sections: Profile Overview (name, username, email), Personal Details (age, gender, location, preferred_language), Mental Health Goals (primary_goal, engagement_frequency, preferred_activities)
+        required_fields = ['name', 'username', 'email']
+        optional_fields = ['age', 'gender', 'location', 'preferred_language', 'primary_goal', 'engagement_frequency']
+        activity_fields = ['preferred_activities']
+
+        # Check Profile Overview section
+        filled_required = sum(1 for field in required_fields if locals().get(field) and locals().get(field) != 'Unknown' and locals().get(field) != '@unknown' and locals().get(field) != 'Not found')
+
+        # Check Personal Details section
+        filled_optional = sum(1 for field in optional_fields if profile_info[field])
+
+        # Check Mental Health Goals section (count preferred_activities separately)
+        filled_activities = 1 if profile_info['preferred_activities'] else 0
+
+        # Total fields across all sections
+        total_fields = len(required_fields) + len(optional_fields) + len(activity_fields)
+        filled_fields = filled_required + filled_optional + filled_activities
+        completion_percentage = int((filled_fields / total_fields) * 100)
+
+        return render_template('profile.html', 
+                              theme=session.get('theme', 'light'),
+                              name=name,
+                              email=email,
+                              joined_date=joined_date,
+                              username=username,
+                              profile_data=profile_info,
+                              completion_percentage=completion_percentage)
+
+    except Exception as e:
+        logger.error(f"Error fetching profile data: {str(e)}")
+        return render_template('profile.html', 
+                              theme=session.get('theme', 'light'),
+                              name='Unknown',
+                              email='Not found',
+                              joined_date='Not found',
+                              username='@unknown',
+                              profile_data={},
+                              completion_percentage=0)
+
+@app.route('/upload_profile_pic', methods=['POST'])
+def upload_profile_pic():
+    if 'user' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+    supabase = get_supabase()
+    user_id = session['user']
+    file = request.files.get('profile-pic')
+    if not file:
+        return jsonify({'error': 'No file uploaded'}), 400
+    try:
+        file_path = f"profiles/{user_id}/{uuid.uuid4()}.jpg"
+        supabase.storage.from_('profile-pics').upload(file_path, file.read())
+        url = supabase.storage.from_('profile-pics').get_public_url(file_path)
+        supabase.table('profiles').update({'profile_pic_url': url}).eq('user_id', user_id).execute()
+        return jsonify({'success': True, 'url': url}), 200
+    except Exception as e:
+        logger.error(f"Error uploading profile picture: {str(e)}")
+        return jsonify({'error': 'Upload failed'}), 500
+
+@app.route('/update_profile_field', methods=['POST'])
+def update_profile_field():
+    if 'user' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+    supabase = get_supabase()
+    user_id = session['user']
+    data = request.get_json()
+    field = data.get('field')
+    value = data.get('value')
+
+    if field not in ['name', 'email', 'username']:
+        return jsonify({'error': 'Invalid field'}), 400
+
+    try:
+        if field == 'email':
+            supabase.table('users').update({'email': value}).eq('id', user_id).execute()
+            session['user_email'] = value
+        else:
+            supabase.table('profiles').update({field: value}).eq('user_id', user_id).execute()
+        return jsonify({'success': True}), 200
+    except Exception as e:
+        logger.error(f"Error updating profile field {field}: {str(e)}")
+        return jsonify({'error': 'Failed to update field'}), 500
+
+@app.route('/update_personal_details', methods=['POST'])
+def update_personal_details():
+    if 'user' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+    supabase = get_supabase()
+    user_id = session['user']
+    data = request.get_json()
+
+    try:
+        supabase.table('profiles').update({
+            'age': data.get('age'),
+            'gender': data.get('gender'),
+            'location': data.get('location'),
+            'preferred_language': data.get('preferred_language')
+        }).eq('user_id', user_id).execute()
+        return jsonify({'success': True}), 200
+    except Exception as e:
+        logger.error(f"Error updating personal details: {str(e)}")
+        return jsonify({'error': 'Failed to update personal details'}), 500
+
+@app.route('/update_mental_health_goals', methods=['POST'])
+def update_mental_health_goals():
+    if 'user' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+    supabase = get_supabase()
+    user_id = session['user']
+    data = request.get_json()
+
+    try:
+        supabase.table('profiles').update({
+            'primary_goal': data.get('primary_goal'),
+            'engagement_frequency': data.get('engagement_frequency'),
+            'preferred_activities': data.get('preferred_activities')
+        }).eq('user_id', user_id).execute()
+        return jsonify({'success': True}), 200
+    except Exception as e:
+        logger.error(f"Error updating mental health goals: {str(e)}")
+        return jsonify({'error': 'Failed to update mental health goals'}), 500
 
 @app.route('/settings', methods=['GET', 'POST'])
 def settings():

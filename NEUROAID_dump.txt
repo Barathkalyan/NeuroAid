@@ -5001,40 +5001,11 @@ async function setCurrentLanguage() {
     }
 }
 
-function startSpeechRecognition() {
-    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-    recognition.lang = 'en-US';
-    recognition.onresult = (event) => {
-        const transcript = event.results[0][0].transcript.toLowerCase();
-        const moodMap = {
-            'happy': 'happy',
-            'calm': 'calm',
-            'sad': 'sad',
-            'anxious': 'anxious'
-        };
-        const detectedMood = Object.keys(moodMap).find(mood => transcript.includes(mood));
-        if (detectedMood) {
-            document.querySelector(`.mood-btn[data-mood="${detectedMood}"]`).click();
-        } else {
-            document.getElementById('current-mood').textContent = 'Unknown (from speech)';
-        }
-    };
-    recognition.onerror = () => {
-        document.getElementById('current-mood').textContent = 'Speech recognition failed';
-    };
-    recognition.start();
-}
-
 document.addEventListener('DOMContentLoaded', () => {
     const languageSelect = document.getElementById('language-select');
-    const moodButtons = document.querySelectorAll('.mood-btn');
-    const currentMoodDisplay = document.getElementById('current-mood');
-    const suggestionsList = document.getElementById('vibe-suggestions-list');
 
-    // Initialize language and load Spotify embed
     setCurrentLanguage().then(() => loadSpotifyEmbed());
 
-    // Handle language change
     languageSelect.addEventListener('change', async () => {
         const language = languageSelect.value;
         try {
@@ -5053,33 +5024,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 <h3>Now Playing</h3>
                 <p>Error updating language: ${error.message}</p>`;
         }
-    });
-
-    // Handle mood selection
-    moodButtons.forEach(button => {
-        button.addEventListener('click', async () => {
-            const mood = button.getAttribute('data-mood');
-            if (mood !== 'speech') {
-                currentMoodDisplay.textContent = mood.charAt(0).toUpperCase() + mood.slice(1);
-                
-                // Map button moods to app.py mood scores (1-5)
-                const moodMap = { happy: 5, calm: 4, sad: 1, anxious: 2 };
-                const moodScore = moodMap[mood] || 3;
-
-                // Update suggested activities
-                suggestionsList.innerHTML = '<p>Loading suggestions...</p>';
-                const suggestions = {
-                    happy: ['Go for a walk in nature.', 'Call a friend to share your joy.'],
-                    calm: ['Try a 5-minute meditation.', 'Read a relaxing book.'],
-                    sad: ['Write down your feelings in your journal.', 'Watch a comforting movie.'],
-                    anxious: ['Practice deep breathing exercises.', 'Listen to soothing music.']
-                };
-                suggestionsList.innerHTML = suggestions[mood].map(s => `<p>${s}</p>`).join('');
-
-                // Refresh Spotify embed based on the latest mood
-                await loadSpotifyEmbed();
-            }
-        });
     });
 });
 ```
@@ -6156,113 +6100,68 @@ document.addEventListener('DOMContentLoaded', () => {
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>NeuroAid - Vibe</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Icons" />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Icons+Sharp" />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Icons+Two+Tone" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/vibe.css') }}" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/dropdown.css') }}" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/welcome.css') }}" />
-  <link id="theme-stylesheet" href="{{ url_for('static', filename='css/themes/' + theme + '.css') }}">
-  <script src="{{ url_for('static', filename='js/script.js') }}" defer></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeuroAid - Vibe</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/vibe.css') }}">
+    <link id="theme-stylesheet" rel="stylesheet" href="{{ url_for('static', filename='css/themes/' + theme + '.css') }}">
 </head>
 <body>
-  <div class="sidebar">
-    <div class="logo">
-      <i class="ri-brain-line"></i>
-      <h1>Neuro<span>Aid</span></h1>
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="logo">
+                <i class="ri-brain-line" aria-hidden="true"></i>
+                <h1>Neuro<span>Aid</span></h1>
+            </div>
+            <nav aria-label="Main navigation">
+                <a href="{{ url_for('index') }}"><i class="ri-home-5-line" aria-hidden="true"></i> Home</a>
+                <a href="{{ url_for('journal') }}"><i class="ri-booklet-line" aria-hidden="true"></i> Journal</a>
+                <a href="{{ url_for('progress') }}"><i class="ri-bar-chart-2-line" aria-hidden="true"></i> Progress</a>
+                <a href="{{ url_for('vibe') }}" class="active" aria-current="page"><i class="ri-music-2-line" aria-hidden="true"></i> Vibe</a>
+                <a href="{{ url_for('gratitude') }}"><i class="ri-heart-line" aria-hidden="true"></i> Gratitude</a>
+                <a href="{{ url_for('settings') }}"><i class="ri-settings-3-line" aria-hidden="true"></i> Settings</a>
+                <a href="{{ url_for('profile') }}"><i class="ri-user-line" aria-hidden="true"></i> Profile</a>
+                <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line" aria-hidden="true"></i> Logout</a>
+            </nav>
+        </aside>
+
+        <div class="wrapper">
+            <main class="main-content" role="main">
+                <header class="main-header">
+                    <div class="profile" aria-label="User profile">
+                        <span>{{ session.get('user_email', 'User').split('@')[0] }}</span>
+                        <i class="ri-arrow-down-s-line" aria-hidden="true"></i>
+                    </div>
+                </header>
+
+                <section class="music-recommendations-section" aria-labelledby="music-recommendations-title">
+                    <h2 id="music-recommendations-title"><i class="ri-music-2-line" aria-hidden="true"></i> Music Recommendations</h2>
+                    <div class="selector-group">
+                        <label for="language-select">Select Language:</label>
+                        <select id="language-select" aria-label="Select music language">
+                            <option value="tamil">Tamil</option>
+                            <option value="telugu">Telugu</option>
+                            <option value="malayalam">Malayalam</option>
+                            <option value="english">English</option>
+                        </select>
+                    </div>
+                    <div class="music-box" id="spotify-player" role="region" aria-live="polite">
+                        <h3>Now Playing</h3>
+                        <p>Loading your personalized playlist...</p>
+                    </div>
+                </section>
+            </main>
+
+            <footer>
+                <span>© 2025 NeuroAid. Your mental health companion.</span>
+            </footer>
+        </div>
     </div>
-    <nav>
-      <a href="{{ url_for('index') }}"><i class="ri-home-5-line"></i> Home</a>
-      <a href="{{ url_for('journal') }}"><i class="ri-booklet-line"></i> Journal</a>
-      <a href="{{ url_for('progress') }}"><i class="ri-bar-chart-2-line"></i> Progress</a>
-      <a href="{{ url_for('vibe') }}" class="active"><i class="ri-music-2-line"></i> Vibe</a>
-      <a href="{{ url_for('gratitude') }}"><i class="ri-heart-line"></i> Gratitude</a>
-      <a href="{{ url_for('settings') }}"><i class="ri-settings-3-line"></i> Settings</a>
-      <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
-      <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
-    </nav>
-  </div>
 
-  <div class="wrapper">
-    <main class="main-content">
-      <header>
-        <div class="welcome-container">
-          <div class="welcome-text">Welcome to NeuroAid, {{ session.get('user_email', 'User').split('@')[0] }}</div>
-          <div class="quote-text"></div>
-        </div>
-        <div class="profile-dropdown">
-          <div class="profile">
-            <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile" />
-            <span>{{ session.get('user_email', 'User').split('@')[0] }}</span>
-            <i class="ri-arrow-down-s-line"></i>
-          </div>
-          <div class="dropdown-content">
-            <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
-            <a href="{{ url_for('settings') }}"><i class="ri-settings-3-line"></i> Settings</a>
-            <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
-          </div>
-        </div>
-      </header>
-
-      <section class="vibe-section">
-        <h2><i class="ri-music-2-line"></i> Vibe</h2>
-        <div class="mood-tracker">
-          <h3 class="heading">Mood Tracking</h3>
-          <div class="mood-options">
-            <button class="mood-btn" data-mood="happy">Happy</button>
-            <button class="mood-btn" data-mood="calm">Calm</button>
-            <button class="mood-btn" data-mood="sad">Sad</button>
-            <button class="mood-btn" data-mood="anxious">Anxious</button>
-            <button class="mood-btn" data-mood="speech" onclick="startSpeechRecognition()">Speech Recognition</button>
-          </div>
-          <div class="selected-mood">
-            <p>Selected Mood: <span id="current-mood">None</span></p>
-          </div>
-        </div>
-        <div class="vibe-suggestions">
-          <h3>Suggested Activities</h3>
-          <p>Based on your actions, try these activities:</p>
-          <div id="vibe-suggestions-list"></div>
-        </div>
-        <div class="music-recommendation">
-          <h3>Recommended Music</h3>
-          <p>Listen to music that matches your vibe:</p>
-          <div class="language-selector">
-            <label for="language-select">Select Language: </label>
-            <select id="language-select">
-              <option value="tamil">Tamil</option>
-              <option value="english">English</option>
-              <option value="hindi">Hindi</option>
-              <option value="telugu">Telugu</option>
-              <option value="malayalam">Malayalam</option>
-              <option value="kannada">Kannada</option>
-            </select>
-          </div>
-          <div id="spotify-player">
-            <h3>Now Playing</h3>
-            <p>Loading playlist...</p>
-          </div>
-        </div>
-      </section>
-
-      <footer>
-        <span>© 2025 NeuroAid. Your mental health companion.</span>
-      </footer>
-    </main>
-  </div>
-
-  <script src="{{ url_for('static', filename='js/dropdown.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/welcome.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/vibe.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/vibe.js') }}"></script>
 </body>
 </html>
 ```
