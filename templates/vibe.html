@@ -32,10 +32,16 @@
         <div class="wrapper">
             <main class="main-content" role="main">
                 <header class="main-header">
-                    <div class="profile" aria-label="User profile">
-                        <span>{{ session.get('user_email', 'User').split('@')[0] }}</span>
-                        <i class="ri-arrow-down-s-line" aria-hidden="true"></i>
+                    <div class="welcome-container">
+                    <div class="welcome-text">Welcome to NeuroAid, {{ session.get('user_email', 'User').split('@')[0] }}</div>
+                    <div class="quote-text"></div>
                     </div>
+                <div class="profile-dropdown">
+                <div class="profile">
+                    <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile" />
+                    <span>{{ session.get('user_email', 'User').split('@')[0] }}</span>
+                    <i class="ri-arrow-down-s-line"></i>
+          </div>
                 </header>
 
                 <section class="music-recommendations-section" aria-labelledby="music-recommendations-title">
