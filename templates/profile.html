@@ -10,16 +10,8 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/profile.css') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dropdown.css') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/welcome.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/inline-profile.css') }}" />
   <link id="theme-stylesheet" rel="stylesheet" href="{{ url_for('static', filename='css/themes/' + theme + '.css') }}">
-  <style>
-    .input-container input.editable {
-      border: 2px solid #7c3aed;
-      background-color: #f9f9f9;
-    }
-    .input-container input:disabled {
-      background-color: #e9ecef;
-    }
-  </style>
   <script src="{{ url_for('static', filename='js/utils.js') }}" defer></script>
   <script src="{{ url_for('static', filename='js/profile.js') }}" defer></script>
 </head>
@@ -69,7 +61,24 @@
           <div class="progress-container">
             <div class="progress-circle">
               <svg class="progress-ring" width="100" height="100">
-                <circle class="progress-ring__circle" stroke="#7c3aed" stroke-width="8" fill="transparent" r="44" cx="50" cy="50" style="stroke-dasharray: {{ 276.46 * (completion_percentage / 100) }} 276.46;" />
+                <circle class="progress-ring__background"
+                  cx="50"
+                  cy="50"
+                  r="44"
+                  fill="none"
+                  stroke-width="10"
+                  stroke="#e9ecef"
+                  stroke-linecap="round"/>
+                <circle class="progress-ring__circle"
+                  cx="50"
+                  cy="50"
+                  r="44"
+                  fill="none"
+                  stroke-width="10"
+                  stroke="#2c2c2c"
+                  stroke-linecap="round"
+                  transform="rotate(-90, 50, 50)"
+                  style="stroke-dasharray: {{ completion_dasharray }} 276.46;"/>
               </svg>
               <span class="progress-text">{{ completion_percentage }}% Complete</span>
             </div>
@@ -221,7 +230,6 @@
       <span>© 2025 NeuroAid.</span>
     </footer>
   </div>
-  <script src="{{ url_for('static', filename='js/profile.js') }}"></script>
   <script src="{{ url_for('static', filename='js/dropdown.js') }}"></script>
   <script src="{{ url_for('static', filename='js/welcome.js') }}"></script>
 </body>

@@ -965,7 +965,7 @@ def profile():
 
         if not user_data.data:
             logger.error(f"No user found for user_id: {user_id}")
-            return render_template('profile.html', theme=session.get('theme', 'light'), name='Unknown', email='Not found', username='@unknown', profile_data={}, completion_percentage=0)
+            return render_template('profile.html', theme=session.get('theme', 'light'), name='Unknown', email='Not found', username='@unknown', profile_data={}, completion_percentage=0, completion_dasharray=0)
 
         user = user_data.data[0]
         email = user['email'] or 'Not found'
@@ -1046,7 +1046,8 @@ def profile():
         total_fields = len(required_fields) + len(optional_fields) + len(activity_fields)
         filled_fields = filled_required + filled_optional + filled_activities
         completion_percentage = int((filled_fields / total_fields) * 100)
-        logger.info(f"Completion percentage: {completion_percentage}% (Filled: {filled_fields}/{total_fields})")
+        completion_dasharray = round(276.46 * (completion_percentage / 100), 2)
+        logger.info(f"Completion: {completion_percentage}% — Dasharray: {completion_dasharray}")
 
         return render_template('profile.html', 
                               theme=session.get('theme', 'light'),
@@ -1054,7 +1055,8 @@ def profile():
                               email=email,
                               username=username,
                               profile_data=profile_info,
-                              completion_percentage=completion_percentage)
+                              completion_percentage=completion_percentage,
+                              completion_dasharray=completion_dasharray)
 
     except Exception as e:
         logger.error(f"Error fetching profile data: {str(e)}")
@@ -1064,7 +1066,9 @@ def profile():
                               email='Not found',
                               username='@unknown',
                               profile_data={},
-                              completion_percentage=0)
+                              completion_percentage=0,
+                              completion_dasharray=0)
+
 
 @app.route('/update_profile_field', methods=['POST'])
 def update_profile_field():
@@ -1168,9 +1172,9 @@ def update_mental_health_goals():
 def settings():
     if 'user' not in session:
         logger.info("User not logged in, redirecting to login.")
-        return redirect(url_for('login'))
+        return jsonify({'success': False, 'error': 'User not logged in'}), 401
 
-    supabase = get_supabase()
+    supabase = get_supabase(use_service_role=True)  # Use service role to bypass RLS
     user_id = session['user']
     error = None
     success = None
@@ -1250,61 +1254,77 @@ def settings():
             logger.info(f"New user preferences created for user_id: {user_id}")
 
         if request.method == 'POST':
-            new_email = request.form.get('email', email)
-            password = request.form.get('password')
-            two_factor_enabled = 'two_factor_enabled' in request.form
-            theme = request.form.get('theme', profile_info['theme'])
-            reminder_time = request.form.get('reminder_time', profile_info['reminder_time'])
-            notification_preference = request.form.get('notification_preference', profile_info['notification_preference'])
+            try:
+                data = request.get_json()
+                if not data:
+                    data = request.form  # Fallback for form submissions
+                new_email = data.get('email', email).strip().lower()
+                password = data.get('password')
+                two_factor_enabled = data.get('two_factor_enabled', profile_info['two_factor_enabled'])
+                theme = data.get('theme', profile_info['theme'])
+                reminder_time = data.get('reminder_time', profile_info['reminder_time'])
+                notification_preference = data.get('notification_preference', profile_info['notification_preference'])
 
-            # Update users table (email and password)
-            update_user_data = {'email': new_email}
-            if password:
-                update_user_data['password'] = password  # Note: Hash the password in a real app
-            supabase.table('users')\
-                .update(update_user_data)\
-                .eq('id', user_id)\
-                .execute()
+                # Validate inputs
+                if not new_email:
+                    return jsonify({'success': False, 'error': 'Email is required'}), 400
 
-            # Update user_preferences table
-            update_preferences_data = {
-                'two_factor_enabled': two_factor_enabled,
-                'theme': theme,
-                'reminder_time': reminder_time,
-                'notification_preference': notification_preference
-            }
-            supabase.table('user_preferences')\
-                .update(update_preferences_data)\
-                .eq('user_id', user_id)\
-                .execute()
+                # Check if email already exists (excluding current user)
+                existing_user = supabase.table('users')\
+                    .select('id')\
+                    .eq('email', new_email)\
+                    .neq('id', user_id)\
+                    .execute()
+                if existing_user.data:
+                    return jsonify({'success': False, 'error': 'Email already exists'}), 400
 
-            session['theme'] = theme  # Still keep theme in session for immediate UI updates
-            session['user_email'] = new_email
-            success = 'Settings updated successfully!'
-            logger.info(f"Settings updated for user_id: {user_id}")
+                # Update users table (email and password)
+                update_user_data = {'email': new_email}
+                if password:
+                    update_user_data['password'] = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                supabase.table('users')\
+                    .update(update_user_data)\
+                    .eq('id', user_id)\
+                    .execute()
 
-            # Update profile_info with new values for rendering
-            profile_info.update({
-                'two_factor_enabled': two_factor_enabled,
-                'theme': theme,
-                'reminder_time': reminder_time,
-                'notification_preference': notification_preference
-            })
-            email = new_email
+                # Update user_preferences table
+                update_preferences_data = {
+                    'two_factor_enabled': two_factor_enabled,
+                    'theme': theme,
+                    'reminder_time': reminder_time,
+                    'notification_preference': notification_preference
+                }
+                supabase.table('user_preferences')\
+                    .update(update_preferences_data)\
+                    .eq('user_id', user_id)\
+                    .execute()
+
+                # Update session
+                session['user_email'] = new_email
+                session['theme'] = theme
+                session['two_factor_enabled'] = two_factor_enabled
+
+                logger.info(f"Settings updated for user_id: {user_id}")
+                return jsonify({'success': True, 'message': 'Settings updated successfully!'})
+
+            except Exception as e:
+                logger.error(f"Error updating settings for user_id: {user_id}: {str(e)}")
+                return jsonify({'success': False, 'error': str(e)}), 500
+
+        # GET request: Render the settings page
+        return render_template('settings.html',
+                              email=email,
+                              profile_data=profile_info,
+                              two_factor_enabled=profile_info['two_factor_enabled'],
+                              theme=profile_info['theme'],
+                              reminder_time=profile_info['reminder_time'],
+                              notification_preference=profile_info['notification_preference'],
+                              error=error,
+                              success=success)
 
     except Exception as e:
         logger.error(f"Error in settings: {str(e)}")
-        error = "An error occurred while updating settings. Please try again."
-
-    return render_template('settings.html',
-                           email=email,
-                           profile_data=profile_info,
-                           two_factor_enabled=profile_info['two_factor_enabled'],
-                           theme=profile_info['theme'],
-                           reminder_time=profile_info['reminder_time'],
-                           notification_preference=profile_info['notification_preference'],
-                           error=error,
-                           success=success)
+        return jsonify({'success': False, 'error': 'An error occurred while fetching settings'}), 500
 
 # Updated /export_data route to include user_preferences
 @app.route('/export_data', methods=['GET'])
@@ -1313,11 +1333,10 @@ def export_data():
         logger.info("User not logged in, redirecting to login.")
         return jsonify({'success': False, 'error': 'User not logged in'}), 401
 
-    supabase = get_supabase()
+    supabase = get_supabase(use_service_role=True)
     user_id = session['user']
 
     try:
-        # Fetch user data from the users table
         user_data = supabase.table('users')\
             .select('email')\
             .eq('id', user_id)\
@@ -1328,40 +1347,25 @@ def export_data():
             logger.error(f"No user found for user_id: {user_id}")
             return jsonify({'success': False, 'error': 'User not found'}), 404
 
-        # Fetch profile data from the profiles table
         profile_data = supabase.table('profiles')\
             .select('name, username, profile_pic_url, age, gender, location, preferred_language, primary_goal, engagement_frequency, preferred_activities, created_at, updated_at')\
             .eq('user_id', user_id)\
             .limit(1)\
             .execute()
 
-        if not profile_data.data:
-            logger.info(f"No profile found for user_id: {user_id}")
-            profile = {}
-        else:
-            profile = profile_data.data[0]
-
-        # Fetch user preferences from the user_preferences table
         preferences_data = supabase.table('user_preferences')\
-            .select('language, theme, two_factor_enabled, reminder_time, notification_preference, two_factor_secret')\
+            .select('language, theme, two_factor_enabled, reminder_time, notification_preference')\
             .eq('user_id', user_id)\
             .limit(1)\
             .execute()
 
-        if not preferences_data.data:
-            logger.info(f"No user preferences found for user_id: {user_id}")
-            preferences = {}
-        else:
-            preferences = preferences_data.data[0]
-
-        # Combine user, profile, and preferences data
         export_data = {
             'user': {
                 'email': user_data.data[0]['email'],
                 'id': user_id
             },
-            'profile': profile,
-            'preferences': preferences
+            'profile': profile_data.data[0] if profile_data.data else {},
+            'preferences': preferences_data.data[0] if preferences_data.data else {}
         }
 
         logger.info(f"Data exported for user_id: {user_id}")
@@ -1378,32 +1382,19 @@ def delete_account():
         logger.info("User not logged in, redirecting to login.")
         return jsonify({'success': False, 'error': 'User not logged in'}), 401
 
-    supabase = get_supabase()
+    supabase = get_supabase(use_service_role=True)
     user_id = session['user']
 
     try:
-        # Delete the user's preferences from the user_preferences table
-        supabase.table('user_preferences')\
-            .delete()\
-            .eq('user_id', user_id)\
-            .execute()
+        supabase.table('journal_entries').delete().eq('user_id', user_id).execute()
+        supabase.table('gratitude_entries').delete().eq('user_id', user_id).execute()
+        supabase.table('user_preferences').delete().eq('user_id', user_id).execute()
+        supabase.table('profiles').delete().eq('user_id', user_id).execute()
+        supabase.table('users').delete().eq('id', user_id).execute()
 
-        # Delete the user's profile from the profiles table
-        supabase.table('profiles')\
-            .delete()\
-            .eq('user_id', user_id)\
-            .execute()
-
-        # Delete the user from the users table
-        supabase.table('users')\
-            .delete()\
-            .eq('id', user_id)\
-            .execute()
-
-        # Clear the session
         session.clear()
         logger.info(f"Account deleted for user_id: {user_id}")
-        return jsonify({'success': True})
+        return jsonify({'success': True, 'message': 'Account deleted successfully'})
 
     except Exception as e:
         logger.error(f"Error deleting account for user_id: {user_id}: {str(e)}")
@@ -5280,6 +5271,36 @@ document.addEventListener('DOMContentLoaded', function () {
 document.addEventListener('DOMContentLoaded', () => {
     const themeSelect = document.getElementById('theme');
     const themeStylesheet = document.getElementById('theme-stylesheet');
+    const form = document.getElementById('settings-form');
+    const exportDataBtn = document.getElementById('export-data-btn');
+    const deleteAccountBtn = document.getElementById('delete-account-btn');
+    const errorMessage = document.querySelector('.error-message');
+    const successMessage = document.querySelector('.success-message');
+
+    // Function to display messages
+    const showMessage = (type, message) => {
+        if (type === 'error') {
+            if (errorMessage) errorMessage.textContent = message;
+            else {
+                const msgDiv = document.createElement('div');
+                msgDiv.className = 'error-message';
+                msgDiv.textContent = message;
+                form.parentNode.insertBefore(msgDiv, form);
+            }
+        } else {
+            if (successMessage) successMessage.textContent = message;
+            else {
+                const msgDiv = document.createElement('div');
+                msgDiv.className = 'success-message';
+                msgDiv.textContent = message;
+                form.parentNode.insertBefore(msgDiv, form);
+            }
+        }
+        setTimeout(() => {
+            const msg = document.querySelector(`.${type}-message`);
+            if (msg) msg.remove();
+        }, 5000);
+    };
 
     // Preview theme when dropdown changes
     themeSelect.addEventListener('change', (e) => {
@@ -5287,28 +5308,59 @@ document.addEventListener('DOMContentLoaded', () => {
         themeStylesheet.href = `/static/css/themes/${selectedTheme}.css`;
     });
 
-    // Client-side validation for password match
-    const form = document.getElementById('settings-form');
-    form.addEventListener('submit', (e) => {
+    // Handle form submission
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
         const password = document.getElementById('password').value;
         const confirmPassword = document.getElementById('confirm_password').value;
 
+        // Client-side password validation
         if (password && password !== confirmPassword) {
-            e.preventDefault();
-            alert('Passwords do not match!');
+            showMessage('error', 'Passwords do not match!');
+            return;
+        }
+
+        const formData = new FormData(form);
+        const data = {
+            email: formData.get('email'),
+            password: password || null,
+            two_factor_enabled: formData.get('two_factor_enabled') === 'on',
+            theme: formData.get('theme'),
+            reminder_time: formData.get('reminder_time'),
+            notification_preference: formData.get('notification_preference')
+        };
+
+        try {
+            const response = await fetch('/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            const result = await response.json();
+
+            if (result.success) {
+                showMessage('success', result.message || 'Settings updated successfully!');
+                // Update displayed email in header
+                const userMenuSpan = document.querySelector('.user-menu span');
+                if (userMenuSpan) {
+                    userMenuSpan.textContent = data.email.split('@')[0];
+                }
+                // Update theme stylesheet if changed
+                themeStylesheet.href = `/static/css/themes/${data.theme}.css`;
+            } else {
+                showMessage('error', result.error || 'Failed to update settings.');
+            }
+        } catch (error) {
+            console.error('Error submitting settings:', error);
+            showMessage('error', 'Failed to update settings.');
         }
     });
 
-    // Privacy & Security actions
-    const exportDataBtn = document.getElementById('export-data-btn');
-    const deleteAccountBtn = document.getElementById('delete-account-btn');
-
+    // Export Data button
     if (exportDataBtn) {
         exportDataBtn.addEventListener('click', async () => {
             try {
-                const response = await fetch('/export_data', {
-                    method: 'GET'
-                });
+                const response = await fetch('/export_data', { method: 'GET' });
                 const data = await response.json();
                 if (data.success) {
                     const blob = new Blob([JSON.stringify(data.data, null, 2)], { type: 'application/json' });
@@ -5318,16 +5370,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     a.download = 'neuroaid_user_data.json';
                     a.click();
                     window.URL.revokeObjectURL(url);
+                    showMessage('success', 'Data exported successfully!');
                 } else {
-                    alert(data.error);
+                    showMessage('error', data.error || 'Failed to export data.');
                 }
             } catch (error) {
                 console.error('Error exporting data:', error);
-                alert('Failed to export data.');
+                showMessage('error', 'Failed to export data.');
             }
         });
     }
 
+    // Delete Account button
     if (deleteAccountBtn) {
         deleteAccountBtn.addEventListener('click', async () => {
             if (confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
@@ -5338,14 +5392,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                     const data = await response.json();
                     if (data.success) {
-                        alert('Account deleted successfully.');
-                        window.location.href = '/logout';
+                        showMessage('success', 'Account deleted successfully.');
+                        setTimeout(() => {
+                            window.location.href = '/logout';
+                        }, 2000);
                     } else {
-                        alert(data.error);
+                        showMessage('error', data.error || 'Failed to delete account.');
                     }
                 } catch (error) {
                     console.error('Error deleting account:', error);
-                    alert('Failed to delete account.');
+                    showMessage('error', 'Failed to delete account.');
                 }
             }
         });
@@ -5988,7 +6044,18 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="progress-container">
             <div class="progress-circle">
               <svg class="progress-ring" width="100" height="100">
-                <circle class="progress-ring__circle" stroke="#7c3aed" stroke-width="8" fill="transparent" r="44" cx="50" cy="50" style="stroke-dasharray: {{ 276.46 * (completion_percentage / 100) }} 276.46;" />
+                <circle class="progress-ring__circle" 
+                  cx="60"
+                  cy="60"
+                  r="44"
+                  class="text-[#2c2c2c]"
+                  fill="none"
+                  stroke-width="10"
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  style="stroke-dasharray: {{ completion_dasharray }} 276.46;"/>
+
+
               </svg>
               <span class="progress-text">{{ completion_percentage }}% Complete</span>
             </div>

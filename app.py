@@ -963,7 +963,7 @@ def profile():
 
         if not user_data.data:
             logger.error(f"No user found for user_id: {user_id}")
-            return render_template('profile.html', theme=session.get('theme', 'light'), name='Unknown', email='Not found', username='@unknown', profile_data={}, completion_percentage=0)
+            return render_template('profile.html', theme=session.get('theme', 'light'), name='Unknown', email='Not found', username='@unknown', profile_data={}, completion_percentage=0, completion_dasharray=0)
 
         user = user_data.data[0]
         email = user['email'] or 'Not found'
@@ -1044,7 +1044,8 @@ def profile():
         total_fields = len(required_fields) + len(optional_fields) + len(activity_fields)
         filled_fields = filled_required + filled_optional + filled_activities
         completion_percentage = int((filled_fields / total_fields) * 100)
-        logger.info(f"Completion percentage: {completion_percentage}% (Filled: {filled_fields}/{total_fields})")
+        completion_dasharray = round(276.46 * (completion_percentage / 100), 2)
+        logger.info(f"Completion: {completion_percentage}% — Dasharray: {completion_dasharray}")
 
         return render_template('profile.html', 
                               theme=session.get('theme', 'light'),
@@ -1052,7 +1053,8 @@ def profile():
                               email=email,
                               username=username,
                               profile_data=profile_info,
-                              completion_percentage=completion_percentage)
+                              completion_percentage=completion_percentage,
+                              completion_dasharray=completion_dasharray)
 
     except Exception as e:
         logger.error(f"Error fetching profile data: {str(e)}")
@@ -1062,7 +1064,9 @@ def profile():
                               email='Not found',
                               username='@unknown',
                               profile_data={},
-                              completion_percentage=0)
+                              completion_percentage=0,
+                              completion_dasharray=0)
+
 
 @app.route('/update_profile_field', methods=['POST'])
 def update_profile_field():
