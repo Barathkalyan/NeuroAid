@@ -41,12 +41,12 @@
           <div class="quote-text"></div>
         </div>
         <div class="profile-dropdown">
-          <div class="profile">
-            <img src="{{ profile_data.profile_pic_url if profile_data.get('profile_pic_url') else 'https://randomuser.me/api/portraits/men/32.jpg' }}" alt="Profile" id="header-profile-pic" />
-            <span>{{ name }}</span>
-            <i class="ri-arrow-down-s-line"></i>
-          </div>
           <div class="dropdown-content">
+            <div class="user-info">
+              <p><i class="ri-user-line"></i> {{ user_name }}</p>
+              <p><i class="ri-mail-line"></i> {{ user_email }}</p>
+              <p><i class="ri-calendar-line"></i> Joined: {{ joined_date }}</p>
+            </div>
             <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
             <a href="{{ url_for('settings') }}"><i class="ri-settings-3-line"></i> Settings</a>
             <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
