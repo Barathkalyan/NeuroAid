@@ -951,110 +951,463 @@ def profile():
     if session.get('two_factor_enabled') and not session.get('2fa_verified'):
         return redirect(url_for('verify_2fa'))
 
-    return render_template('profile.html', theme=session.get('theme', 'light'))
+    supabase = get_supabase()
+    user_id = session['user']
+    logger.info(f"Fetching profile for user_id: {user_id}")
 
+    try:
+        # Fetch email from the users table
+        user_data = supabase.table('users')\
+            .select('email')\
+            .eq('id', user_id)\
+            .limit(1)\
+            .execute()
+
+        if not user_data.data:
+            logger.error(f"No user found for user_id: {user_id}")
+            return render_template('profile.html', theme=session.get('theme', 'light'), name='Unknown', email='Not found', username='@unknown', profile_data={}, completion_percentage=0)
+
+        user = user_data.data[0]
+        email = user['email'] or 'Not found'
+        logger.info(f"User data fetched: email={email}")
+
+        # Fetch profile data from the profiles table
+        profile_data = supabase.table('profiles')\
+            .select('name, username, age, gender, location, preferred_language, primary_goal, engagement_frequency, preferred_activities, profile_pic_url')\
+            .eq('user_id', user_id)\
+            .limit(1)\
+            .execute()
+
+        if profile_data.data:
+            profile = profile_data.data[0]
+            name = profile['name'] if profile['name'] else 'Unknown'
+            username = profile['username'] if profile['username'] else '@unknown'
+            profile_info = {
+                'age': profile['age'],
+                'gender': profile['gender'],
+                'location': profile['location'],
+                'preferred_language': profile['preferred_language'],
+                'primary_goal': profile['primary_goal'],
+                'engagement_frequency': profile['engagement_frequency'],
+                'preferred_activities': profile['preferred_activities'] or [],
+                'profile_pic_url': profile['profile_pic_url']
+            }
+            logger.info(f"Profile data fetched: {profile_info}")
+        else:
+            logger.info(f"No profile found for user_id: {user_id}, creating a new profile")
+            default_name = email.split('@')[0]
+            supabase.table('profiles').insert({'user_id': user_id, 'name': default_name, 'username': f"@{default_name}"}).execute()
+            profile_data = supabase.table('profiles')\
+                .select('name, username, age, gender, location, preferred_language, primary_goal, engagement_frequency, preferred_activities, profile_pic_url')\
+                .eq('user_id', user_id)\
+                .limit(1)\
+                .execute()
+            profile = profile_data.data[0]
+            name = profile['name']
+            username = profile['username']
+            profile_info = {
+                'age': None,
+                'gender': None,
+                'location': None,
+                'preferred_language': None,
+                'primary_goal': None,
+                'engagement_frequency': None,
+                'preferred_activities': [],
+                'profile_pic_url': None
+            }
+            logger.info(f"New profile created: {profile_info}")
+
+        # Calculate profile completion percentage
+        required_fields = ['name', 'username', 'email']
+        optional_fields = ['age', 'gender', 'location', 'preferred_language', 'primary_goal', 'engagement_frequency']
+        activity_fields = ['preferred_activities']
+
+        # Check Profile Overview section
+        filled_required = 0
+        for field in required_fields:
+            value = locals().get(field)
+            if field == 'email':
+                if value and value != 'Not found':
+                    filled_required += 1
+            else:
+                if value and value not in ['Unknown', '@unknown']:
+                    filled_required += 1
+        logger.info(f"Filled required fields: {filled_required}/{len(required_fields)}")
+
+        # Check Personal Details section
+        filled_optional = sum(1 for field in optional_fields if profile_info[field])
+        logger.info(f"Filled optional fields: {filled_optional}/{len(optional_fields)}")
+
+        # Check Mental Health Goals section
+        filled_activities = 1 if profile_info['preferred_activities'] else 0
+        logger.info(f"Filled activities: {filled_activities}/{len(activity_fields)}")
+
+        # Total fields across all sections
+        total_fields = len(required_fields) + len(optional_fields) + len(activity_fields)
+        filled_fields = filled_required + filled_optional + filled_activities
+        completion_percentage = int((filled_fields / total_fields) * 100)
+        logger.info(f"Completion percentage: {completion_percentage}% (Filled: {filled_fields}/{total_fields})")
+
+        return render_template('profile.html', 
+                              theme=session.get('theme', 'light'),
+                              name=name,
+                              email=email,
+                              username=username,
+                              profile_data=profile_info,
+                              completion_percentage=completion_percentage)
+
+    except Exception as e:
+        logger.error(f"Error fetching profile data: {str(e)}")
+        return render_template('profile.html', 
+                              theme=session.get('theme', 'light'),
+                              name='Unknown',
+                              email='Not found',
+                              username='@unknown',
+                              profile_data={},
+                              completion_percentage=0)
+
+@app.route('/update_profile_field', methods=['POST'])
+def update_profile_field():
+    if 'user' not in session:
+        return jsonify({'success': False, 'error': 'User not logged in'}), 401
+
+    data = request.get_json()
+    field = data.get('field')
+    value = data.get('value')
+    user_id = session['user']
+    supabase = get_supabase()
+
+    try:
+        if field == 'email':
+            # Update email in the users table
+            response = supabase.table('users')\
+                .update({'email': value})\
+                .eq('id', user_id)\
+                .execute()
+            if response.data:
+                return jsonify({'success': True}), 200
+            else:
+                return jsonify({'success': False, 'error': 'Failed to update email'}), 500
+        elif field in ['name', 'username']:
+            # Update name or username in the profiles table
+            response = supabase.table('profiles')\
+                .update({field: value})\
+                .eq('user_id', user_id)\
+                .execute()
+            if response.data:
+                return jsonify({'success': True}), 200
+            else:
+                return jsonify({'success': False, 'error': f'Failed to update {field}'}), 500
+        else:
+            return jsonify({'success': False, 'error': 'Invalid field'}), 400
+    except Exception as e:
+        logger.error(f"Error updating profile field {field}: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/upload_profile_pic', methods=['POST'])
+def upload_profile_pic():
+    if 'user' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+    supabase = get_supabase()
+    user_id = session['user']
+    file = request.files.get('profile-pic')
+    if not file:
+        return jsonify({'error': 'No file uploaded'}), 400
+    try:
+        file_path = f"profiles/{user_id}/{uuid.uuid4()}.jpg"
+        supabase.storage.from_('profile-pics').upload(file_path, file.read())
+        url = supabase.storage.from_('profile-pics').get_public_url(file_path)
+        supabase.table('profiles').update({'profile_pic_url': url}).eq('user_id', user_id).execute()
+        return jsonify({'success': True, 'url': url}), 200
+    except Exception as e:
+        logger.error(f"Error uploading profile picture: {str(e)}")
+        return jsonify({'error': 'Upload failed'}), 500
+
+@app.route('/update_personal_details', methods=['POST'])
+def update_personal_details():
+    if 'user' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+    supabase = get_supabase()
+    user_id = session['user']
+    data = request.get_json()
+
+    try:
+        supabase.table('profiles').update({
+            'age': data.get('age'),
+            'gender': data.get('gender'),
+            'location': data.get('location'),
+            'preferred_language': data.get('preferred_language')
+        }).eq('user_id', user_id).execute()
+        return jsonify({'success': True}), 200
+    except Exception as e:
+        logger.error(f"Error updating personal details: {str(e)}")
+        return jsonify({'error': 'Failed to update personal details'}), 500
+
+@app.route('/update_mental_health_goals', methods=['POST'])
+def update_mental_health_goals():
+    if 'user' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+    supabase = get_supabase()
+    user_id = session['user']
+    data = request.get_json()
+
+    try:
+        supabase.table('profiles').update({
+            'primary_goal': data.get('primary_goal'),
+            'engagement_frequency': data.get('engagement_frequency'),
+            'preferred_activities': data.get('preferred_activities')
+        }).eq('user_id', user_id).execute()
+        return jsonify({'success': True}), 200
+    except Exception as e:
+        logger.error(f"Error updating mental health goals: {str(e)}")
+        return jsonify({'error': 'Failed to update mental health goals'}), 500
+
+
+# Updated /settings route to use user_preferences table
 @app.route('/settings', methods=['GET', 'POST'])
 def settings():
     if 'user' not in session:
         logger.info("User not logged in, redirecting to login.")
         return redirect(url_for('login'))
 
-    if session.get('two_factor_enabled') and not session.get('2fa_verified'):
-        return redirect(url_for('verify_2fa'))
-
     supabase = get_supabase()
     user_id = session['user']
     error = None
     success = None
+    email = 'Not found'
 
-    if request.method == 'POST':
-        try:
-            new_email = request.form.get('email')
-            new_password = request.form.get('password')
-            confirm_password = request.form.get('confirm_password')
+    # Initialize profile_info with defaults
+    profile_info = {
+        'profile_pic_url': None,
+        'two_factor_enabled': False,
+        'theme': 'light',
+        'reminder_time': '09:00',
+        'notification_preference': 'email'
+    }
 
-            if new_email or new_password:
-                if new_password and new_password != confirm_password:
-                    error = "Passwords do not match!"
-                    return render_template('settings.html', error=error, success=success, theme=session.get('theme', 'light'))
+    try:
+        # Fetch user data (email) from the users table
+        user_data = supabase.table('users')\
+            .select('email')\
+            .eq('id', user_id)\
+            .limit(1)\
+            .execute()
 
-                user_update = {}
-                if new_email:
-                    # Normalize new email to lowercase
-                    new_email = new_email.strip().lower()
-                    existing_user = supabase.table('users').select('id').eq('email', new_email).neq('id', user_id).execute()
-                    if existing_user.data:
-                        error = "Email already in use by another account."
-                        return render_template('settings.html', error=error, success=success, theme=session.get('theme', 'light'))
-                    user_update['email'] = new_email
-                    session['user_email'] = new_email
+        if not user_data.data:
+            logger.error(f"No user found for user_id: {user_id}")
+            return redirect(url_for('logout'))
 
-                if new_password:
-                    hashed_password = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-                    user_update['password'] = hashed_password
+        email = user_data.data[0]['email']
+        logger.info(f"User email fetched: {email}")
 
-                if user_update:
-                    supabase.table('users').update(user_update).eq('id', user_id).execute()
-                    logger.info(f"User {user_id} updated email/password.")
+        # Fetch profile_pic_url from the profiles table
+        profile_data = supabase.table('profiles')\
+            .select('profile_pic_url')\
+            .eq('user_id', user_id)\
+            .limit(1)\
+            .execute()
 
-            two_factor_enabled = request.form.get('two_factor_enabled') == 'on'
-            theme = request.form.get('theme')
-            reminder_time = request.form.get('reminder_time')
-            notification_preference = request.form.get('notification_preference')
+        if profile_data.data:
+            profile = profile_data.data[0]
+            profile_info['profile_pic_url'] = profile.get('profile_pic_url')
+            logger.info(f"Profile data fetched: {profile_info}")
+        else:
+            logger.info(f"No profile found for user_id: {user_id}, creating a new profile")
+            default_name = email.split('@')[0]
+            supabase.table('profiles').insert({
+                'user_id': user_id,
+                'name': default_name,
+                'username': f"@{default_name}"
+            }).execute()
+            logger.info(f"New profile created for user_id: {user_id}")
 
-            preferences_update = {
+        # Fetch user preferences from the user_preferences table
+        preferences_data = supabase.table('user_preferences')\
+            .select('two_factor_enabled, theme, reminder_time, notification_preference')\
+            .eq('user_id', user_id)\
+            .limit(1)\
+            .execute()
+
+        if preferences_data.data:
+            preferences = preferences_data.data[0]
+            profile_info.update({
+                'two_factor_enabled': preferences.get('two_factor_enabled', False),
+                'theme': preferences.get('theme', 'light'),
+                'reminder_time': preferences.get('reminder_time', '09:00'),
+                'notification_preference': preferences.get('notification_preference', 'email')
+            })
+            logger.info(f"User preferences fetched: {preferences}")
+        else:
+            logger.info(f"No user preferences found for user_id: {user_id}, creating a new entry")
+            supabase.table('user_preferences').insert({
+                'user_id': user_id,
+                'language': 'tamil',
+                'theme': 'light',
+                'two_factor_enabled': False,
+                'reminder_time': '09:00',
+                'notification_preference': 'email'
+            }).execute()
+            logger.info(f"New user preferences created for user_id: {user_id}")
+
+        if request.method == 'POST':
+            new_email = request.form.get('email', email)
+            password = request.form.get('password')
+            two_factor_enabled = 'two_factor_enabled' in request.form
+            theme = request.form.get('theme', profile_info['theme'])
+            reminder_time = request.form.get('reminder_time', profile_info['reminder_time'])
+            notification_preference = request.form.get('notification_preference', profile_info['notification_preference'])
+
+            # Update users table (email and password)
+            update_user_data = {'email': new_email}
+            if password:
+                update_user_data['password'] = password  # Note: Hash the password in a real app
+            supabase.table('users')\
+                .update(update_user_data)\
+                .eq('id', user_id)\
+                .execute()
+
+            # Update user_preferences table
+            update_preferences_data = {
                 'two_factor_enabled': two_factor_enabled,
                 'theme': theme,
                 'reminder_time': reminder_time,
                 'notification_preference': notification_preference
             }
-            supabase.table('user_preferences').update(preferences_update).eq('user_id', user_id).execute()
-            logger.info(f"Preferences updated for user {user_id}: {preferences_update}")
+            supabase.table('user_preferences')\
+                .update(update_preferences_data)\
+                .eq('user_id', user_id)\
+                .execute()
 
-            session['theme'] = theme
-            session['two_factor_enabled'] = two_factor_enabled
+            session['theme'] = theme  # Still keep theme in session for immediate UI updates
+            session['user_email'] = new_email
+            success = 'Settings updated successfully!'
+            logger.info(f"Settings updated for user_id: {user_id}")
 
-            if two_factor_enabled:
-                preferences = supabase.table('user_preferences')\
-                    .select('two_factor_secret')\
-                    .eq('user_id', user_id)\
-                    .execute()
-                if not preferences.data or not preferences.data[0].get('two_factor_secret'):
-                    return redirect(url_for('setup_2fa'))
+            # Update profile_info with new values for rendering
+            profile_info.update({
+                'two_factor_enabled': two_factor_enabled,
+                'theme': theme,
+                'reminder_time': reminder_time,
+                'notification_preference': notification_preference
+            })
+            email = new_email
 
-            success = "Settings updated successfully!"
-        except Exception as e:
-            error = "Failed to update settings. Please try again."
-            logger.error(f"Settings update error: {str(e)}")
+    except Exception as e:
+        logger.error(f"Error in settings: {str(e)}")
+        error = "An error occurred while updating settings. Please try again."
+
+    return render_template('settings.html',
+                           email=email,
+                           profile_data=profile_info,
+                           two_factor_enabled=profile_info['two_factor_enabled'],
+                           theme=profile_info['theme'],
+                           reminder_time=profile_info['reminder_time'],
+                           notification_preference=profile_info['notification_preference'],
+                           error=error,
+                           success=success)
+
+# Updated /export_data route to include user_preferences
+@app.route('/export_data', methods=['GET'])
+def export_data():
+    if 'user' not in session:
+        logger.info("User not logged in, redirecting to login.")
+        return jsonify({'success': False, 'error': 'User not logged in'}), 401
+
+    supabase = get_supabase()
+    user_id = session['user']
 
     try:
-        user_data = supabase.table('users').select('email').eq('id', user_id).execute()
+        # Fetch user data from the users table
+        user_data = supabase.table('users')\
+            .select('email')\
+            .eq('id', user_id)\
+            .limit(1)\
+            .execute()
+
+        if not user_data.data:
+            logger.error(f"No user found for user_id: {user_id}")
+            return jsonify({'success': False, 'error': 'User not found'}), 404
+
+        # Fetch profile data from the profiles table
+        profile_data = supabase.table('profiles')\
+            .select('name, username, profile_pic_url, age, gender, location, preferred_language, primary_goal, engagement_frequency, preferred_activities, created_at, updated_at')\
+            .eq('user_id', user_id)\
+            .limit(1)\
+            .execute()
+
+        if not profile_data.data:
+            logger.info(f"No profile found for user_id: {user_id}")
+            profile = {}
+        else:
+            profile = profile_data.data[0]
+
+        # Fetch user preferences from the user_preferences table
         preferences_data = supabase.table('user_preferences')\
-            .select('two_factor_enabled, theme, reminder_time, notification_preference')\
+            .select('language, theme, two_factor_enabled, reminder_time, notification_preference, two_factor_secret')\
+            .eq('user_id', user_id)\
+            .limit(1)\
+            .execute()
+
+        if not preferences_data.data:
+            logger.info(f"No user preferences found for user_id: {user_id}")
+            preferences = {}
+        else:
+            preferences = preferences_data.data[0]
+
+        # Combine user, profile, and preferences data
+        export_data = {
+            'user': {
+                'email': user_data.data[0]['email'],
+                'id': user_id
+            },
+            'profile': profile,
+            'preferences': preferences
+        }
+
+        logger.info(f"Data exported for user_id: {user_id}")
+        return jsonify({'success': True, 'data': export_data})
+
+    except Exception as e:
+        logger.error(f"Error exporting data for user_id: {user_id}: {str(e)}")
+        return jsonify({'success': False, 'error': 'Failed to export data'}), 500
+
+# Updated /delete_account route to also delete user_preferences
+@app.route('/delete_account', methods=['POST'])
+def delete_account():
+    if 'user' not in session:
+        logger.info("User not logged in, redirecting to login.")
+        return jsonify({'success': False, 'error': 'User not logged in'}), 401
+
+    supabase = get_supabase()
+    user_id = session['user']
+
+    try:
+        # Delete the user's preferences from the user_preferences table
+        supabase.table('user_preferences')\
+            .delete()\
             .eq('user_id', user_id)\
             .execute()
 
-        if not user_data.data or not preferences_data.data:
-            error = "Unable to load settings."
-            return render_template('settings.html', error=error, success=success, theme=session.get('theme', 'light'))
+        # Delete the user's profile from the profiles table
+        supabase.table('profiles')\
+            .delete()\
+            .eq('user_id', user_id)\
+            .execute()
 
-        user = user_data.data[0]
-        preferences = preferences_data.data[0]
+        # Delete the user from the users table
+        supabase.table('users')\
+            .delete()\
+            .eq('id', user_id)\
+            .execute()
+
+        # Clear the session
+        session.clear()
+        logger.info(f"Account deleted for user_id: {user_id}")
+        return jsonify({'success': True})
+
     except Exception as e:
-        error = "Unable to load settings."
-        logger.error(f"Settings load error: {str(e)}")
-        return render_template('settings.html', error=error, success=success, theme=session.get('theme', 'light'))
-
-    return render_template(
-        'settings.html',
-        email=user['email'],
-        two_factor_enabled=preferences['two_factor_enabled'],
-        reminder_time=preferences['reminder_time'],
-        notification_preference=preferences['notification_preference'],
-        error=error,
-        success=success,
-        theme=session.get('theme', 'light')
-    )
+        logger.error(f"Error deleting account for user_id: {user_id}: {str(e)}")
+        return jsonify({'success': False, 'error': 'Failed to delete account'}), 500
 
 @app.route('/logout')
 def logout():
@@ -2698,11 +3051,6 @@ body {
   color: var(--primary);
 }
 
-.logo h1 {
-  font-size: 1.8rem;
-  font-weight: 700;
-  color: var(--text-primary);
-}
 
 .logo h1 span {
   color: var(--primary);
@@ -3202,7 +3550,7 @@ footer {
   transform: translateX(26px);
 }
 
-.card-button {
+.neuroaid-btn {
   background-color: var(--primary);
   color: white;
   border: none;
@@ -3212,9 +3560,12 @@ footer {
   font-size: 16px;
   font-weight: 600;
   transition: background-color 0.3s ease, transform 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.card-button:hover {
+.neuroaid-btn:hover {
   background-color: #6d28d9;
   transform: translateY(-2px);
 }
@@ -3237,6 +3588,38 @@ footer {
   color: #10b981;
 }
 
+/* Action Group for Privacy & Security */
+.action-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.action-btn {
+  background-color: var(--primary);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 500;
+  transition: background-color 0.3s ease, transform 0.3s ease;
+}
+
+.action-btn:hover {
+  background-color: #6d28d9;
+  transform: translateY(-2px);
+}
+
+.action-btn.delete {
+  background-color: #dc2626;
+}
+
+.action-btn.delete:hover {
+  background-color: #b91c1c;
+}
+
 /* Responsive Design */
 @media (max-width: 600px) {
   .settings-section h2 {
@@ -3257,8 +3640,13 @@ footer {
     padding: 10px;
   }
 
-  .card-button {
+  .neuroaid-btn {
     padding: 12px 20px;
+    font-size: 14px;
+  }
+
+  .action-btn {
+    padding: 8px 16px;
     font-size: 14px;
   }
 }
@@ -3883,7 +4271,7 @@ button:hover {
 
 .music-box h3 {
     margin: 0 0 10px;
-    font-size: 1.5rem;
+    font-size: 2rem;
     color: var(--text-primary, #1f2937);
 }
 
@@ -3902,18 +4290,21 @@ button:hover {
 
 .selector-group label {
     font-weight: 500;
+    font-size: 26px;
     color: var(--text-primary, #1f2937);
     margin-right: 10px;
+    margin-top: 25px;
 }
 
 .selector-group select {
-    padding: 8px 12px;
+    padding: 12px 18px;
     border-radius: 8px;
     border: 1px solid var(--glass-border, #e5e7eb);
     background: var(--secondary, #f9faff);
     color: var(--text-primary, #1f2937);
     font-size: 1rem;
     cursor: pointer;
+    margin-top:25px;
 }
 
 .selector-group select:focus {
@@ -3922,10 +4313,10 @@ button:hover {
 }
 
 .music-recommendations-section h2 {
+    font-size: 42px;
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 1.75rem;
     color: var(--text-primary, #1f2937);
 }
 ```
@@ -3940,11 +4331,11 @@ button:hover {
 }
 
 .welcome-text {
-    font-size: 18px;
+    font-size: 25px;
     font-weight: 600;
     color: #2d2d2d;
-    opacity: 1;
-    animation: fadeOut 5s ease-in-out forwards;
+    animation: fadeIn 2.5s ease-in-out forwards;
+    animation: fadeOut 2.5s ease-in-out forwards;
 }
 
 @keyframes fadeOut {
@@ -3954,12 +4345,11 @@ button:hover {
 }
 
 .quote-text {
-    font-size: 16px;
-    font-style: italic;
-    color: #666;
+    font-size: 24px;
+    color: #333131;
     opacity: 0;
     visibility: hidden;
-    animation: fadeIn 1s ease-in-out 5s forwards;
+    animation: fadeIn 1s ease-in-out 3.5s forwards;
 }
 
 @keyframes fadeIn {
@@ -4224,157 +4614,160 @@ document.addEventListener('DOMContentLoaded', () => {
 # File: static/js/profile.js
 ```js
 document.addEventListener('DOMContentLoaded', () => {
-  // Load profile data from localStorage
-  let profileData = JSON.parse(localStorage.getItem('profileData')) || {
-    name: 'John Doe',
-    email: 'john.doe@example.com',
-    username: '@johndoe',
-    age: '',
-    gender: '',
-    location: '',
-    language: '',
-    primaryGoal: '',
-    frequency: '',
-    activities: [],
-    profilePic: 'https://randomuser.me/api/portraits/men/32.jpg'
-  };
+    // Profile picture upload
+    const editPictureBtn = document.getElementById('edit-picture-btn');
+    if (editPictureBtn) {
+        editPictureBtn.addEventListener('click', () => {
+            document.getElementById('profile-pic-input').click();
+        });
+    }
 
-  // Initialize UI
-  const initializeUI = () => {
-    document.getElementById('name-input').value = profileData.name;
-    document.getElementById('email-input').value = profileData.email;
-    document.getElementById('username-input').value = profileData.username;
-    document.getElementById('age-input').value = profileData.age;
-    document.getElementById('gender-input').value = profileData.gender;
-    document.getElementById('location-input').value = profileData.location;
-    document.getElementById('language-input').value = profileData.language;
-    document.getElementById('primary-goal').value = profileData.primaryGoal;
-    document.getElementById('frequency').value = profileData.frequency;
+    const profilePicInput = document.getElementById('profile-pic-input');
+    if (profilePicInput) {
+        profilePicInput.addEventListener('change', async (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const formData = new FormData();
+                formData.append('profile-pic', file);
+                try {
+                    const response = await fetch('/upload_profile_pic', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const data = await response.json();
+                    if (data.success) {
+                        document.getElementById('profile-pic').src = data.url;
+                        document.getElementById('header-profile-pic').src = data.url;
+                    } else {
+                        alert(data.error);
+                    }
+                } catch (error) {
+                    console.error('Error uploading profile picture:', error);
+                    alert('Failed to upload profile picture.');
+                }
+            }
+        });
+    }
 
-    const activitiesCheckboxes = document.querySelectorAll('input[name="activities"]');
-    activitiesCheckboxes.forEach(checkbox => {
-      checkbox.checked = profileData.activities.includes(checkbox.value);
-    });
-
-    const profilePic = document.getElementById('profile-pic');
-    const headerProfilePic = document.getElementById('header-profile-pic');
-    profilePic.src = profileData.profilePic;
-    headerProfilePic.src = profileData.profilePic;
-
-    updateProfileCompletion();
-  };
-
-  // Update profile completion status
-  const updateProfileCompletion = () => {
-    const percentage = calculateProfileCompletion(profileData);
-    updateProgressBar(percentage);
-
-    // Update status indicators
-    const personalDetailsStatus = document.querySelector('.personal-details .status-indicator');
-    const goalsStatus = document.querySelector('.mental-health-goals .status-indicator');
-    const ctaMessage = document.querySelector('.cta-message p');
-
-    const personalDetailsFilled = profileData.age || profileData.gender || profileData.location || profileData.language;
-    personalDetailsStatus.textContent = personalDetailsFilled ? 'Personal Details: Complete' : 'Personal Details: Not Started';
-    personalDetailsStatus.classList.toggle('complete', personalDetailsFilled);
-    personalDetailsStatus.classList.toggle('incomplete', !personalDetailsFilled);
-
-    const goalsFilled = profileData.primaryGoal || profileData.frequency || profileData.activities.length > 0;
-    goalsStatus.textContent = goalsFilled ? 'Goals: Complete' : 'Goals: Not Started';
-    goalsStatus.classList.toggle('complete', goalsFilled);
-    goalsStatus.classList.toggle('incomplete', !goalsFilled);
-
-    if (percentage < 100) {
-      ctaMessage.textContent = 'Complete your profile to unlock personalized features! Add your mental health goals to continue.';
+    // Edit field functionality
+    const editButtons = document.querySelectorAll('.edit-field-btn');
+    if (editButtons.length === 0) {
+        console.error('No edit buttons found');
     } else {
-      ctaMessage.textContent = 'Great job! Your profile is fully complete. Enjoy a personalized NeuroAid experience.';
+        editButtons.forEach(button => {
+            button.addEventListener('click', async (event) => {
+                event.preventDefault();
+                const field = button.getAttribute('data-field');
+                const input = document.getElementById(`${field}-input`);
+                if (!input) {
+                    console.error(`Input for ${field} not found`);
+                    return;
+                }
+
+                const isEditing = !input.classList.contains('editable');
+                console.log(`Editing ${field}: ${isEditing ? 'Starting' : 'Saving'}`);
+
+                if (isEditing) {
+                    input.disabled = false;
+                    input.classList.add('editable');
+                    input.focus();
+                    button.textContent = 'Save';
+                } else {
+                    input.disabled = true;
+                    input.classList.remove('editable');
+                    button.textContent = 'Edit';
+
+                    // Save the updated field to Supabase
+                    const value = input.value;
+                    console.log(`Saving ${field}: ${value}`);
+                    try {
+                        const response = await fetch('/update_profile_field', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ field, value })
+                        });
+                        const data = await response.json();
+                        if (data.success) {
+                            console.log(`${field} saved successfully`);
+                            window.location.reload();
+                        } else {
+                            console.error(`Error saving ${field}:`, data.error);
+                            alert(data.error);
+                        }
+                    } catch (error) {
+                        console.error(`Error updating ${field}:`, error);
+                        alert(`Failed to update ${field}.`);
+                    }
+                }
+            }, { once: false });
+        });
     }
-  };
 
-  // Edit Profile Fields
-  const editFieldButtons = document.querySelectorAll('.edit-field-btn');
-  editFieldButtons.forEach(button => {
-    button.addEventListener('click', () => {
-      const field = button.dataset.field;
-      const input = document.getElementById(`${field}-input`);
-      const isEditing = !input.readOnly;
-
-      if (isEditing) {
-        input.readOnly = true;
-        button.textContent = 'Edit';
-        profileData[field] = input.value;
-        localStorage.setItem('profileData', JSON.stringify(profileData));
-        updateProfileCompletion();
-      } else {
-        input.readOnly = false;
-        input.focus();
-        button.textContent = 'Save';
-      }
-    });
-  });
-
-  // Profile Picture Upload
-  const editPictureBtn = document.getElementById('edit-picture-btn');
-  const profilePicInput = document.getElementById('profile-pic-input');
-  editPictureBtn.addEventListener('click', () => {
-    profilePicInput.click();
-  });
-
-  profilePicInput.addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        profileData.profilePic = event.target.result;
-        document.getElementById('profile-pic').src = profileData.profilePic;
-        document.getElementById('header-profile-pic').src = profileData.profilePic;
-        localStorage.setItem('profileData', JSON.stringify(profileData));
-      };
-      reader.readAsDataURL(file);
+    // Save personal details
+    const savePersonalDetailsBtn = document.getElementById('save-personal-details');
+    if (savePersonalDetailsBtn) {
+        savePersonalDetailsBtn.addEventListener('click', async () => {
+            const personalDetails = {
+                age: document.getElementById('age-input').value || null,
+                gender: document.getElementById('gender-input').value || null,
+                location: document.getElementById('location-input').value || null,
+                preferred_language: document.getElementById('language-input').value || null
+            };
+            console.log('Saving personal details:', personalDetails);
+            try {
+                const response = await fetch('/update_personal_details', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(personalDetails)
+                });
+                const data = await response.json();
+                if (data.success) {
+                    console.log('Personal details saved successfully');
+                    alert('Personal details saved successfully!');
+                    window.location.reload();
+                } else {
+                    console.error('Error saving personal details:', data.error);
+                    alert(data.error);
+                }
+            } catch (error) {
+                console.error('Error saving personal details:', error);
+                alert('Failed to save personal details.');
+            }
+        });
     }
-  });
 
-  // Save Personal Details
-  const savePersonalDetailsBtn = document.getElementById('save-personal-details');
-  savePersonalDetailsBtn.addEventListener('click', () => {
-    profileData.age = document.getElementById('age-input').value;
-    profileData.gender = document.getElementById('gender-input').value;
-    profileData.location = document.getElementById('location-input').value;
-    profileData.language = document.getElementById('language-input').value;
-    localStorage.setItem('profileData', JSON.stringify(profileData));
-    updateProfileCompletion();
-  });
-
-  // Save Mental Health Goals
-  const saveGoalsBtn = document.getElementById('save-goals');
-  saveGoalsBtn.addEventListener('click', () => {
-    profileData.primaryGoal = document.getElementById('primary-goal').value;
-    profileData.frequency = document.getElementById('frequency').value;
-    const activitiesCheckboxes = document.querySelectorAll('input[name="activities"]:checked');
-    profileData.activities = Array.from(activitiesCheckboxes).map(checkbox => checkbox.value);
-    localStorage.setItem('profileData', JSON.stringify(profileData));
-    updateProfileCompletion();
-  });
-
-  // Privacy & Security Actions (Placeholder Functionality)
-  document.getElementById('change-password-btn').addEventListener('click', () => {
-    alert('Change Password functionality coming soon!');
-  });
-
-  document.getElementById('export-data-btn').addEventListener('click', () => {
-    alert('Export Data functionality coming soon!');
-  });
-
-  document.getElementById('delete-account-btn').addEventListener('click', () => {
-    if (confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
-      localStorage.removeItem('profileData');
-      alert('Account deleted successfully.');
-      window.location.href = 'index.html';
+    // Save mental health goals
+    const saveGoalsBtn = document.getElementById('save-goals');
+    if (saveGoalsBtn) {
+        saveGoalsBtn.addEventListener('click', async () => {
+            const activities = Array.from(document.querySelectorAll('input[name="activities"]:checked')).map(input => input.value);
+            const goals = {
+                primary_goal: document.getElementById('primary-goal').value || null,
+                engagement_frequency: document.getElementById('frequency').value || null,
+                preferred_activities: activities
+            };
+            console.log('Saving mental health goals:', goals);
+            try {
+                const response = await fetch('/update_mental_health_goals', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(goals)
+                });
+                const data = await response.json();
+                if (data.success) {
+                    console.log('Mental health goals saved successfully');
+                    alert('Mental health goals saved successfully!');
+                    window.location.reload();
+                } else {
+                    console.error('Error saving mental health goals:', data.error);
+                    alert(data.error);
+                }
+            } catch (error) {
+                console.error('Error saving mental health goals:', error);
+                alert('Failed to save mental health goals.');
+            }
+        });
     }
-  });
-
-  // Initialize the UI on page load
-  initializeUI();
 });
 ```
 
@@ -4894,7 +5287,7 @@ document.addEventListener('DOMContentLoaded', () => {
         themeStylesheet.href = `/static/css/themes/${selectedTheme}.css`;
     });
 
-    // Optional: Client-side validation for password match
+    // Client-side validation for password match
     const form = document.getElementById('settings-form');
     form.addEventListener('submit', (e) => {
         const password = document.getElementById('password').value;
@@ -4905,6 +5298,58 @@ document.addEventListener('DOMContentLoaded', () => {
             alert('Passwords do not match!');
         }
     });
+
+    // Privacy & Security actions
+    const exportDataBtn = document.getElementById('export-data-btn');
+    const deleteAccountBtn = document.getElementById('delete-account-btn');
+
+    if (exportDataBtn) {
+        exportDataBtn.addEventListener('click', async () => {
+            try {
+                const response = await fetch('/export_data', {
+                    method: 'GET'
+                });
+                const data = await response.json();
+                if (data.success) {
+                    const blob = new Blob([JSON.stringify(data.data, null, 2)], { type: 'application/json' });
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'neuroaid_user_data.json';
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                } else {
+                    alert(data.error);
+                }
+            } catch (error) {
+                console.error('Error exporting data:', error);
+                alert('Failed to export data.');
+            }
+        });
+    }
+
+    if (deleteAccountBtn) {
+        deleteAccountBtn.addEventListener('click', async () => {
+            if (confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
+                try {
+                    const response = await fetch('/delete_account', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    const data = await response.json();
+                    if (data.success) {
+                        alert('Account deleted successfully.');
+                        window.location.href = '/logout';
+                    } else {
+                        alert(data.error);
+                    }
+                } catch (error) {
+                    console.error('Error deleting account:', error);
+                    alert('Failed to delete account.');
+                }
+            }
+        });
+    }
 });
 ```
 
@@ -4963,12 +5408,12 @@ async function loadSpotifyEmbed() {
         const data = await response.json();
         if (data.embedUrl) {
             playerContainer.innerHTML = `
-                <h3>Now Playing (Mood Score: ${data.mood})</h3>
+                <h3>Now Playing </h3>
                 <div id="iframe-wrapper">
                     <iframe style="border-radius:12px" 
                             src="${data.embedUrl}" 
                             width="100%" 
-                            height="380" 
+                            height="420" 
                             frameborder="0" 
                             allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
                             loading="lazy"></iframe>
@@ -5485,6 +5930,15 @@ document.addEventListener('DOMContentLoaded', () => {
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dropdown.css') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/welcome.css') }}" />
   <link id="theme-stylesheet" rel="stylesheet" href="{{ url_for('static', filename='css/themes/' + theme + '.css') }}">
+  <style>
+    .input-container input.editable {
+      border: 2px solid #7c3aed;
+      background-color: #f9f9f9;
+    }
+    .input-container input:disabled {
+      background-color: #e9ecef;
+    }
+  </style>
   <script src="{{ url_for('static', filename='js/utils.js') }}" defer></script>
   <script src="{{ url_for('static', filename='js/profile.js') }}" defer></script>
 </head>
@@ -5510,13 +5964,13 @@ document.addEventListener('DOMContentLoaded', () => {
     <main class="main-content">
       <header>
         <div class="welcome-container">
-          <div class="welcome-text">Welcome to NeuroAid, {{ session.get('user_email', 'User').split('@')[0] }}</div>
+          <div class="welcome-text">Welcome to NeuroAid, {{ name }}</div>
           <div class="quote-text"></div>
         </div>
         <div class="profile-dropdown">
           <div class="profile">
-            <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile" id="header-profile-pic" />
-            <span>{{ session.get('user_email', 'User').split('@')[0] }}</span>
+            <img src="{{ profile_data.profile_pic_url if profile_data.get('profile_pic_url') else 'https://randomuser.me/api/portraits/men/32.jpg' }}" alt="Profile" id="header-profile-pic" />
+            <span>{{ name }}</span>
             <i class="ri-arrow-down-s-line"></i>
           </div>
           <div class="dropdown-content">
@@ -5534,9 +5988,9 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="progress-container">
             <div class="progress-circle">
               <svg class="progress-ring" width="100" height="100">
-                <circle class="progress-ring__circle" stroke="#7c3aed" stroke-width="8" fill="transparent" r="44" cx="50" cy="50"/>
+                <circle class="progress-ring__circle" stroke="#7c3aed" stroke-width="8" fill="transparent" r="44" cx="50" cy="50" style="stroke-dasharray: {{ 276.46 * (completion_percentage / 100) }} 276.46;" />
               </svg>
-              <span class="progress-text">0% Complete</span>
+              <span class="progress-text">{{ completion_percentage }}% Complete</span>
             </div>
           </div>
         </div>
@@ -5544,11 +5998,11 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="card profile-overview">
           <div class="card-header">
             <h3>Profile Overview</h3>
-            <p class="status-indicator complete">Basic Info: Complete</p>
+            <p class="status-indicator {{ 'complete' if name != 'Unknown' and email != 'Not found' and username != '@unknown' else 'incomplete' }}">Basic Info: {{ 'Complete' if name != 'Unknown' and email != 'Not found' and username != '@unknown' else 'Incomplete' }}</p>
           </div>
           <div class="profile-content">
             <div class="profile-picture">
-              <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile Picture" id="profile-pic" />
+              <img src="{{ profile_data.profile_pic_url if profile_data.get('profile_pic_url') else 'https://randomuser.me/api/portraits/men/32.jpg' }}" alt="Profile Picture" id="profile-pic" />
               <button class="edit-button" id="edit-picture-btn">Upload Photo</button>
               <input type="file" id="profile-pic-input" accept="image/*" style="display: none;" />
             </div>
@@ -5556,21 +6010,21 @@ document.addEventListener('DOMContentLoaded', () => {
               <div class="form-field">
                 <label for="name-input">Name</label>
                 <div class="input-container">
-                  <input type="text" id="name-input" value="John Doe" readonly aria-label="Name" />
+                  <input type="text" id="name-input" value="{{ name }}" disabled aria-label="Name" />
                   <button class="edit-field-btn" data-field="name">Edit</button>
                 </div>
               </div>
               <div class="form-field">
                 <label for="email-input">Email</label>
                 <div class="input-container">
-                  <input type="email" id="email-input" value="{{ session.get('user_email', 'john.doe@example.com') }}" readonly aria-label="Email" />
+                  <input type="email" id="email-input" value="{{ email }}" disabled aria-label="Email" />
                   <button class="edit-field-btn" data-field="email">Edit</button>
                 </div>
               </div>
               <div class="form-field">
                 <label for="username-input">Username</label>
                 <div class="input-container">
-                  <input type="text" id="username-input" value="@johndoe" readonly aria-label="Username" />
+                  <input type="text" id="username-input" value="{{ username }}" disabled aria-label="Username" />
                   <button class="edit-field-btn" data-field="username">Edit</button>
                 </div>
               </div>
@@ -5581,41 +6035,41 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="card personal-details">
           <div class="card-header">
             <h3>Personal Details</h3>
-            <p class="status-indicator incomplete">Personal Details: Not Started</p>
+            <p class="status-indicator {{ 'complete' if profile_data.age or profile_data.gender or profile_data.location or profile_data.preferred_language else 'incomplete' }}">Personal Details: {{ 'Complete' if profile_data.age or profile_data.gender or profile_data.location or profile_data.preferred_language else 'Not Started' }}</p>
           </div>
           <div class="form-container">
             <div class="form-field">
               <label for="age-input">Age (Optional)</label>
               <div class="input-container">
-                <input type="number" id="age-input" placeholder="Enter your age" aria-label="Age" />
+                <input type="number" id="age-input" value="{{ profile_data.age if profile_data.age else '' }}" placeholder="Enter your age" aria-label="Age" />
               </div>
             </div>
             <div class="form-field">
               <label for="gender-input">Gender</label>
               <div class="input-container">
                 <select id="gender-input" aria-label="Gender">
-                  <option value="">Select Gender</option>
-                  <option value="male">Male</option>
-                  <option value="female">Female</option>
-                  <option value="non-binary">Non-binary</option>
-                  <option value="prefer-not-to-say">Prefer not to say</option>
+                  <option value="" {{ 'selected' if not profile_data.gender }}>Select Gender</option>
+                  <option value="male" {{ 'selected' if profile_data.gender == 'male' }}>Male</option>
+                  <option value="female" {{ 'selected' if profile_data.gender == 'female' }}>Female</option>
+                  <option value="non-binary" {{ 'selected' if profile_data.gender == 'non-binary' }}>Non-binary</option>
+                  <option value="prefer-not-to-say" {{ 'selected' if profile_data.gender == 'prefer-not-to-say' }}>Prefer not to say</option>
                 </select>
               </div>
             </div>
             <div class="form-field">
               <label for="location-input">Location (Optional)</label>
               <div class="input-container">
-                <input type="text" id="location-input" placeholder="Enter your city/country" aria-label="Location" />
+                <input type="text" id="location-input" value="{{ profile_data.location if profile_data.location else '' }}" placeholder="Enter your city/country" aria-label="Location" />
               </div>
             </div>
             <div class="form-field">
               <label for="language-input">Preferred Language</label>
               <div class="input-container">
                 <select id="language-input" aria-label="Preferred Language">
-                  <option value="">Select Language</option>
-                  <option value="english">English</option>
-                  <option value="spanish">Spanish</option>
-                  <option value="french">French</option>
+                  <option value="" {{ 'selected' if not profile_data.preferred_language }}>Select Language</option>
+                  <option value="english" {{ 'selected' if profile_data.preferred_language == 'english' }}>English</option>
+                  <option value="spanish" {{ 'selected' if profile_data.preferred_language == 'spanish' }}>Spanish</option>
+                  <option value="french" {{ 'selected' if profile_data.preferred_language == 'french' }}>French</option>
                 </select>
               </div>
             </div>
@@ -5628,18 +6082,18 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="card mental-health-goals">
           <div class="card-header">
             <h3>Your Mental Health Goals</h3>
-            <p class="status-indicator incomplete">Goals: Not Started</p>
+            <p class="status-indicator {{ 'complete' if profile_data.primary_goal or profile_data.engagement_frequency or profile_data.preferred_activities else 'incomplete' }}">Goals: {{ 'Complete' if profile_data.primary_goal or profile_data.engagement_frequency or profile_data.preferred_activities else 'Not Started' }}</p>
           </div>
           <div class="form-container">
             <div class="form-field">
               <label for="primary-goal">Primary Goal</label>
               <div class="input-container">
                 <select id="primary-goal" aria-label="Primary Goal">
-                  <option value="">Select Goal</option>
-                  <option value="reduce-stress">Reduce Stress</option>
-                  <option value="improve-sleep">Improve Sleep</option>
-                  <option value="manage-anxiety">Manage Anxiety</option>
-                  <option value="build-mindfulness">Build Mindfulness</option>
+                  <option value="" {{ 'selected' if not profile_data.primary_goal }}>Select Goal</option>
+                  <option value="reduce-stress" {{ 'selected' if profile_data.primary_goal == 'reduce-stress' }}>Reduce Stress</option>
+                  <option value="improve-sleep" {{ 'selected' if profile_data.primary_goal == 'improve-sleep' }}>Improve Sleep</option>
+                  <option value="manage-anxiety" {{ 'selected' if profile_data.primary_goal == 'manage-anxiety' }}>Manage Anxiety</option>
+                  <option value="build-mindfulness" {{ 'selected' if profile_data.primary_goal == 'build-mindfulness' }}>Build Mindfulness</option>
                 </select>
               </div>
             </div>
@@ -5647,10 +6101,10 @@ document.addEventListener('DOMContentLoaded', () => {
               <label for="frequency">Engagement Frequency</label>
               <div class="input-container">
                 <select id="frequency" aria-label="Engagement Frequency">
-                  <option value="">Select Frequency</option>
-                  <option value="daily">Daily</option>
-                  <option value="weekly">Weekly</option>
-                  <option value="biweekly">Bi-weekly</option>
+                  <option value="" {{ 'selected' if not profile_data.engagement_frequency }}>Select Frequency</option>
+                  <option value="daily" {{ 'selected' if profile_data.engagement_frequency == 'daily' }}>Daily</option>
+                  <option value="weekly" {{ 'selected' if profile_data.engagement_frequency == 'weekly' }}>Weekly</option>
+                  <option value="biweekly" {{ 'selected' if profile_data.engagement_frequency == 'biweekly' }}>Bi-weekly</option>
                 </select>
               </div>
             </div>
@@ -5658,16 +6112,16 @@ document.addEventListener('DOMContentLoaded', () => {
               <label>Preferred Activities</label>
               <div class="checkbox-container">
                 <div class="checkbox-option">
-                  <input type="checkbox" id="journaling" name="activities" value="journaling" aria-label="Journaling" />
+                  <input type="checkbox" id="journaling" name="activities" value="journaling" {{ 'checked' if 'journaling' in profile_data.preferred_activities }} aria-label="Journaling" />
                   <label for="journaling">Journaling</label>
                 </div>
                 <div class="checkbox-option">
-                  <input type="checkbox" id="mood-speech" name="mood-speech" value="mood-speech" aria-label="Mood Speech" />
+                  <input type="checkbox" id="mood-speech" name="activities" value="mood-speech" {{ 'checked' if 'mood-speech' in profile_data.preferred_activities }} aria-label="Mood Speech" />
                   <label for="mood-speech">Mood Speech</label>
                 </div>
                 <div class="checkbox-option">
-                  <input type="checkbox" id="mindfulness" aria-label="Mindfulness Exercises">
-                  <label>Mindfulness Exercises</label>
+                  <input type="checkbox" id="mindfulness" name="activities" value="mindfulness" {{ 'checked' if 'mindfulness' in profile_data.preferred_activities }} aria-label="Mindfulness Exercises" />
+                  <label for="mindfulness">Mindfulness Exercises</label>
                 </div>
               </div>
             </div>
@@ -5676,28 +6130,17 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
           </div>
         </div>
-
-        <div class="card privacy-security">
-          <div class="card-header">
-            <h3>Privacy & Security</h3>
-          </div>
-          <div class="action-group">
-            <button class="action-btn" id="change-password-btn">Change Password</button>
-            <button class="action-btn" id="export-data-btn">Export Data</button>
-            <button class="action-btn delete" id="delete-account-btn">Delete Account</button>
-          </div>
-        </div>
-
         <div class="cta-message">
           <p>Complete your profile to unlock personalized features! Add your mental health goals to continue.</p>
         </div>
       </section>
-    </main>
+    </main>   
 
     <footer>
       <span>© 2025 NeuroAid.</span>
     </footer>
   </div>
+  <script src="{{ url_for('static', filename='js/profile.js') }}"></script>
   <script src="{{ url_for('static', filename='js/dropdown.js') }}"></script>
   <script src="{{ url_for('static', filename='js/welcome.js') }}"></script>
 </body>
@@ -5720,7 +6163,6 @@ document.addEventListener('DOMContentLoaded', () => {
   <link rel="stylesheet" href="{{ url_for('static', filename='css/welcome.css') }}" />
   <link id="theme-stylesheet" rel="stylesheet" href="{{ url_for('static', filename='css/themes/' + theme + '.css') }}">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="{{ url_for('static', filename='js/script.js') }}" defer></script>
 </head>
 <body>
   <div class="app-container">
@@ -5809,6 +6251,7 @@ document.addEventListener('DOMContentLoaded', () => {
       </footer>
     </div>
   </div>
+  <script src="{{ url_for('static', filename='js/progress.js') }}"></script>
   <script src="{{ url_for('static', filename='js/dropdown.js') }}"></script>
   <script src="{{ url_for('static', filename='js/welcome.js') }}"></script>
 </body>
@@ -5862,7 +6305,7 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
         <div class="profile-dropdown">
           <div class="profile">
-            <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile" />
+            <img src="{{ profile_data.profile_pic_url if profile_data.get('profile_pic_url') else 'https://randomuser.me/api/portraits/men/32.jpg' }}" alt="Profile" id="header-profile-pic" />
             <span>{{ session.get('user_email', 'User').split('@')[0] }}</span>
             <i class="ri-arrow-down-s-line"></i>
           </div>
@@ -5953,6 +6396,17 @@ document.addEventListener('DOMContentLoaded', () => {
             <button type="submit" class="neuroaid-btn"><i class="ri-save-line"></i> Save Changes</button>
           </form>
         </div>
+
+        <!-- Privacy & Security -->
+        <div class="settings-card">
+          <div class="settings-group">
+            <h3><i class="ri-lock-line"></i> Privacy & Security</h3>
+            <div class="action-group">
+              <button type="button" class="action-btn" id="export-data-btn">Export Data</button>
+              <button type="button" class="action-btn delete" id="delete-account-btn">Delete Account</button>
+            </div>
+          </div>
+        </div>
       </section>
     </main>
 
@@ -5960,10 +6414,9 @@ document.addEventListener('DOMContentLoaded', () => {
       <span>© 2025 NeuroAid. Your mental health companion.</span>
     </footer>
   </div>
-
+  <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
   <script src="{{ url_for('static', filename='js/dropdown.js') }}"></script>
   <script src="{{ url_for('static', filename='js/welcome.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
 </body>
 </html>
 ```
@@ -6107,6 +6560,8 @@ document.addEventListener('DOMContentLoaded', () => {
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/vibe.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dropdown.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/welcome.css') }}" />
     <link id="theme-stylesheet" rel="stylesheet" href="{{ url_for('static', filename='css/themes/' + theme + '.css') }}">
 </head>
 <body>
@@ -6131,10 +6586,16 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="wrapper">
             <main class="main-content" role="main">
                 <header class="main-header">
-                    <div class="profile" aria-label="User profile">
-                        <span>{{ session.get('user_email', 'User').split('@')[0] }}</span>
-                        <i class="ri-arrow-down-s-line" aria-hidden="true"></i>
+                    <div class="welcome-container">
+                    <div class="welcome-text">Welcome to NeuroAid, {{ session.get('user_email', 'User').split('@')[0] }}</div>
+                    <div class="quote-text"></div>
                     </div>
+                <div class="profile-dropdown">
+                <div class="profile">
+                    <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile" />
+                    <span>{{ session.get('user_email', 'User').split('@')[0] }}</span>
+                    <i class="ri-arrow-down-s-line"></i>
+          </div>
                 </header>
 
                 <section class="music-recommendations-section" aria-labelledby="music-recommendations-title">
@@ -6161,7 +6622,9 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
     </div>
 
+    <script src="{{ url_for('static', filename='js/welcome.js') }}"></script>
     <script src="{{ url_for('static', filename='js/vibe.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/dropdown.js') }}"></script>
 </body>
 </html>
 ```

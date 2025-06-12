@@ -1166,9 +1166,9 @@ def update_mental_health_goals():
 def settings():
     if 'user' not in session:
         logger.info("User not logged in, redirecting to login.")
-        return redirect(url_for('login'))
+        return jsonify({'success': False, 'error': 'User not logged in'}), 401
 
-    supabase = get_supabase()
+    supabase = get_supabase(use_service_role=True)  # Use service role to bypass RLS
     user_id = session['user']
     error = None
     success = None
@@ -1248,61 +1248,77 @@ def settings():
             logger.info(f"New user preferences created for user_id: {user_id}")
 
         if request.method == 'POST':
-            new_email = request.form.get('email', email)
-            password = request.form.get('password')
-            two_factor_enabled = 'two_factor_enabled' in request.form
-            theme = request.form.get('theme', profile_info['theme'])
-            reminder_time = request.form.get('reminder_time', profile_info['reminder_time'])
-            notification_preference = request.form.get('notification_preference', profile_info['notification_preference'])
+            try:
+                data = request.get_json()
+                if not data:
+                    data = request.form  # Fallback for form submissions
+                new_email = data.get('email', email).strip().lower()
+                password = data.get('password')
+                two_factor_enabled = data.get('two_factor_enabled', profile_info['two_factor_enabled'])
+                theme = data.get('theme', profile_info['theme'])
+                reminder_time = data.get('reminder_time', profile_info['reminder_time'])
+                notification_preference = data.get('notification_preference', profile_info['notification_preference'])
 
-            # Update users table (email and password)
-            update_user_data = {'email': new_email}
-            if password:
-                update_user_data['password'] = password  # Note: Hash the password in a real app
-            supabase.table('users')\
-                .update(update_user_data)\
-                .eq('id', user_id)\
-                .execute()
+                # Validate inputs
+                if not new_email:
+                    return jsonify({'success': False, 'error': 'Email is required'}), 400
 
-            # Update user_preferences table
-            update_preferences_data = {
-                'two_factor_enabled': two_factor_enabled,
-                'theme': theme,
-                'reminder_time': reminder_time,
-                'notification_preference': notification_preference
-            }
-            supabase.table('user_preferences')\
-                .update(update_preferences_data)\
-                .eq('user_id', user_id)\
-                .execute()
+                # Check if email already exists (excluding current user)
+                existing_user = supabase.table('users')\
+                    .select('id')\
+                    .eq('email', new_email)\
+                    .neq('id', user_id)\
+                    .execute()
+                if existing_user.data:
+                    return jsonify({'success': False, 'error': 'Email already exists'}), 400
 
-            session['theme'] = theme  # Still keep theme in session for immediate UI updates
-            session['user_email'] = new_email
-            success = 'Settings updated successfully!'
-            logger.info(f"Settings updated for user_id: {user_id}")
+                # Update users table (email and password)
+                update_user_data = {'email': new_email}
+                if password:
+                    update_user_data['password'] = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                supabase.table('users')\
+                    .update(update_user_data)\
+                    .eq('id', user_id)\
+                    .execute()
 
-            # Update profile_info with new values for rendering
-            profile_info.update({
-                'two_factor_enabled': two_factor_enabled,
-                'theme': theme,
-                'reminder_time': reminder_time,
-                'notification_preference': notification_preference
-            })
-            email = new_email
+                # Update user_preferences table
+                update_preferences_data = {
+                    'two_factor_enabled': two_factor_enabled,
+                    'theme': theme,
+                    'reminder_time': reminder_time,
+                    'notification_preference': notification_preference
+                }
+                supabase.table('user_preferences')\
+                    .update(update_preferences_data)\
+                    .eq('user_id', user_id)\
+                    .execute()
+
+                # Update session
+                session['user_email'] = new_email
+                session['theme'] = theme
+                session['two_factor_enabled'] = two_factor_enabled
+
+                logger.info(f"Settings updated for user_id: {user_id}")
+                return jsonify({'success': True, 'message': 'Settings updated successfully!'})
+
+            except Exception as e:
+                logger.error(f"Error updating settings for user_id: {user_id}: {str(e)}")
+                return jsonify({'success': False, 'error': str(e)}), 500
+
+        # GET request: Render the settings page
+        return render_template('settings.html',
+                              email=email,
+                              profile_data=profile_info,
+                              two_factor_enabled=profile_info['two_factor_enabled'],
+                              theme=profile_info['theme'],
+                              reminder_time=profile_info['reminder_time'],
+                              notification_preference=profile_info['notification_preference'],
+                              error=error,
+                              success=success)
 
     except Exception as e:
         logger.error(f"Error in settings: {str(e)}")
-        error = "An error occurred while updating settings. Please try again."
-
-    return render_template('settings.html',
-                           email=email,
-                           profile_data=profile_info,
-                           two_factor_enabled=profile_info['two_factor_enabled'],
-                           theme=profile_info['theme'],
-                           reminder_time=profile_info['reminder_time'],
-                           notification_preference=profile_info['notification_preference'],
-                           error=error,
-                           success=success)
+        return jsonify({'success': False, 'error': 'An error occurred while fetching settings'}), 500
 
 # Updated /export_data route to include user_preferences
 @app.route('/export_data', methods=['GET'])
@@ -1311,11 +1327,10 @@ def export_data():
         logger.info("User not logged in, redirecting to login.")
         return jsonify({'success': False, 'error': 'User not logged in'}), 401
 
-    supabase = get_supabase()
+    supabase = get_supabase(use_service_role=True)
     user_id = session['user']
 
     try:
-        # Fetch user data from the users table
         user_data = supabase.table('users')\
             .select('email')\
             .eq('id', user_id)\
@@ -1326,40 +1341,25 @@ def export_data():
             logger.error(f"No user found for user_id: {user_id}")
             return jsonify({'success': False, 'error': 'User not found'}), 404
 
-        # Fetch profile data from the profiles table
         profile_data = supabase.table('profiles')\
             .select('name, username, profile_pic_url, age, gender, location, preferred_language, primary_goal, engagement_frequency, preferred_activities, created_at, updated_at')\
             .eq('user_id', user_id)\
             .limit(1)\
             .execute()
 
-        if not profile_data.data:
-            logger.info(f"No profile found for user_id: {user_id}")
-            profile = {}
-        else:
-            profile = profile_data.data[0]
-
-        # Fetch user preferences from the user_preferences table
         preferences_data = supabase.table('user_preferences')\
-            .select('language, theme, two_factor_enabled, reminder_time, notification_preference, two_factor_secret')\
+            .select('language, theme, two_factor_enabled, reminder_time, notification_preference')\
             .eq('user_id', user_id)\
             .limit(1)\
             .execute()
 
-        if not preferences_data.data:
-            logger.info(f"No user preferences found for user_id: {user_id}")
-            preferences = {}
-        else:
-            preferences = preferences_data.data[0]
-
-        # Combine user, profile, and preferences data
         export_data = {
             'user': {
                 'email': user_data.data[0]['email'],
                 'id': user_id
             },
-            'profile': profile,
-            'preferences': preferences
+            'profile': profile_data.data[0] if profile_data.data else {},
+            'preferences': preferences_data.data[0] if preferences_data.data else {}
         }
 
         logger.info(f"Data exported for user_id: {user_id}")
@@ -1376,32 +1376,19 @@ def delete_account():
         logger.info("User not logged in, redirecting to login.")
         return jsonify({'success': False, 'error': 'User not logged in'}), 401
 
-    supabase = get_supabase()
+    supabase = get_supabase(use_service_role=True)
     user_id = session['user']
 
     try:
-        # Delete the user's preferences from the user_preferences table
-        supabase.table('user_preferences')\
-            .delete()\
-            .eq('user_id', user_id)\
-            .execute()
+        supabase.table('journal_entries').delete().eq('user_id', user_id).execute()
+        supabase.table('gratitude_entries').delete().eq('user_id', user_id).execute()
+        supabase.table('user_preferences').delete().eq('user_id', user_id).execute()
+        supabase.table('profiles').delete().eq('user_id', user_id).execute()
+        supabase.table('users').delete().eq('id', user_id).execute()
 
-        # Delete the user's profile from the profiles table
-        supabase.table('profiles')\
-            .delete()\
-            .eq('user_id', user_id)\
-            .execute()
-
-        # Delete the user from the users table
-        supabase.table('users')\
-            .delete()\
-            .eq('id', user_id)\
-            .execute()
-
-        # Clear the session
         session.clear()
         logger.info(f"Account deleted for user_id: {user_id}")
-        return jsonify({'success': True})
+        return jsonify({'success': True, 'message': 'Account deleted successfully'})
 
     except Exception as e:
         logger.error(f"Error deleting account for user_id: {user_id}: {str(e)}")
