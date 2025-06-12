@@ -996,7 +996,50 @@ def gratitude():
     if session.get('two_factor_enabled') and not session.get('2fa_verified'):
         return redirect(url_for('verify_2fa'))
 
-    return render_template('gratitude.html', theme=session.get('theme', 'light'))
+    supabase = get_supabase(use_service_role=True)  # Use service role to bypass RLS
+    user_id = session['user']
+    theme = session.get('theme', 'light')
+    profile_info = {'profile_pic_url': None}
+
+    try:
+        # Fetch theme from user_preferences for consistency
+        preferences_data = supabase.table('user_preferences')\
+            .select('theme')\
+            .eq('user_id', user_id)\
+            .limit(1)\
+            .execute()
+        if preferences_data.data:
+            theme = preferences_data.data[0].get('theme', 'light')
+            session['theme'] = theme  # Update session for consistency
+
+        # Fetch profile data (for profile picture in dropdown)
+        profile_data = supabase.table('profiles')\
+            .select('profile_pic_url')\
+            .eq('user_id', user_id)\
+            .limit(1)\
+            .execute()
+        if profile_data.data:
+            profile_info['profile_pic_url'] = profile_data.data[0].get('profile_pic_url')
+        else:
+            logger.info(f"No profile found for user_id: {user_id}, creating a new profile")
+            default_name = (session.get('user_email', 'user') or 'user').split('@')[0]
+            supabase.table('profiles').insert({
+                'user_id': user_id,
+                'name': default_name,
+                'username': f"@{default_name}"
+            }).execute()
+
+    except Exception as e:
+        logger.error(f"Error fetching data for gratitude route for user_id {user_id}: {str(e)}")
+        # Continue rendering with default values
+
+    # Fetch dropdown data (includes user_name, user_email, joined_date)
+    dropdown_data = get_user_dropdown_data(supabase, user_id)
+
+    return render_template('gratitude.html',
+                          theme=theme,
+                          profile_data=profile_info,
+                          **dropdown_data)
 
 @app.route('/profile')
 def profile():

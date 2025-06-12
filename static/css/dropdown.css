@@ -2,11 +2,39 @@
     position: relative;
     display: inline-block;
 }
+.dropdown-content{
+   display: none; /* Hidden by default */
+  position: absolute;
+  top: 100%; /* Position below the profile trigger */
+  right: 0; /* Align to the right of the parent */
+  background-color: #fff;
+  min-width: 200px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  z-index: 1000;
+}
+.dropdown-content .user-info {
+  padding: 10px;
+  border-bottom: 1px solid #eee;
+  font-size: 14px;
+  color: #333;
+}
 
+.dropdown-content .user-info p {
+  margin: 5px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dropdown-content .user-info i {
+  font-size: 16px;
+  color: #7c3aed;
+}
 .profile {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     cursor: pointer;
     padding: 5px 10px;
     border-radius: 5px;

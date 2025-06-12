@@ -62,6 +62,25 @@ body {
   font-size: 2rem;
   color: var(--primary);
 }
+.dropdown-content .user-info {
+  padding: 10px;
+  border-bottom: 1px solid #eee;
+  font-size: 14px;
+  color: #333;
+  z-index: 1;
+}
+
+.dropdown-content .user-info p {
+  margin: 5px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dropdown-content .user-info i {
+  font-size: 16px;
+  color: #7c3aed;
+}
 
 .logo h1 {
   font-size: 2.3rem;
