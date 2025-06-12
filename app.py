@@ -190,6 +190,49 @@ def get_supabase(use_service_role=False):
         if 'supabase_anon' not in g:
             g.supabase_anon = supabase_anon
         return g.supabase_anon
+    
+def get_user_dropdown_data(supabase, user_id):
+    try:
+        # Fetch email and created_date from users table
+        user_data = supabase.table('users')\
+            .select('email, created_date')\
+            .eq('id', user_id)\
+            .limit(1)\
+            .execute()
+        
+        # Fetch name from profiles table
+        profile_data = supabase.table('profiles')\
+            .select('name')\
+            .eq('user_id', user_id)\
+            .limit(1)\
+            .execute()
+        
+        user_name = profile_data.data[0]['name'] if profile_data.data and profile_data.data[0]['name'] else 'Unknown'
+        email = user_data.data[0]['email'] if user_data.data else 'Not found'
+        created_date = user_data.data[0]['created_date'] if user_data.data and user_data.data[0]['created_date'] else '2025-01-01'
+        
+        # Format created_date
+        if created_date:
+            if '.' in created_date:
+                created_date = created_date.split('.')[0] + '+00:00'
+            else:
+                created_date = created_date.replace('Z', '+00:00')
+            formatted_date = datetime.fromisoformat(created_date).astimezone(ZoneInfo("Asia/Kolkata")).strftime('%B %d, %Y')
+        else:
+            formatted_date = 'January 01, 2025'
+        
+        return {
+            'user_name': user_name,
+            'user_email': email,
+            'joined_date': formatted_date
+        }
+    except Exception as e:
+        logger.error(f"Error fetching dropdown data for user {user_id}: {str(e)}")
+        return {
+            'user_name': 'Unknown',
+            'user_email': 'Not found',
+            'joined_date': 'January 01, 2025'
+        }
 
 @app.teardown_appcontext
 def teardown_supabase(exception):
@@ -760,11 +803,8 @@ def index():
 
     utc_now = datetime.now(ZoneInfo("UTC"))
     ist_now = utc_now.astimezone(ZoneInfo("Asia/Kolkata"))
-    logger.info(f"Current UTC time: {utc_now}, IST time: {ist_now}")
-
     today_start = utc_now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
     today_end = utc_now.replace(hour=23, minute=59, second=59, microsecond=999999).isoformat()
-    logger.info(f"Today range (UTC): {today_start} to {today_end}")
 
     suggestions = None
     recent_entries_data = []
@@ -775,12 +815,9 @@ def index():
             .eq('user_id', user_id)\
             .order('created_at', desc=True)\
             .limit(1)
-
-        logger.info(f"Executing query for latest entry: {latest_entry_query}")
         latest_entry = latest_entry_query.execute()
 
         if latest_entry.data:
-            logger.info(f"Latest entry: {latest_entry.data[0]}")
             created_at_str = latest_entry.data[0]['created_at']
             if '.' in created_at_str:
                 created_at_str = created_at_str.split('.')[0] + '+00:00'
@@ -789,8 +826,6 @@ def index():
             entry_date = datetime.fromisoformat(created_at_str).replace(tzinfo=ZoneInfo("UTC"))
             entry_date_ist = entry_date.astimezone(ZoneInfo("Asia/Kolkata"))
             current_date_ist = ist_now.date()
-
-            logger.info(f"Entry date (IST): {entry_date_ist.date()}, Current date (IST): {current_date_ist}")
 
             if entry_date_ist.date() == current_date_ist:
                 suggestions = latest_entry.data[0]['analysis'].get('suggestions', [])
@@ -804,15 +839,9 @@ def index():
             .eq('user_id', user_id)\
             .order('created_at', desc=True)\
             .limit(3)
-
-        logger.info(f"Executing query for recent entries: {recent_entries_query}")
         recent_entries = recent_entries_query.execute()
 
         recent_entries_data = recent_entries.data if recent_entries.data else []
-        entries_summary = [{'id': entry['id'], 'created_at': entry['created_at']} for entry in recent_entries_data]
-        logger.info(f"Recent entries fetched: {entries_summary}")
-        logger.debug(f"Full recent entries: {recent_entries_data}")
-
         for entry in recent_entries_data:
             created_at_str = entry['created_at']
             if '.' in created_at_str:
@@ -829,7 +858,14 @@ def index():
         suggestions = ["Unable to load suggestions. Try writing!"]
         recent_entries_data = []
 
-    return render_template('index.html', suggestions=suggestions, recent_entries=recent_entries_data, theme=session.get('theme', 'light'))
+    # Fetch dropdown data
+    dropdown_data = get_user_dropdown_data(supabase, user_id)
+
+    return render_template('index.html', 
+                          suggestions=suggestions, 
+                          recent_entries=recent_entries_data, 
+                          theme=session.get('theme', 'light'),
+                          **dropdown_data)
 
 @app.route('/journal', methods=['GET', 'POST'])
 def journal():
@@ -849,20 +885,22 @@ def journal():
         if content:
             try:
                 analysis = analyze_journal_entry(content, supabase, user_id)
-
                 journal_data = {
                     'user_id': user_id,
                     'content': content,
                     'created_at': datetime.now(ZoneInfo("UTC")).isoformat(),
                     'analysis': analysis
                 }
-
                 supabase.table('journal_entries').insert(journal_data).execute()
                 logger.info(f"Journal entry saved for user_id: {user_id}")
                 return redirect(url_for('journal'))
             except Exception as e:
                 logger.error(f"Journal save error: {str(e)}")
-                return render_template('Journal.html', error="Failed to save entry.", current_date=current_date, theme=session.get('theme', 'light'))
+                return render_template('Journal.html', 
+                                      error="Failed to save entry.", 
+                                      current_date=current_date, 
+                                      theme=session.get('theme', 'light'),
+                                      **get_user_dropdown_data(supabase, user_id))
 
     try:
         entries = supabase.table('journal_entries')\
@@ -881,10 +919,18 @@ def journal():
             entry_date_ist = entry_date.astimezone(ZoneInfo("Asia/Kolkata"))
             entry['created_at'] = entry_date_ist.strftime('%Y-%m-%d %H:%M:%S')
 
-        return render_template('Journal.html', entries=entries.data if entries.data else [], current_date=current_date, theme=session.get('theme', 'light'))
+        return render_template('Journal.html', 
+                              entries=entries.data if entries.data else [], 
+                              current_date=current_date, 
+                              theme=session.get('theme', 'light'),
+                              **get_user_dropdown_data(supabase, user_id))
     except Exception as e:
         logger.error(f"Journal fetch error: {str(e)}")
-        return render_template('Journal.html', error="Failed to load entries.", current_date=current_date, theme=session.get('theme', 'light'))
+        return render_template('Journal.html', 
+                              error="Failed to load entries.", 
+                              current_date=current_date, 
+                              theme=session.get('theme', 'light'),
+                              **get_user_dropdown_data(supabase, user_id))
 
 @app.route('/delete_entry/<entry_id>', methods=['DELETE'])
 def delete_entry(entry_id):
@@ -916,7 +962,13 @@ def progress():
     if session.get('two_factor_enabled') and not session.get('2fa_verified'):
         return redirect(url_for('verify_2fa'))
 
-    return render_template('progress.html', theme=session.get('theme', 'light'))
+    supabase = get_supabase()
+    user_id = session['user']
+    dropdown_data = get_user_dropdown_data(supabase, user_id)
+
+    return render_template('progress.html', 
+                          theme=session.get('theme', 'light'),
+                          **dropdown_data)
 
 @app.route('/vibe')
 def vibe():
@@ -927,7 +979,13 @@ def vibe():
     if session.get('two_factor_enabled') and not session.get('2fa_verified'):
         return redirect(url_for('verify_2fa'))
 
-    return render_template('vibe.html', theme=session.get('theme', 'light'))
+    supabase = get_supabase()
+    user_id = session['user']
+    dropdown_data = get_user_dropdown_data(supabase, user_id)
+
+    return render_template('vibe.html', 
+                          theme=session.get('theme', 'light'),
+                          **dropdown_data)
 
 @app.route('/gratitude')
 def gratitude():
@@ -954,7 +1012,6 @@ def profile():
     logger.info(f"Fetching profile for user_id: {user_id}")
 
     try:
-        # Fetch email from the users table
         user_data = supabase.table('users')\
             .select('email')\
             .eq('id', user_id)\
@@ -963,13 +1020,19 @@ def profile():
 
         if not user_data.data:
             logger.error(f"No user found for user_id: {user_id}")
-            return render_template('profile.html', theme=session.get('theme', 'light'), name='Unknown', email='Not found', username='@unknown', profile_data={}, completion_percentage=0, completion_dasharray=0)
+            return render_template('profile.html', 
+                                  theme=session.get('theme', 'light'), 
+                                  name='Unknown', 
+                                  email='Not found', 
+                                  username='@unknown', 
+                                  profile_data={}, 
+                                  completion_percentage=0, 
+                                  completion_dasharray=0,
+                                  **get_user_dropdown_data(supabase, user_id))
 
         user = user_data.data[0]
         email = user['email'] or 'Not found'
-        logger.info(f"User data fetched: email={email}")
 
-        # Fetch profile data from the profiles table
         profile_data = supabase.table('profiles')\
             .select('name, username, age, gender, location, preferred_language, primary_goal, engagement_frequency, preferred_activities, profile_pic_url')\
             .eq('user_id', user_id)\
@@ -990,7 +1053,6 @@ def profile():
                 'preferred_activities': profile['preferred_activities'] or [],
                 'profile_pic_url': profile['profile_pic_url']
             }
-            logger.info(f"Profile data fetched: {profile_info}")
         else:
             logger.info(f"No profile found for user_id: {user_id}, creating a new profile")
             default_name = email.split('@')[0]
@@ -1013,14 +1075,11 @@ def profile():
                 'preferred_activities': [],
                 'profile_pic_url': None
             }
-            logger.info(f"New profile created: {profile_info}")
 
-        # Calculate profile completion percentage
         required_fields = ['name', 'username', 'email']
         optional_fields = ['age', 'gender', 'location', 'preferred_language', 'primary_goal', 'engagement_frequency']
         activity_fields = ['preferred_activities']
 
-        # Check Profile Overview section
         filled_required = 0
         for field in required_fields:
             value = locals().get(field)
@@ -1030,22 +1089,13 @@ def profile():
             else:
                 if value and value not in ['Unknown', '@unknown']:
                     filled_required += 1
-        logger.info(f"Filled required fields: {filled_required}/{len(required_fields)}")
 
-        # Check Personal Details section
         filled_optional = sum(1 for field in optional_fields if profile_info[field])
-        logger.info(f"Filled optional fields: {filled_optional}/{len(optional_fields)}")
-
-        # Check Mental Health Goals section
         filled_activities = 1 if profile_info['preferred_activities'] else 0
-        logger.info(f"Filled activities: {filled_activities}/{len(activity_fields)}")
-
-        # Total fields across all sections
         total_fields = len(required_fields) + len(optional_fields) + len(activity_fields)
         filled_fields = filled_required + filled_optional + filled_activities
         completion_percentage = int((filled_fields / total_fields) * 100)
         completion_dasharray = round(276.46 * (completion_percentage / 100), 2)
-        logger.info(f"Completion: {completion_percentage}% — Dasharray: {completion_dasharray}")
 
         return render_template('profile.html', 
                               theme=session.get('theme', 'light'),
@@ -1054,7 +1104,8 @@ def profile():
                               username=username,
                               profile_data=profile_info,
                               completion_percentage=completion_percentage,
-                              completion_dasharray=completion_dasharray)
+                              completion_dasharray=completion_dasharray,
+                              **get_user_dropdown_data(supabase, user_id))
 
     except Exception as e:
         logger.error(f"Error fetching profile data: {str(e)}")
@@ -1065,7 +1116,8 @@ def profile():
                               username='@unknown',
                               profile_data={},
                               completion_percentage=0,
-                              completion_dasharray=0)
+                              completion_dasharray=0,
+                              **get_user_dropdown_data(supabase, user_id))
 
 
 @app.route('/update_profile_field', methods=['POST'])
@@ -1170,13 +1222,15 @@ def update_mental_health_goals():
 def settings():
     if 'user' not in session:
         logger.info("User not logged in, redirecting to login.")
-        return jsonify({'success': False, 'error': 'User not logged in'}), 401
+        return redirect(url_for('login'))
+
+    if session.get('two_factor_enabled') and not session.get('2fa_verified'):
+        return redirect(url_for('verify_2fa'))
 
     supabase = get_supabase(use_service_role=True)  # Use service role to bypass RLS
     user_id = session['user']
     error = None
     success = None
-    email = 'Not found'
 
     # Initialize profile_info with defaults
     profile_info = {
@@ -1202,9 +1256,9 @@ def settings():
         email = user_data.data[0]['email']
         logger.info(f"User email fetched: {email}")
 
-        # Fetch profile_pic_url from the profiles table
+        # Fetch profile_pic_url and name from the profiles table
         profile_data = supabase.table('profiles')\
-            .select('profile_pic_url')\
+            .select('name, profile_pic_url')\
             .eq('user_id', user_id)\
             .limit(1)\
             .execute()
@@ -1253,19 +1307,28 @@ def settings():
 
         if request.method == 'POST':
             try:
-                data = request.get_json()
-                if not data:
-                    data = request.form  # Fallback for form submissions
-                new_email = data.get('email', email).strip().lower()
-                password = data.get('password')
-                two_factor_enabled = data.get('two_factor_enabled', profile_info['two_factor_enabled'])
-                theme = data.get('theme', profile_info['theme'])
-                reminder_time = data.get('reminder_time', profile_info['reminder_time'])
-                notification_preference = data.get('notification_preference', profile_info['notification_preference'])
+                # Handle form submission
+                new_email = request.form.get('email', email).strip().lower()
+                password = request.form.get('password')
+                confirm_password = request.form.get('confirm_password')
+                two_factor_enabled = request.form.get('two_factor_enabled') == 'on'
+                theme = request.form.get('theme', profile_info['theme'])
+                reminder_time = request.form.get('reminder_time', profile_info['reminder_time'])
+                notification_preference = request.form.get('notification_preference', profile_info['notification_preference'])
 
                 # Validate inputs
                 if not new_email:
-                    return jsonify({'success': False, 'error': 'Email is required'}), 400
+                    error = 'Email is required'
+                    return render_template('settings.html',
+                                          email=email,
+                                          profile_data=profile_info,
+                                          two_factor_enabled=profile_info['two_factor_enabled'],
+                                          theme=profile_info['theme'],
+                                          reminder_time=profile_info['reminder_time'],
+                                          notification_preference=profile_info['notification_preference'],
+                                          error=error,
+                                          success=success,
+                                          **get_user_dropdown_data(supabase, user_id))
 
                 # Check if email already exists (excluding current user)
                 existing_user = supabase.table('users')\
@@ -1274,7 +1337,32 @@ def settings():
                     .neq('id', user_id)\
                     .execute()
                 if existing_user.data:
-                    return jsonify({'success': False, 'error': 'Email already exists'}), 400
+                    error = 'Email already exists'
+                    return render_template('settings.html',
+                                          email=email,
+                                          profile_data=profile_info,
+                                          two_factor_enabled=profile_info['two_factor_enabled'],
+                                          theme=profile_info['theme'],
+                                          reminder_time=profile_info['reminder_time'],
+                                          notification_preference=profile_info['notification_preference'],
+                                          error=error,
+                                          success=success,
+                                          **get_user_dropdown_data(supabase, user_id))
+
+                # Validate password if provided
+                if password or confirm_password:
+                    if password != confirm_password:
+                        error = 'Passwords do not match'
+                        return render_template('settings.html',
+                                              email=email,
+                                              profile_data=profile_info,
+                                              two_factor_enabled=profile_info['two_factor_enabled'],
+                                              theme=profile_info['theme'],
+                                              reminder_time=profile_info['reminder_time'],
+                                              notification_preference=profile_info['notification_preference'],
+                                              error=error,
+                                              success=success,
+                                              **get_user_dropdown_data(supabase, user_id))
 
                 # Update users table (email and password)
                 update_user_data = {'email': new_email}
@@ -1303,13 +1391,16 @@ def settings():
                 session['two_factor_enabled'] = two_factor_enabled
 
                 logger.info(f"Settings updated for user_id: {user_id}")
-                return jsonify({'success': True, 'message': 'Settings updated successfully!'})
+                success = 'Settings updated successfully!'
 
             except Exception as e:
                 logger.error(f"Error updating settings for user_id: {user_id}: {str(e)}")
-                return jsonify({'success': False, 'error': str(e)}), 500
+                error = str(e)
 
-        # GET request: Render the settings page
+        # Fetch dropdown data
+        dropdown_data = get_user_dropdown_data(supabase, user_id)
+
+        # GET request or POST with error/success: Render the settings page
         return render_template('settings.html',
                               email=email,
                               profile_data=profile_info,
@@ -1318,11 +1409,21 @@ def settings():
                               reminder_time=profile_info['reminder_time'],
                               notification_preference=profile_info['notification_preference'],
                               error=error,
-                              success=success)
+                              success=success,
+                              **dropdown_data)
 
     except Exception as e:
         logger.error(f"Error in settings: {str(e)}")
-        return jsonify({'success': False, 'error': 'An error occurred while fetching settings'}), 500
+        return render_template('settings.html',
+                              email='Not found',
+                              profile_data=profile_info,
+                              two_factor_enabled=False,
+                              theme='light',
+                              reminder_time='09:00',
+                              notification_preference='email',
+                              error='An error occurred while fetching settings',
+                              success=None,
+                              **get_user_dropdown_data(supabase, user_id))
 
 # Updated /export_data route to include user_preferences
 @app.route('/export_data', methods=['GET'])
