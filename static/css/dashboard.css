@@ -1,14 +1,5 @@
-:root {
-  --primary: #7c3aed;
-  --secondary: #f9faff;
-  --accent: #d4bfff;
-  --glass-bg: rgba(255, 255, 255, 0.9);
-  --glass-border: rgba(200, 200, 200, 0.3);
-  --shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
-  --header-bg: linear-gradient(90deg, #a78bfa 0%, #c084fc 100%);
-  --text-primary: #1f2937;
-  --text-secondary: #6b7280;
-}
+/* Remove hardcoded :root variables to rely on themes/dark.css */
+/* Variables like --card-bg, --text-primary, etc., are sourced from themes/dark.css */
 
 * {
   margin: 0;
@@ -62,11 +53,12 @@ body {
   font-size: 2rem;
   color: var(--primary);
 }
+
 .dropdown-content .user-info {
   padding: 10px;
   border-bottom: 1px solid #eee;
   font-size: 14px;
-  color: #333;
+  color: var(--text-primary);
   z-index: 1;
 }
 
@@ -79,7 +71,7 @@ body {
 
 .dropdown-content .user-info i {
   font-size: 16px;
-  color: #7c3aed;
+  color: var(--primary);
 }
 
 .logo h1 {
@@ -201,6 +193,7 @@ header {
   font-weight: 600;
   color: var(--text-primary);
   margin-bottom: 24px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 .card-grid {
@@ -210,7 +203,7 @@ header {
 }
 
 .card {
-  background: var(--glass-bg);
+  background: var(--card-bg, #2a3646);
   border-radius: 16px;
   padding: 24px;
   border: 1px solid var(--glass-border);
@@ -220,6 +213,7 @@ header {
   align-items: center;
   gap: 16px;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
+  color: var(--text-primary);
 }
 
 .card:hover {
@@ -249,13 +243,13 @@ header {
 
 .card-content p {
   font-size: 0.95rem;
-  color: var(--text-secondary);
+  color: var(--text-primary);
   line-height: 1.5;
   margin-bottom: 16px;
 }
 
 .card-button {
-  background: var(--primary);
+  background: var(--accent);
   color: #fff;
   border: none;
   padding: 8px 16px;
@@ -283,7 +277,7 @@ header {
 footer {
   text-align: center;
   padding: 20px;
-  background: var(--header-bg);
+  background: var(--card-bg, #2a3646);
   color: var(--text-primary);
   font-size: 1.2rem;
   backdrop-filter: blur(4px);
@@ -298,10 +292,11 @@ footer {
 }
 
 .action-button {
-  background: none; /* Remove background to avoid conflicts */
+  background: none;
 }
+
 .action-button:hover {
-  background: none; /* Remove hover background */
+  background: none;
 }
 
 /* Stats section */
@@ -332,7 +327,7 @@ footer {
 }
 
 .stat-box {
-  background: var(--glass-bg);
+  background: var(--card-bg, #2a3646);
   border-radius: 16px;
   padding: 24px;
   border: 1px solid var(--glass-border);
@@ -342,6 +337,7 @@ footer {
   align-items: center;
   gap: 16px;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
+  color: var(--text-primary);
 }
 
 .stat-box:hover {
@@ -371,7 +367,7 @@ footer {
 
 .stat-box p {
   font-size: 0.95rem;
-  color: var(--text-secondary);
+  color: var(--text-primary);
   line-height: 1.5;
 }
 
@@ -396,15 +392,16 @@ footer {
 }
 
 .chart-card {
-  background: var(--glass-bg);
+  background: var(--card-bg, #2a3646);
   border-radius: 16px;
-  padding: 10px; /* Reduced padding to prevent cropping */
+  padding: 10px;
   border: 1px solid var(--glass-border);
   backdrop-filter: blur(12px);
   box-shadow: var(--shadow);
   width: 100%;
-  min-height: 670px; /* Ensure enough height for the chart */
-  overflow: visible; /* Prevent cropping */
+  min-height: 670px;
+  overflow: visible;
+  color: var(--text-primary);
 }
 
 .chart-card canvas {
@@ -435,7 +432,7 @@ footer {
 }
 
 .insights-content {
-  background: var(--glass-bg);
+  background: var(--card-bg, #2a3646);
   border-radius: 16px;
   padding: 24px;
   border: 1px solid var(--glass-border);
@@ -485,7 +482,7 @@ footer {
 
   .chart-card canvas {
     max-width: 100%;
-    height: 400px !important; /* Adjust for smaller screens */
+    height: 400px !important;
   }
 }
 
@@ -544,14 +541,13 @@ footer {
   }
 
   .chart-card canvas {
-    height: 300px !important; /* Further adjust for very small screens */
+    height: 300px !important;
   }
 }
 
-
 /* Reusable button styles */
 .neuroaid-btn {
-  background-color: var(--primary); /* #7c3aed */
+  background-color: var(--primary);
   color: #fff;
   border: none;
   padding: 12px 24px;
@@ -568,7 +564,7 @@ footer {
 .neuroaid-btn:hover {
   transform: scale(1.05);
   box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
-  background-color: #6d28d9; /* Darker shade */
+  background-color: #6d28d9;
 }
 
 .neuroaid-btn:active {
@@ -598,4 +594,98 @@ footer {
 @keyframes spin {
   0% { transform: translateY(-50%) rotate(0deg); }
   100% { transform: translateY(-50%) rotate(360deg); }
+}
+
+/* Extracted inline styles from dashboard page */
+.welcome-message {
+  margin-bottom: 30px;
+}
+
+.welcome-message h2 {
+  color: var(--text-primary);
+  font-size: 42px;
+  display: flex;
+  align-items: center;
+}
+
+.welcome-message p {
+  color: var(--text-primary);
+  font-family: 'Inter', 'Arial', sans-serif;
+  font-size: 26px;
+  font-weight: 500;
+  margin-top: 15px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.suggestions-card {
+  background: var(--card-bg, #2a3646);
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  margin-bottom: 30px;
+  color: var(--text-primary);
+}
+
+.suggestions-card h3 {
+  color: var(--text-primary);
+  font-size: 30px;
+  margin-bottom: 15px;
+  display: flex;
+  align-items: center;
+}
+
+.suggestions-card ul {
+  list-style-type: disc;
+  padding-left: 20px;
+  margin-top: 25px;
+  color: var(--text-primary);
+  font-size: 22px;
+}
+
+.suggestions-card ul li {
+  margin-bottom: 10px;
+  display: flex;
+  gap: 15px;
+  margin-top: 15px;
+}
+
+.suggestions-card p {
+  color: var(--text-secondary);
+  margin-bottom: 10px;
+  display: flex;
+  gap: 15px;
+  margin-top: 15px;
+}
+
+.entry-preview {
+  background: var(--card-bg, #2a3646);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  padding: 15px;
+  margin-bottom: 10px;
+  box-shadow: var(--shadow);
+  color: var(--text-primary);
+}
+
+.entry-meta {
+  font-size: 20px;
+  color: #ffffff;
+  margin-bottom: 5px;
+}
+
+.entry-snippet {
+  color: #e5e7eb;
+  font-size: 18px;
+  margin: 15px 0;
+}
+
+.entry-preview a {
+  color: var(--accent);
+  font-size: 18px;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.entry-preview a:hover {
+  color: #ffffff;
 }
