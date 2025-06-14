@@ -3,7 +3,8 @@
 import os
 
 # Extensions to include
-extensions = [".html", ".js", ".css", ".py", ".md"]
+#".html", ".js", ".css", ".py", ".md"
+extensions = [".css"]
 output_file = "NEUROAID_dump.txt"
 
 with open(output_file, "w", encoding="utf-8") as out:

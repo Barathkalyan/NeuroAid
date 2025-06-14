@@ -65,15 +65,16 @@
 
         <!-- Success/Error Messages -->
         {% if error %}
-          <div class="error-message" style="background-color: #fee2e2; color: #dc2626; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 1rem;">
+          <div class="error-message">
             {{ error }}
           </div>
         {% endif %}
         {% if success %}
-          <div class="success-message" style="background-color: #d1fae5; color: #10b981; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 1rem;">
+          <div class="success-message">
             {{ success }}
           </div>
         {% endif %}
+
 
         <!-- Settings Form -->
         <div class="settings-card">

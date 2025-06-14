@@ -18,19 +18,11 @@ body {
   margin-bottom: 30px;
 }
 
-.journal-header h2 {
-  color: #2d2d2d;
-  margin-bottom: 10px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 32px;
+.journal-header h2, .journal-header p, .entry-content {
+  color: var(--text-primary);
 }
-
 .journal-header p {
-  color: #666;
-  margin-bottom: 15px;
-  font-size: 25px;
+  color: var(--text-secondary);
 }
 
 .journal-meta {
