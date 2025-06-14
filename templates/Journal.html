@@ -67,21 +67,21 @@
             <i class="ri-arrow-down-s-line"></i>
           </div>
           <div class="dropdown-content">
-          <div class="user-info">
-            <p><i class="ri-user-line"></i> {{ user_name }}</p>
-            <p><i class="ri-mail-line"></i> {{ user_email }}</p>
-            <p><i class="ri-calendar-line"></i> Joined: {{ joined_date }}</p>
-          </div>
-          <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
-          <a href="{{ url_for('settings') }}"><i class="ri-settings-3-line"></i> Settings</a>
-          <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
+            <div class="user-info">
+              <p><i class="ri-user-line"></i> {{ user_name }}</p>
+              <p><i class="ri-mail-line"></i> {{ user_email }}</p>
+              <p><i class="ri-calendar-line"></i> Joined: {{ joined_date }}</p>
+            </div>
+            <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
+            <a href="{{ url_for('settings') }}"><i class="ri-settings-3-line"></i> Settings</a>
+            <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
           </div>
         </div>
       </header>
 
       <section class="journal-section">
         {% if error %}
-          <div class="error-message" style="color: #b71c1c; background-color: #ffebee; padding: 10px; border-radius: 5px; margin-bottom: 20px;">
+          <div class="error-message">
             {{ error }}
           </div>
         {% endif %}
@@ -104,17 +104,17 @@
 
         {% if entries %}
           <div class="entries-section">
-            <h3 style="color: #2d2d2d; margin-top: 40px; margin-bottom: 20px; font-size:28px;">Your Journal Entries</h3>
+            <h3>Your Journal Entries</h3>
             <div class="entries-list">
               {% for entry in entries %}
-                <div class="entry-card" id="entry-{{ entry.id }}" style="background-color: #f4f0fa; padding: 15px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);">
-                  <div class="entry-meta" style="display: flex; justify-content: space-between; font-size: 20px; color: #7c3aed; margin-bottom: 10px;">
+                <div class="entry-card" id="entry-{{ entry.id }}">
+                  <div class="entry-meta">
                     <span>{{ entry.created_at }}</span>
-                    <button onclick="deleteEntry('{{ entry.id }}')" style="background: none; border: none; cursor: pointer; padding-top:10px; padding-left:10px;color: #b71c1c;">
+                    <button onclick="deleteEntry('{{ entry.id }}')" class="delete-entry-btn">
                       <i class="ri-delete-bin-line"></i>
                     </button>
                   </div>
-                  <div class="entry-content" style="color: #2d2d2d; font-size:18px;">{{ entry.content | safe }}</div>
+                  <div class="entry-content">{{ entry.content | safe }}</div>
                 </div>
               {% endfor %}
             </div>
