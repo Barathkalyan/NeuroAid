@@ -1265,17 +1265,13 @@ def update_mental_health_goals():
 def settings():
     if 'user' not in session:
         logger.info("User not logged in, redirecting to login.")
-        return redirect(url_for('login'))
+        return jsonify({'success': False, 'error': 'User not logged in'}), 401
 
     if session.get('two_factor_enabled') and not session.get('2fa_verified'):
-        return redirect(url_for('verify_2fa'))
+        return jsonify({'success': False, 'error': '2FA verification required'}), 401
 
-    supabase = get_supabase(use_service_role=True)  # Use service role to bypass RLS
+    supabase = get_supabase(use_service_role=True)
     user_id = session['user']
-    error = None
-    success = None
-
-    # Initialize profile_info with defaults
     profile_info = {
         'profile_pic_url': None,
         'two_factor_enabled': False,
@@ -1285,59 +1281,30 @@ def settings():
     }
 
     try:
-        # Fetch user data (email) from the users table
-        user_data = supabase.table('users')\
-            .select('email')\
-            .eq('id', user_id)\
-            .limit(1)\
-            .execute()
-
+        # Fetch user data
+        user_data = supabase.table('users').select('email').eq('id', user_id).limit(1).execute()
         if not user_data.data:
             logger.error(f"No user found for user_id: {user_id}")
-            return redirect(url_for('logout'))
-
+            return jsonify({'success': False, 'error': 'User not found'}), 404
         email = user_data.data[0]['email']
-        logger.info(f"User email fetched: {email}")
 
-        # Fetch profile_pic_url and name from the profiles table
-        profile_data = supabase.table('profiles')\
-            .select('name, profile_pic_url')\
-            .eq('user_id', user_id)\
-            .limit(1)\
-            .execute()
-
+        # Fetch profile data
+        profile_data = supabase.table('profiles').select('name, profile_pic_url').eq('user_id', user_id).limit(1).execute()
         if profile_data.data:
-            profile = profile_data.data[0]
-            profile_info['profile_pic_url'] = profile.get('profile_pic_url')
-            logger.info(f"Profile data fetched: {profile_info}")
+            profile_info['profile_pic_url'] = profile_data.data[0].get('profile_pic_url')
         else:
-            logger.info(f"No profile found for user_id: {user_id}, creating a new profile")
             default_name = email.split('@')[0]
             supabase.table('profiles').insert({
                 'user_id': user_id,
                 'name': default_name,
                 'username': f"@{default_name}"
             }).execute()
-            logger.info(f"New profile created for user_id: {user_id}")
 
-        # Fetch user preferences from the user_preferences table
-        preferences_data = supabase.table('user_preferences')\
-            .select('two_factor_enabled, theme, reminder_time, notification_preference')\
-            .eq('user_id', user_id)\
-            .limit(1)\
-            .execute()
-
+        # Fetch preferences
+        preferences_data = supabase.table('user_preferences').select('two_factor_enabled, theme, reminder_time, notification_preference').eq('user_id', user_id).limit(1).execute()
         if preferences_data.data:
-            preferences = preferences_data.data[0]
-            profile_info.update({
-                'two_factor_enabled': preferences.get('two_factor_enabled', False),
-                'theme': preferences.get('theme', 'light'),
-                'reminder_time': preferences.get('reminder_time', '09:00'),
-                'notification_preference': preferences.get('notification_preference', 'email')
-            })
-            logger.info(f"User preferences fetched: {preferences}")
+            profile_info.update(preferences_data.data[0])
         else:
-            logger.info(f"No user preferences found for user_id: {user_id}, creating a new entry")
             supabase.table('user_preferences').insert({
                 'user_id': user_id,
                 'language': 'tamil',
@@ -1346,11 +1313,9 @@ def settings():
                 'reminder_time': '09:00',
                 'notification_preference': 'email'
             }).execute()
-            logger.info(f"New user preferences created for user_id: {user_id}")
 
         if request.method == 'POST':
             try:
-                # Handle form submission
                 new_email = request.form.get('email', email).strip().lower()
                 password = request.form.get('password')
                 confirm_password = request.form.get('confirm_password')
@@ -1361,72 +1326,31 @@ def settings():
 
                 # Validate inputs
                 if not new_email:
-                    error = 'Email is required'
-                    return render_template('settings.html',
-                                          email=email,
-                                          profile_data=profile_info,
-                                          two_factor_enabled=profile_info['two_factor_enabled'],
-                                          theme=profile_info['theme'],
-                                          reminder_time=profile_info['reminder_time'],
-                                          notification_preference=profile_info['notification_preference'],
-                                          error=error,
-                                          success=success,
-                                          **get_user_dropdown_data(supabase, user_id))
+                    return jsonify({'success': False, 'error': 'Email is required'}), 400
 
-                # Check if email already exists (excluding current user)
-                existing_user = supabase.table('users')\
-                    .select('id')\
-                    .eq('email', new_email)\
-                    .neq('id', user_id)\
-                    .execute()
+                # Check if email already exists
+                existing_user = supabase.table('users').select('id').eq('email', new_email).neq('id', user_id).execute()
                 if existing_user.data:
-                    error = 'Email already exists'
-                    return render_template('settings.html',
-                                          email=email,
-                                          profile_data=profile_info,
-                                          two_factor_enabled=profile_info['two_factor_enabled'],
-                                          theme=profile_info['theme'],
-                                          reminder_time=profile_info['reminder_time'],
-                                          notification_preference=profile_info['notification_preference'],
-                                          error=error,
-                                          success=success,
-                                          **get_user_dropdown_data(supabase, user_id))
+                    return jsonify({'success': False, 'error': 'Email already exists'}), 400
 
-                # Validate password if provided
-                if password or confirm_password:
-                    if password != confirm_password:
-                        error = 'Passwords do not match'
-                        return render_template('settings.html',
-                                              email=email,
-                                              profile_data=profile_info,
-                                              two_factor_enabled=profile_info['two_factor_enabled'],
-                                              theme=profile_info['theme'],
-                                              reminder_time=profile_info['reminder_time'],
-                                              notification_preference=profile_info['notification_preference'],
-                                              error=error,
-                                              success=success,
-                                              **get_user_dropdown_data(supabase, user_id))
+                # Validate password
+                if password and password != confirm_password:
+                    return jsonify({'success': False, 'error': 'Passwords do not match'}), 400
 
-                # Update users table (email and password)
+                # Update users table
                 update_user_data = {'email': new_email}
                 if password:
                     update_user_data['password'] = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-                supabase.table('users')\
-                    .update(update_user_data)\
-                    .eq('id', user_id)\
-                    .execute()
+                supabase.table('users').update(update_user_data).eq('id', user_id).execute()
 
-                # Update user_preferences table
+                # Update preferences
                 update_preferences_data = {
                     'two_factor_enabled': two_factor_enabled,
                     'theme': theme,
                     'reminder_time': reminder_time,
                     'notification_preference': notification_preference
                 }
-                supabase.table('user_preferences')\
-                    .update(update_preferences_data)\
-                    .eq('user_id', user_id)\
-                    .execute()
+                supabase.table('user_preferences').update(update_preferences_data).eq('user_id', user_id).execute()
 
                 # Update session
                 session['user_email'] = new_email
@@ -1434,12 +1358,28 @@ def settings():
                 session['two_factor_enabled'] = two_factor_enabled
 
                 logger.info(f"Settings updated for user_id: {user_id}")
-                success = 'Settings updated successfully!'
+                return jsonify({'success': True, 'message': 'Settings updated successfully'})
 
             except Exception as e:
                 logger.error(f"Error updating settings for user_id: {user_id}: {str(e)}")
-                error = str(e)
+                return jsonify({'success': False, 'error': str(e)}), 500
 
+        # GET request: Render template
+        dropdown_data = get_user_dropdown_data(supabase, user_id)
+        return render_template('settings.html',
+                              email=email,
+                              profile_data=profile_info,
+                              two_factor_enabled=profile_info['two_factor_enabled'],
+                              theme=profile_info['theme'],
+                              reminder_time=profile_info['reminder_time'],
+                              notification_preference=profile_info['notification_preference'],
+                              error=None,
+                              success=None,
+                              **dropdown_data)
+
+    except Exception as e:
+        logger.error(f"Error in settings: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
         # Fetch dropdown data
         dropdown_data = get_user_dropdown_data(supabase, user_id)
 
