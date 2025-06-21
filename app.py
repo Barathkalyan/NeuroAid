@@ -296,24 +296,18 @@ def get_mood_data():
             date = datetime.fromisoformat(created_at).replace(tzinfo=ZoneInfo("UTC"))
             date_str = date.strftime('%Y-%m-%d')
             if date_str in date_map:
-                mood = entry['analysis'].get('mood', 3)
-                confidence = entry['analysis'].get('confidence', 0.0)
+                mood = entry['analysis'].get('mood', 3) if entry.get('analysis') else 3
+                confidence = entry['analysis'].get('confidence', 0.0) if entry.get('analysis') else 0.0
                 date_map[date_str]['moods'].append(mood)
                 date_map[date_str]['confidences'].append(confidence)
-                logger.info(f"Entry date: {date}, Mood: {mood}, Confidence: {confidence}")
 
         for date_str in date_map:
             moods = date_map[date_str]['moods']
             confidences = date_map[date_str]['confidences']
-            avg_mood = sum(moods) / len(moods) if moods else 0
+            avg_mood = sum(moods) / len(moods) if moods else 3
             avg_confidence = sum(confidences) / len(confidences) if confidences else 0
             mood_data.append(round(avg_mood, 2))
             confidence_data.append(round(avg_confidence, 2))
-
-        if not any(mood_data):
-            labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-            mood_data = [3] * 7
-            confidence_data = [0] * 7
 
         all_entries = supabase.table('journal_entries')\
             .select('created_at')\
@@ -335,12 +329,9 @@ def get_mood_data():
             entry_date = entry_date.replace(hour=0, minute=0, second=0, microsecond=0)
             entry_dates.add(entry_date)
 
-        while True:
-            if current_date in entry_dates:
-                streak += 1
-                current_date -= timedelta(days=1)
-            else:
-                break
+        while current_date in entry_dates:
+            streak += 1
+            current_date -= timedelta(days=1)
 
         logger.info(f"Calculated journal streak for user {user_id}: {streak} days")
 
@@ -353,7 +344,13 @@ def get_mood_data():
         })
     except Exception as e:
         logger.error(f"Error fetching mood data: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({
+            'labels': ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+            'data': [3] * 7,
+            'numEntries': 0,
+            'streak': 0,
+            'confidence': [0] * 7
+        }), 200
 
 @app.route('/api/gratitude', methods=['GET', 'POST'])
 def handle_gratitude():

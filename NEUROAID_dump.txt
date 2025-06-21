@@ -1267,17 +1267,13 @@ def update_mental_health_goals():
 def settings():
     if 'user' not in session:
         logger.info("User not logged in, redirecting to login.")
-        return redirect(url_for('login'))
+        return jsonify({'success': False, 'error': 'User not logged in'}), 401
 
     if session.get('two_factor_enabled') and not session.get('2fa_verified'):
-        return redirect(url_for('verify_2fa'))
+        return jsonify({'success': False, 'error': '2FA verification required'}), 401
 
-    supabase = get_supabase(use_service_role=True)  # Use service role to bypass RLS
+    supabase = get_supabase(use_service_role=True)
     user_id = session['user']
-    error = None
-    success = None
-
-    # Initialize profile_info with defaults
     profile_info = {
         'profile_pic_url': None,
         'two_factor_enabled': False,
@@ -1287,59 +1283,30 @@ def settings():
     }
 
     try:
-        # Fetch user data (email) from the users table
-        user_data = supabase.table('users')\
-            .select('email')\
-            .eq('id', user_id)\
-            .limit(1)\
-            .execute()
-
+        # Fetch user data
+        user_data = supabase.table('users').select('email').eq('id', user_id).limit(1).execute()
         if not user_data.data:
             logger.error(f"No user found for user_id: {user_id}")
-            return redirect(url_for('logout'))
-
+            return jsonify({'success': False, 'error': 'User not found'}), 404
         email = user_data.data[0]['email']
-        logger.info(f"User email fetched: {email}")
 
-        # Fetch profile_pic_url and name from the profiles table
-        profile_data = supabase.table('profiles')\
-            .select('name, profile_pic_url')\
-            .eq('user_id', user_id)\
-            .limit(1)\
-            .execute()
-
+        # Fetch profile data
+        profile_data = supabase.table('profiles').select('name, profile_pic_url').eq('user_id', user_id).limit(1).execute()
         if profile_data.data:
-            profile = profile_data.data[0]
-            profile_info['profile_pic_url'] = profile.get('profile_pic_url')
-            logger.info(f"Profile data fetched: {profile_info}")
+            profile_info['profile_pic_url'] = profile_data.data[0].get('profile_pic_url')
         else:
-            logger.info(f"No profile found for user_id: {user_id}, creating a new profile")
             default_name = email.split('@')[0]
             supabase.table('profiles').insert({
                 'user_id': user_id,
                 'name': default_name,
                 'username': f"@{default_name}"
             }).execute()
-            logger.info(f"New profile created for user_id: {user_id}")
 
-        # Fetch user preferences from the user_preferences table
-        preferences_data = supabase.table('user_preferences')\
-            .select('two_factor_enabled, theme, reminder_time, notification_preference')\
-            .eq('user_id', user_id)\
-            .limit(1)\
-            .execute()
-
+        # Fetch preferences
+        preferences_data = supabase.table('user_preferences').select('two_factor_enabled, theme, reminder_time, notification_preference').eq('user_id', user_id).limit(1).execute()
         if preferences_data.data:
-            preferences = preferences_data.data[0]
-            profile_info.update({
-                'two_factor_enabled': preferences.get('two_factor_enabled', False),
-                'theme': preferences.get('theme', 'light'),
-                'reminder_time': preferences.get('reminder_time', '09:00'),
-                'notification_preference': preferences.get('notification_preference', 'email')
-            })
-            logger.info(f"User preferences fetched: {preferences}")
+            profile_info.update(preferences_data.data[0])
         else:
-            logger.info(f"No user preferences found for user_id: {user_id}, creating a new entry")
             supabase.table('user_preferences').insert({
                 'user_id': user_id,
                 'language': 'tamil',
@@ -1348,11 +1315,9 @@ def settings():
                 'reminder_time': '09:00',
                 'notification_preference': 'email'
             }).execute()
-            logger.info(f"New user preferences created for user_id: {user_id}")
 
         if request.method == 'POST':
             try:
-                # Handle form submission
                 new_email = request.form.get('email', email).strip().lower()
                 password = request.form.get('password')
                 confirm_password = request.form.get('confirm_password')
@@ -1363,72 +1328,31 @@ def settings():
 
                 # Validate inputs
                 if not new_email:
-                    error = 'Email is required'
-                    return render_template('settings.html',
-                                          email=email,
-                                          profile_data=profile_info,
-                                          two_factor_enabled=profile_info['two_factor_enabled'],
-                                          theme=profile_info['theme'],
-                                          reminder_time=profile_info['reminder_time'],
-                                          notification_preference=profile_info['notification_preference'],
-                                          error=error,
-                                          success=success,
-                                          **get_user_dropdown_data(supabase, user_id))
+                    return jsonify({'success': False, 'error': 'Email is required'}), 400
 
-                # Check if email already exists (excluding current user)
-                existing_user = supabase.table('users')\
-                    .select('id')\
-                    .eq('email', new_email)\
-                    .neq('id', user_id)\
-                    .execute()
+                # Check if email already exists
+                existing_user = supabase.table('users').select('id').eq('email', new_email).neq('id', user_id).execute()
                 if existing_user.data:
-                    error = 'Email already exists'
-                    return render_template('settings.html',
-                                          email=email,
-                                          profile_data=profile_info,
-                                          two_factor_enabled=profile_info['two_factor_enabled'],
-                                          theme=profile_info['theme'],
-                                          reminder_time=profile_info['reminder_time'],
-                                          notification_preference=profile_info['notification_preference'],
-                                          error=error,
-                                          success=success,
-                                          **get_user_dropdown_data(supabase, user_id))
+                    return jsonify({'success': False, 'error': 'Email already exists'}), 400
 
-                # Validate password if provided
-                if password or confirm_password:
-                    if password != confirm_password:
-                        error = 'Passwords do not match'
-                        return render_template('settings.html',
-                                              email=email,
-                                              profile_data=profile_info,
-                                              two_factor_enabled=profile_info['two_factor_enabled'],
-                                              theme=profile_info['theme'],
-                                              reminder_time=profile_info['reminder_time'],
-                                              notification_preference=profile_info['notification_preference'],
-                                              error=error,
-                                              success=success,
-                                              **get_user_dropdown_data(supabase, user_id))
+                # Validate password
+                if password and password != confirm_password:
+                    return jsonify({'success': False, 'error': 'Passwords do not match'}), 400
 
-                # Update users table (email and password)
+                # Update users table
                 update_user_data = {'email': new_email}
                 if password:
                     update_user_data['password'] = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-                supabase.table('users')\
-                    .update(update_user_data)\
-                    .eq('id', user_id)\
-                    .execute()
+                supabase.table('users').update(update_user_data).eq('id', user_id).execute()
 
-                # Update user_preferences table
+                # Update preferences
                 update_preferences_data = {
                     'two_factor_enabled': two_factor_enabled,
                     'theme': theme,
                     'reminder_time': reminder_time,
                     'notification_preference': notification_preference
                 }
-                supabase.table('user_preferences')\
-                    .update(update_preferences_data)\
-                    .eq('user_id', user_id)\
-                    .execute()
+                supabase.table('user_preferences').update(update_preferences_data).eq('user_id', user_id).execute()
 
                 # Update session
                 session['user_email'] = new_email
@@ -1436,12 +1360,28 @@ def settings():
                 session['two_factor_enabled'] = two_factor_enabled
 
                 logger.info(f"Settings updated for user_id: {user_id}")
-                success = 'Settings updated successfully!'
+                return jsonify({'success': True, 'message': 'Settings updated successfully'})
 
             except Exception as e:
                 logger.error(f"Error updating settings for user_id: {user_id}: {str(e)}")
-                error = str(e)
+                return jsonify({'success': False, 'error': str(e)}), 500
 
+        # GET request: Render template
+        dropdown_data = get_user_dropdown_data(supabase, user_id)
+        return render_template('settings.html',
+                              email=email,
+                              profile_data=profile_info,
+                              two_factor_enabled=profile_info['two_factor_enabled'],
+                              theme=profile_info['theme'],
+                              reminder_time=profile_info['reminder_time'],
+                              notification_preference=profile_info['notification_preference'],
+                              error=None,
+                              success=None,
+                              **dropdown_data)
+
+    except Exception as e:
+        logger.error(f"Error in settings: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
         # Fetch dropdown data
         dropdown_data = get_user_dropdown_data(supabase, user_id)
 
@@ -1561,312 +1501,620 @@ if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
 ```
 
-# File: static/js/settings.js
+# File: static/js/progress.js
 ```js
-document.addEventListener('DOMContentLoaded', () => {
-    const themeSelect = document.getElementById('theme');
-    const themeStylesheet = document.getElementById('theme-stylesheet');
-    const form = document.getElementById('settings-form');
-    const exportDataBtn = document.getElementById('export-data-btn');
-    const deleteAccountBtn = document.getElementById('delete-account-btn');
-    const errorMessage = document.querySelector('.error-message');
-    const successMessage = document.querySelector('.success-message');
+document.addEventListener('DOMContentLoaded', function () {
+    // Mood Chart Canvas
+    const moodCanvas = document.getElementById('moodChart');
+    moodCanvas.width = 900;
+    moodCanvas.height = 650;
 
-    // Function to display messages
-    const showMessage = (type, message) => {
-        if (type === 'error') {
-            if (errorMessage) errorMessage.textContent = message;
-            else {
-                const msgDiv = document.createElement('div');
-                msgDiv.className = 'error-message';
-                msgDiv.textContent = message;
-                form.parentNode.insertBefore(msgDiv, form);
-            }
-        } else {
-            if (successMessage) successMessage.textContent = message;
-            else {
-                const msgDiv = document.createElement('div');
-                msgDiv.className = 'success-message';
-                msgDiv.textContent = message;
-                form.parentNode.insertBefore(msgDiv, form);
-            }
-        }
-        setTimeout(() => {
-            const msg = document.querySelector(`.${type}-message`);
-            if (msg) msg.remove();
-        }, 5000);
-    };
+    // Confidence Chart Canvas
+    const confidenceCanvas = document.getElementById('confidenceChart');
+    confidenceCanvas.width = 900;
+    confidenceCanvas.height = 650;
 
-    // Preview theme when dropdown changes
-    themeSelect.addEventListener('change', (e) => {
-        const selectedTheme = e.target.value;
-        themeStylesheet.href = `/static/css/themes/${selectedTheme}.css`;
-    });
+    fetch('/api/mood_data')
+        .then(response => response.json())
+        .then(data => {
+            console.log('API Response:', data);
 
-    // Handle form submission
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const password = document.getElementById('password').value;
-        const confirmPassword = document.getElementById('confirm_password').value;
+            // Mood Chart (Area Chart using Line with Fill)
+            const moodCtx = moodCanvas.getContext('2d');
+            const moodLineGradient = moodCtx.createLinearGradient(0, 0, 0, 650);
+            moodLineGradient.addColorStop(0, '#FF6EC7'); // Neon pink
+            moodLineGradient.addColorStop(1, '#7879F1'); // Neon purple
+            const moodFillGradient = moodCtx.createLinearGradient(0, 0, 0, 650);
+            moodFillGradient.addColorStop(0, 'rgba(230, 230, 250, 0.5)'); // Light violet
+            moodFillGradient.addColorStop(1, 'rgba(200, 200, 240, 0.1)'); // Slightly darker violet
 
-        // Client-side password validation
-        if (password && password !== confirmPassword) {
-            showMessage('error', 'Passwords do not match!');
-            return;
-        }
-
-        const formData = new FormData(form);
-        const data = {
-            email: formData.get('email'),
-            password: password || null,
-            two_factor_enabled: formData.get('two_factor_enabled') === 'on',
-            theme: formData.get('theme'),
-            reminder_time: formData.get('reminder_time'),
-            notification_preference: formData.get('notification_preference')
-        };
-
-        try {
-            const response = await fetch('/settings', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            });
-            const result = await response.json();
-
-            if (result.success) {
-                showMessage('success', result.message || 'Settings updated successfully!');
-                // Update displayed email in header
-                const userMenuSpan = document.querySelector('.user-menu span');
-                if (userMenuSpan) {
-                    userMenuSpan.textContent = data.email.split('@')[0];
-                }
-                // Update theme stylesheet if changed
-                themeStylesheet.href = `/static/css/themes/${data.theme}.css`;
-            } else {
-                showMessage('error', result.error || 'Failed to update settings.');
-            }
-        } catch (error) {
-            console.error('Error submitting settings:', error);
-            showMessage('error', 'Failed to update settings.');
-        }
-    });
-
-    // Export Data button
-    if (exportDataBtn) {
-        exportDataBtn.addEventListener('click', async () => {
-            try {
-                const response = await fetch('/export_data', { method: 'GET' });
-                const data = await response.json();
-                if (data.success) {
-                    const blob = new Blob([JSON.stringify(data.data, null, 2)], { type: 'application/json' });
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = 'neuroaid_user_data.json';
-                    a.click();
-                    window.URL.revokeObjectURL(url);
-                    showMessage('success', 'Data exported successfully!');
-                } else {
-                    showMessage('error', data.error || 'Failed to export data.');
-                }
-            } catch (error) {
-                console.error('Error exporting data:', error);
-                showMessage('error', 'Failed to export data.');
-            }
-        });
-    }
-
-    // Delete Account button
-    if (deleteAccountBtn) {
-        deleteAccountBtn.addEventListener('click', async () => {
-            if (confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
-                try {
-                    const response = await fetch('/delete_account', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' }
-                    });
-                    const data = await response.json();
-                    if (data.success) {
-                        showMessage('success', 'Account deleted successfully.');
-                        setTimeout(() => {
-                            window.location.href = '/logout';
-                        }, 2000);
-                    } else {
-                        showMessage('error', data.error || 'Failed to delete account.');
+            const moodChart = new Chart(moodCtx, {
+                type: 'line',
+                data: {
+                    labels: data.labels,
+                    datasets: [{
+                        label: 'Mood',
+                        data: data.data,
+                        borderColor: moodLineGradient,
+                        borderWidth: 3,
+                        fill: true,
+                        backgroundColor: moodFillGradient,
+                        tension: 0.4,
+                        pointBackgroundColor: '#FFFFFF',
+                        pointBorderColor: '#7879F1',
+                        pointBorderWidth: 2,
+                        pointRadius: 5,
+                        pointHoverRadius: 8,
+                        pointHoverBackgroundColor: '#FF6EC7',
+                        pointHoverBorderColor: '#FFFFFF',
+                        pointHoverBorderWidth: 3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 5,
+                            min: 0,
+                            ticks: {
+                                stepSize: 1,
+                                color: '#000000',
+                                font: {
+                                    family: "'Poppins', sans-serif",
+                                    size: 17
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.1)',
+                            },
+                            title: {
+                                display: true,
+                                text: 'Mood Score',
+                                color: '#000000',
+                                font: {
+                                    family: "'Poppins', sans-serif",
+                                    size: 20
+                                },
+                                padding: 5
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                color: '#000000',
+                                font: {
+                                    family: "'Poppins', sans-serif",
+                                    size: 17
+                                }
+                            },
+                            grid: {
+                                display: false
+                            },
+                            title: {
+                                display: true,
+                                text: 'Day',
+                                color: '#000000',
+                                font: {
+                                    family: "'Poppins', sans-serif",
+                                    size: 16,
+                                    weight: 'bold'
+                                },
+                                padding: 10
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            labels: {
+                                font: {
+                                    family: "'Poppins', sans-serif",
+                                    size: 14
+                                },
+                                color: '#000000'
+                            }
+                        },
+                        tooltip: {
+                            enabled: false
+                        }
+                    },
+                    animation: {
+                        duration: 1500,
+                        easing: 'easeOutCubic'
+                    },
+                    elements: {
+                        line: {
+                            shadowColor: 'rgba(255, 255, 255, 0.3)',
+                            shadowBlur: 10,
+                            shadowOffsetX: 0,
+                            shadowOffsetY: 0
+                        }
+                    },
+                    onClick: (event, elements) => {
+                        if (elements.length > 0) {
+                            const element = elements[0];
+                            const day = data.labels[element.index];
+                            alert(`Day: ${day}`);
+                        }
                     }
-                } catch (error) {
-                    console.error('Error deleting account:', error);
-                    showMessage('error', 'Failed to delete account.');
                 }
+            });
+
+            // Confidence Chart (Bar Chart)
+            const confidenceCtx = confidenceCanvas.getContext('2d');
+            const confidenceBarGradient = confidenceCtx.createLinearGradient(0, 0, 0, 650);
+            confidenceBarGradient.addColorStop(0, '#00BFFF'); // Deep sky blue
+            confidenceBarGradient.addColorStop(1, '#1E90FF'); // Dodger blue
+
+            const confidenceChart = new Chart(confidenceCtx, {
+                type: 'bar',
+                data: {
+                    labels: data.labels,
+                    datasets: [{
+                        label: 'Confidence',
+                        data: data.confidence,
+                        backgroundColor: confidenceBarGradient,
+                        borderColor: '#FFFFFF',
+                        borderWidth: 1,
+                        borderRadius: 5, // Rounded corners for bars
+                        barThickness: 40, // Thinner bars
+                        categoryPercentage: 0.5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 1,
+                            min: 0,
+                            ticks: {
+                                stepSize: 0.2,
+                                color: '#000000',
+                                font: {
+                                    family: "'Poppins', sans-serif",
+                                    size: 17
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.1)',
+                            },
+                            title: {
+                                display: true,
+                                text: 'Confidence Score',
+                                color: '#000000',
+                                font: {
+                                    family: "'Poppins', sans-serif",
+                                    size: 20
+                                },
+                                padding: 5
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                color: '#000000',
+                                font: {
+                                    family: "'Poppins', sans-serif",
+                                    size: 17
+                                }
+                            },
+                            grid: {
+                                display: false
+                            },
+                            title: {
+                                display: true,
+                                text: 'Day',
+                                color: '#000000',
+                                font: {
+                                    family: "'Poppins', sans-serif",
+                                    size: 16,
+                                    weight: 'bold'
+                                },
+                                padding: 10
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            labels: {
+                                font: {
+                                    family: "'Poppins', sans-serif",
+                                    size: 14
+                                },
+                                color: '#000000'
+                            }
+                        },
+                        tooltip: {
+                            enabled: false
+                        }
+                    },
+                    animation: {
+                        duration: 1500,
+                        easing: 'easeOutCubic'
+                    },
+                    onClick: (event, elements) => {
+                        if (elements.length > 0) {
+                            const element = elements[0];
+                            const day = data.labels[element.index];
+                            alert(`Day: ${day}`);
+                        }
+                    }
+                }
+            });
+
+            // Update number of entries
+            const numEntriesElement = document.getElementById('entries-count');
+            if (numEntriesElement) {
+                numEntriesElement.textContent = `${data.numEntries} entries`;
+                console.log('Number of entries updated:', data.numEntries);
+            } else {
+                console.error('Number of entries element not found. ID: entries-count');
+            }
+
+            // Update streak
+            const streakElement = document.getElementById('streak-value');
+            if (streakElement) {
+                streakElement.textContent = `${data.streak} Days`;
+                console.log('Streak updated:', data.streak);
+            } else {
+                console.error('Streak element not found. ID: streak-value');
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching mood data:', error);
+
+            // Fallback Mood Chart
+            const moodCtx = moodCanvas.getContext('2d');
+            const moodLineGradient = moodCtx.createLinearGradient(0, 0, 0, 650);
+            moodLineGradient.addColorStop(0, '#FF6EC7');
+            moodLineGradient.addColorStop(1, '#7879F1');
+            const moodFillGradient = moodCtx.createLinearGradient(0, 0, 0, 650);
+            moodFillGradient.addColorStop(0, 'rgba(230, 230, 250, 0.5)');
+            moodFillGradient.addColorStop(1, 'rgba(200, 200, 240, 0.1)');
+
+            new Chart(moodCtx, {
+                type: 'line',
+                data: {
+                    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                    datasets: [{
+                        label: 'Mood',
+                        data: [3, 3, 3, 3, 3, 3, 3],
+                        borderColor: moodLineGradient,
+                        borderWidth: 3,
+                        fill: true,
+                        backgroundColor: moodFillGradient,
+                        tension: 0.4,
+                        pointBackgroundColor: '#FFFFFF',
+                        pointBorderColor: '#7879F1',
+                        pointBorderWidth: 2,
+                        pointRadius: 5,
+                        pointHoverRadius: 8,
+                        pointHoverBackgroundColor: '#FF6EC7',
+                        pointHoverBorderColor: '#FFFFFF',
+                        pointHoverBorderWidth: 3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 5,
+                            min: 0,
+                            ticks: {
+                                stepSize: 1,
+                                color: '#000000',
+                                font: {
+                                    family: "'Poppins', sans-serif",
+                                    size: 17
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.1)',
+                            },
+                            title: {
+                                display: true,
+                                text: 'Mood Score',
+                                color: '#000000',
+                                font: {
+                                    family: "'Poppins', sans-serif",
+                                    size: 20
+                                },
+                                padding: 5
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                color: '#000000',
+                                font: {
+                                    family: "'Poppins', sans-serif",
+                                    size: 17
+                                }
+                            },
+                            grid: {
+                                display: false
+                            },
+                            title: {
+                                display: true,
+                                text: 'Day',
+                                color: '#000000',
+                                font: {
+                                    family: "'Poppins', sans-serif",
+                                    size: 16,
+                                    weight: 'bold'
+                                },
+                                padding: 10
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            labels: {
+                                font: {
+                                    family: "'Poppins', sans-serif",
+                                    size: 14
+                                },
+                                color: '#000000'
+                            }
+                        },
+                        tooltip: {
+                            enabled: false
+                        }
+                    },
+                    animation: {
+                        duration: 1500,
+                        easing: 'easeOutCubic'
+                    },
+                    elements: {
+                        line: {
+                            shadowColor: 'rgba(255, 255, 255, 0.3)',
+                            shadowBlur: 10,
+                            shadowOffsetX: 0,
+                            shadowOffsetY: 0
+                        }
+                    },
+                    onClick: (event, elements) => {
+                        if (elements.length > 0) {
+                            const element = elements[0];
+                            const day = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][element.index];
+                            alert(`Day: ${day}`);
+                        }
+                    }
+                }
+            });
+
+            // Fallback Confidence Chart
+            const confidenceCtx = confidenceCanvas.getContext('2d');
+            const confidenceBarGradient = confidenceCtx.createLinearGradient(0, 0, 0, 650);
+            confidenceBarGradient.addColorStop(0, '#00BFFF');
+            confidenceBarGradient.addColorStop(1, '#1E90FF');
+
+            new Chart(confidenceCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                    datasets: [{
+                        label: 'Confidence',
+                        data: [0, 0, 0, 0, 0, 0, 0],
+                        backgroundColor: confidenceBarGradient,
+                        borderColor: '#FFFFFF',
+                        borderWidth: 1,
+                        borderRadius: 5,
+                        barThickness: 20
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 1,
+                            min: 0,
+                            ticks: {
+                                stepSize: 0.2,
+                                color: '#000000',
+                                font: {
+                                    family: "'Poppins', sans-serif",
+                                    size: 17
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.1)',
+                            },
+                            title: {
+                                display: true,
+                                text: 'Confidence Score',
+                                color: '#000000',
+                                font: {
+                                    family: "'Poppins', sans-serif",
+                                    size: 20
+                                },
+                                padding: 5
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                color: '#000000',
+                                font: {
+                                    family: "'Poppins', sans-serif",
+                                    size: 17
+                                }
+                            },
+                            grid: {
+                                display: false
+                            },
+                            title: {
+                                display: true,
+                                text: 'Day',
+                                color: '#000000',
+                                font: {
+                                    family: "'Poppins', sans-serif",
+                                    size: 16,
+                                    weight: 'bold'
+                                },
+                                padding: 10
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            labels: {
+                                font: {
+                                    family: "'Poppins', sans-serif",
+                                    size: 14
+                                },
+                                color: '#000000'
+                            }
+                        },
+                        tooltip: {
+                            enabled: false
+                        }
+                    },
+                    animation: {
+                        duration: 1500,
+                        easing: 'easeOutCubic'
+                    },
+                    onClick: (event, elements) => {
+                        if (elements.length > 0) {
+                            const element = elements[0];
+                            const day = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][element.index];
+                            alert(`Day: ${day}`);
+                        }
+                    }
+                }
+            });
+
+            // Fallback for number of entries and streak
+            const numEntriesElement = document.getElementById('entries-count');
+            if (numEntriesElement) {
+                numEntriesElement.textContent = '0 entries';
+            }
+
+            const streakElement = document.getElementById('streak-value');
+            if (streakElement) {
+                streakElement.textContent = '0 Days';
             }
         });
-    }
 });
 ```
 
-# File: templates/settings.html
+# File: templates/progress.html
 ```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>NeuroAid - Settings</title>
-  <!-- Remix Icons -->
+  <title>NeuroAid - Progress</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css" />
-  <!-- Google Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <!-- Link to external CSS -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/settings.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/progress.css') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dropdown.css') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/welcome.css') }}" />
-  <!-- Dynamic Theme -->
   <link id="theme-stylesheet" rel="stylesheet" href="{{ url_for('static', filename='css/themes/' + theme + '.css') }}">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-  <div class="sidebar">
-    <div class="logo">
-      <i class="ri-brain-line"></i>
-      <h1>Neuro<span>Aid</span></h1>
+  <div class="app-container">
+    <div class="sidebar">
+      <div class="logo">
+        <i class="ri-brain-line"></i>
+        <h1>Neuro<span>Aid</span></h1>
+      </div>
+      <nav>
+        <a href="{{ url_for('index') }}"><i class="ri-home-5-line"></i> Home</a>
+        <a href="{{ url_for('journal') }}"><i class="ri-booklet-line"></i> Journal</a>
+        <a href="{{ url_for('progress') }}" class="active"><i class="ri-bar-chart-2-line"></i> Progress</a>
+        <a href="{{ url_for('vibe') }}"><i class="ri-music-2-line"></i> Vibe</a>
+        <a href="{{ url_for('gratitude') }}"><i class="ri-heart-line"></i> Gratitude</a>
+        <a href="{{ url_for('settings')}}"><i class="ri-settings-3-line"></i> Settings</a>
+        <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
+        <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
+      </nav>
     </div>
-    <nav>
-      <a href="{{ url_for('index') }}"><i class="ri-home-5-line"></i> Home</a>
-      <a href="{{ url_for('journal') }}"><i class="ri-booklet-line"></i> Journal</a>
-      <a href="{{ url_for('progress') }}"><i class="ri-bar-chart-2-line"></i> Progress</a>
-      <a href="{{ url_for('vibe') }}"><i class="ri-music-2-line"></i> Vibe</a>
-      <a href="{{ url_for('gratitude') }}"><i class="ri-heart-line"></i> Gratitude</a>
-      <a href="{{ url_for('settings') }}" class="active"><i class="ri-settings-3-line"></i> Settings</a>
-      <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
-      <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
-    </nav>
+
+    <div class="wrapper">
+      <main class="main-content">
+        <header>
+          <div class="welcome-container">
+            <div class="welcome-text">Welcome to NeuroAid, {{ user_name }}</div>
+            <div class="quote-text"></div>
+          </div>
+          <div class="profile-dropdown">
+            <div class="profile">
+              <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile" id="header-profile-pic" />
+              <span>{{ session.get('user_email', 'User').split('@')[0] }}</span>
+              <i class="ri-arrow-down-s-line"></i>
+            </div>
+            <div class="dropdown-content">
+              <div class="user-info">
+                <p><i class="ri-user-line"></i> {{ user_name }}</p>
+                <p><i class="ri-mail-line"></i> {{ user_email }}</p>
+                <p><i class="ri-calendar-line"></i> Joined: {{ joined_date }}</p>
+              </div>
+              <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
+              <a href="{{ url_for('settings') }}"><i class="ri-settings-3-line"></i> Settings</a>
+              <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
+            </div>
+          </div>
+        </header>
+
+        <section class="stats-section">
+          <h2><i class="ri-bar-chart-2-line"></i> Your Progress</h2>
+          <div class="stats-boxes">
+            <div class="stat-box">
+              <i class="ri-calendar-line"></i>
+              <div>
+                <h3>Journaling Streak</h3>
+                <p><strong id="streak-value">7 Days</strong></p>
+              </div>
+            </div>
+            <div class="stat-box">
+              <i class="ri-booklet-line"></i>
+              <div>
+                <h3>Total Entries</h3>
+                <p><strong id="entries-count">10 entries</strong></p>
+              </div>
+            </div>
+            <div class="stat-box">
+              <i class="ri-emotion-happy-line"></i>
+              <div>
+                <h3>Average Mood</h3>
+                <p><strong>Positive</strong></p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="chart-section">
+          <h2><i class="ri-line-chart-line"></i> Mood Over Time</h2>
+          <div class="chart-card">
+            <canvas id="moodChart"></canvas>
+          </div>
+        </section>
+
+        <section class="chart-section">
+          <h2><i class="ri-line-chart-line"></i> Confidence Over Time</h2>
+          <div class="chart-card">
+            <canvas id="confidenceChart"></canvas>
+          </div>
+        </section>
+      </main>
+
+      <footer>
+        <span>© 2025 NeuroAid. Your mental health companion.</span>
+      </footer>
+    </div>
   </div>
-
-  <div class="wrapper">
-    <main class="main-content">
-      <header>
-        <div class="welcome-container">
-          <div class="welcome-text">Welcome to NeuroAid, {{ user_name }}</div>
-          <div class="quote-text"></div>
-        </div>
-        <div class="profile-dropdown">
-          <div class="profile">
-            <img src="{{ profile_data.profile_pic_url if profile_data.get('profile_pic_url') else 'https://randomuser.me/api/portraits/men/32.jpg' }}" alt="Profile" id="header-profile-pic" />
-            <span>{{ session.get('user_email', 'User').split('@')[0] }}</span>
-            <i class="ri-arrow-down-s-line"></i>
-          </div>
-          <div class="dropdown-content">
-            <div class="user-info">
-              <p><i class="ri-user-line"></i> {{ user_name }}</p>
-              <p><i class="ri-mail-line"></i> {{ user_email }}</p>
-              <p><i class="ri-calendar-line"></i> Joined: {{ joined_date }}</p>
-            </div>
-            <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
-            <a href="{{ url_for('settings') }}"><i class="ri-settings-3-line"></i> Settings</a>
-            <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
-          </div>
-        </div>
-      </header>
-
-      <section class="settings-section">
-        <h2><i class="ri-settings-3-line"></i> Settings</h2>
-
-        <!-- Success/Error Messages -->
-        {% if error %}
-          <div class="error-message">
-            {{ error }}
-          </div>
-        {% endif %}
-        {% if success %}
-          <div class="success-message">
-            {{ success }}
-          </div>
-        {% endif %}
-
-
-        <!-- Settings Form -->
-        <div class="settings-card">
-          <form id="settings-form" method="POST" action="{{ url_for('settings') }}">
-            <!-- Account Settings -->
-            <div class="settings-group">
-              <h3><i class="ri-user-settings-line"></i> Account Settings</h3>
-              <div class="form-group">
-                <label for="email">Email</label>
-                <input type="email" id="email" name="email" value="{{ email }}" placeholder="Enter new email (optional)">
-              </div>
-              <div class="form-group">
-                <label for="password">New Password</label>
-                <input type="password" id="password" name="password" placeholder="Enter new password (optional)">
-              </div>
-              <div class="form-group">
-                <label for="confirm_password">Confirm New Password</label>
-                <input type="password" id="confirm_password" name="confirm_password" placeholder="Confirm new password">
-              </div>
-            </div>
-
-            <!-- Security Settings -->
-            <div class="settings-group">
-              <h3><i class="ri-shield-check-line"></i> Security Settings</h3>
-              <div class="form-group toggle-group">
-                <label for="two_factor_enabled">Enable Two-Factor Authentication</label>
-                <div class="toggle-wrapper">
-                  <input type="checkbox" id="two_factor_enabled" name="two_factor_enabled" {% if two_factor_enabled %}checked{% endif %}>
-                  <span class="toggle-slider"></span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Appearance Settings -->
-            <div class="settings-group">
-              <h3><i class="ri-paint-brush-line"></i> Appearance Settings</h3>
-              <div class="form-group">
-                <label for="theme">App Theme</label>
-                <select id="theme" name="theme">
-                  <option value="light" {% if theme == 'light' %}selected{% endif %}>Light</option>
-                  <option value="dark" {% if theme == 'dark' %}selected{% endif %}>Dark</option>
-                  <option value="calming" {% if theme == 'calming' %}selected{% endif %}>Calming</option>
-                </select>
-              </div>
-            </div>
-
-            <!-- Notification Settings -->
-            <div class="settings-group">
-              <h3><i class="ri-notification-3-line"></i> Notification Settings</h3>
-              <div class="form-group">
-                <label for="reminder_time">Daily Reminder Time</label>
-                <input type="time" id="reminder_time" name="reminder_time" value="{{ reminder_time }}">
-              </div>
-              <div class="form-group">
-                <label for="notification_preference">Notification Preference</label>
-                <select id="notification_preference" name="notification_preference">
-                  <option value="email" {% if notification_preference == 'email' %}selected{% endif %}>Email</option>
-                  <option value="push" {% if notification_preference == 'push' %}selected{% endif %}>Push</option>
-                </select>
-              </div>
-            </div>
-
-            <button type="submit" class="neuroaid-btn"><i class="ri-save-line"></i> Save Changes</button>
-          </form>
-        </div>
-
-        <!-- Privacy & Security -->
-        <div class="settings-card">
-          <div class="settings-group">
-            <h3><i class="ri-lock-line"></i> Privacy & Security</h3>
-            <div class="action-group">
-              <button type="button" class="action-btn" id="export-data-btn">Export Data</button>
-              <button type="button" class="action-btn delete" id="delete-account-btn">Delete Account</button>
-            </div>
-          </div>
-        </div>
-      </section>
-    </main>
-
-    <footer>
-      <span>© 2025 NeuroAid. Your mental health companion.</span>
-    </footer>
-  </div>
-  <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/progress.js') }}"></script>
   <script src="{{ url_for('static', filename='js/dropdown.js') }}"></script>
   <script src="{{ url_for('static', filename='js/welcome.js') }}"></script>
 </body>
