@@ -4,7 +4,7 @@ import os
 
 # Extensions to include
 #".html", ".js", ".css", ".py", ".md"
-extensions = ["progress.js","progress.html","app.py"]
+extensions = ["journal.html","index.html","app.py"]
 output_file = "NEUROAID_dump.txt"
 
 with open(output_file, "w", encoding="utf-8") as out:

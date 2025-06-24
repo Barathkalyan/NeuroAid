@@ -12,6 +12,9 @@ import qrcode
 from io import BytesIO
 import base64
 import os
+import random
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'your-secret-key')
@@ -56,15 +59,23 @@ def query_huggingface(model: str, payload: dict, retries=3, backoff_factor=1):
 
 def simple_keyword_analysis(text):
     text = text.lower()
+    emotion_keywords = {
+        'sadness': ['sad', 'unhappy', 'down', 'depressed', 'lonely', 'gloomy'],
+        'anger': ['angry', 'mad', 'frustrated', 'annoyed', 'irritated', 'furious'],
+        'joy': ['happy', 'joyful', 'great', 'amazing', 'excited', 'delighted'],
+        'anxiety': ['anxious', 'nervous', 'worried', 'scared', 'tense', 'afraid'],
+        'gratitude': ['grateful', 'thankful', 'appreciate', 'blessed'],
+        'hope': ['hopeful', 'optimistic', 'encouraged', 'inspired']
+    }
+
     emotions = []
-    if any(word in text for word in ['sad', 'unhappy', 'down', 'depressed']):
-        emotions.append({"label": "sadness", "score": 0.7})
-    if any(word in text for word in ['angry', 'mad', 'frustrated', 'annoyed']):
-        emotions.append({"label": "anger", "score": 0.7})
-    if any(word in text for word in ['happy', 'joyful', 'great', 'amazing']):
-        emotions.append({"label": "joy", "score": 0.7})
-    if any(word in text for word in ['anxious', 'nervous', 'worried', 'scared']):
-        emotions.append({"label": "anxiety", "score": 0.7})
+    total_words = len(text.split())
+    for emotion, keywords in emotion_keywords.items():
+        count = sum(text.count(keyword) for keyword in keywords)
+        score = min(0.9, (count / max(total_words, 1)) * 0.8) if count > 0 else 0
+        if score > 0:
+            emotions.append({"label": emotion, "score": score})
+
     if not emotions:
         emotions.append({"label": "neutral", "score": 0.5})
     return emotions
@@ -123,37 +134,156 @@ def get_journaling_frequency(supabase, user_id, days=7):
         logger.error(f"Error calculating journaling frequency: {str(e)}")
         return 0
 
+import random
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
+# Define a broader pool of suggestion templates categorized by emotion and activity type
+SUGGESTION_TEMPLATES = {
+    'sadness': [
+        "{tone} you’re feeling {emotion}. Try writing about a memory that brings you comfort.",
+        "{tone} you’re feeling {emotion}. Consider a short walk to clear your mind.",
+        "{tone} you’re feeling {emotion}. How about listening to some calming {language} music?",
+        "{tone} you’re feeling {emotion}. Reflect on something you’re grateful for today.",
+        "{tone} you’re feeling {emotion}. Try a breathing exercise: inhale for 4, hold for 4, exhale for 4."
+    ],
+    'anger': [
+        "{tone} you’re feeling {emotion}. Take a moment to jot down what’s frustrating you.",
+        "{tone} you’re feeling {emotion}. Try a quick physical activity like stretching or jumping jacks.",
+        "{tone} you’re feeling {emotion}. Listen to an energetic {language} playlist to channel your energy.",
+        "{tone} you’re feeling {emotion}. Write a letter to yourself about letting go of this feeling.",
+        "{tone} you’re feeling {emotion}. Try counting backwards from 10 to calm your mind."
+    ],
+    'anxiety': [
+        "{tone} you’re feeling {emotion}. List five things you can see around you to ground yourself.",
+        "{tone} you’re feeling {emotion}. Try a guided meditation in {language} for a few minutes.",
+        "{tone} you’re feeling {emotion}. Write about a safe place you can imagine.",
+        "{tone} you’re feeling {emotion}. Focus on slow, deep breaths for a minute.",
+        "{tone} you’re feeling {emotion}. Jot down one thing you can control today."
+    ],
+    'joy': [
+        "{tone} you’re feeling {emotion}! Celebrate by doing something you love, like {activity}.",
+        "{tone} you’re feeling {emotion}! Share a happy moment in your journal.",
+        "{tone} you’re feeling {emotion}! Listen to an upbeat {language} playlist to keep the vibe going.",
+        "{tone} you’re feeling {emotion}! Write about a goal you’re excited to pursue.",
+        "{tone} you’re feeling {emotion}! Do a quick sketch or doodle to express your happiness."
+    ],
+    'neutral': [
+        "{tone} you’re feeling balanced. Try exploring a new {activity} today.",
+        "{tone} your mood is steady. Write about something you’re curious about.",
+        "{tone} you’re feeling neutral. How about a short {language} podcast to spark inspiration?",
+        "{tone} your mood is calm. Reflect on a small win from this week.",
+        "{tone} you’re feeling neutral. Set a small intention for the rest of your day."
+    ]
+}
+
+# Activity mappings based on user preferences
+ACTIVITY_MAPPINGS = {
+    'meditation': ['a mindfulness meditation', 'a guided breathing session', 'a calming visualization'],
+    'exercise': ['a quick workout', 'a short run', 'some yoga stretches'],
+    'writing': ['writing a short story', 'journaling your thoughts', 'penning a poem'],
+    'music': ['listening to music', 'playing an instrument', 'singing along to a song'],
+    'reading': ['reading a favorite book', 'exploring a new article', 'diving into a novel']
+}
+
+def get_user_preferences(supabase, user_id):
+    try:
+        preferences = supabase.table('profiles')\
+            .select('preferred_activities, primary_goal')\
+            .eq('user_id', user_id)\
+            .limit(1)\
+            .execute()
+        return preferences.data[0] if preferences.data else {'preferred_activities': [], 'primary_goal': None}
+    except Exception as e:
+        logger.error(f"Error fetching user preferences: {str(e)}")
+        return {'preferred_activities': [], 'primary_goal': None}
+
 def generate_suggestion(emotions, mood, supabase, user_id):
     if not emotions:
         return ["Try writing more to help me understand your feelings."]
 
+    # Get user preferences
+    user_prefs = get_user_preferences(supabase, user_id)
+    preferred_activities = user_prefs.get('preferred_activities', [])
+    primary_goal = user_prefs.get('primary_goal', 'general well-being')
+
+    # Get language preference for music/podcast suggestions
+    language_prefs = supabase.table('user_preferences')\
+        .select('language')\
+        .eq('user_id', user_id)\
+        .execute()
+    language = language_prefs.data[0]['language'] if language_prefs.data else 'tamil'
+
+    # Determine time of day for contextual suggestions
+    current_hour = datetime.now(ZoneInfo("Asia/Kolkata")).hour
+    time_context = 'morning' if 5 <= current_hour < 12 else 'afternoon' if 12 <= current_hour < 17 else 'evening'
+
+    # Get journaling frequency and recent emotions
+    journaling_freq = get_journaling_frequency(supabase, user_id)
+    recent_emotions = get_recent_emotions(supabase, user_id)
+
+    # Select top emotions
     top_emotions = sorted(emotions, key=lambda x: x['score'], reverse=True)[:2]
     primary_emotion = top_emotions[0]['label']
     primary_score = top_emotions[0]['score']
     secondary_emotion = top_emotions[1]['label'] if len(top_emotions) > 1 else None
 
-    recent_emotions = get_recent_emotions(supabase, user_id)
-    journaling_freq = get_journaling_frequency(supabase, user_id)
-
+    # Determine tone based on mood
     tone = "I’m sorry to hear" if mood <= 2 else "I can see" if mood == 3 else "It’s great to hear"
 
+    # Initialize suggestions list
     suggestions = []
 
-    if primary_emotion in ['disappointment', 'sadness']:
-        suggestions.append(f"{tone} you’re feeling {primary_emotion.lower()}. Write about what’s been challenging.")
-        if secondary_emotion in ['anger', 'annoyance']:
-            suggestions.append(f"Try a quick stretch to channel that {secondary_emotion.lower()}.")
-    elif primary_emotion in ['anger', 'frustration', 'annoyance']:
-        suggestions.append(f"{tone} you’re feeling {primary_emotion.lower()}. Take a few deep breaths.")
-    elif primary_emotion in ['fear', 'anxiety']:
-        suggestions.append(f"{tone} you’re feeling {primary_emotion.lower()}. Focus on 5 things you can see.")
-    elif primary_emotion in ['joy', 'gratitude', 'hope', 'love']:
-        suggestions.append(f"{tone} you’re feeling {primary_emotion.lower()}! Do something you love.")
-    else:
-        suggestions.append(f"{tone} you’re feeling {primary_emotion.lower()}. Write more to explore.")
+    # Select suggestion templates based on primary emotion
+    available_templates = SUGGESTION_TEMPLATES.get(primary_emotion, SUGGESTION_TEMPLATES['neutral'])
 
+    # Personalize with user preferences
+    activity = random.choice(preferred_activities) if preferred_activities else 'writing'
+    activity_suggestion = random.choice(ACTIVITY_MAPPINGS.get(activity, ['a relaxing activity']))
+
+    # Generate 2-3 suggestions
+    for _ in range(2):
+        template = random.choice(available_templates)
+        suggestion = template.format(
+            tone=tone,
+            emotion=primary_emotion.lower(),
+            activity=activity_suggestion,
+            language=language
+        )
+        if suggestion not in suggestions:
+            suggestions.append(suggestion)
+
+    # Add a goal-oriented suggestion if primary_goal exists
+    if primary_goal:
+        goal_suggestions = {
+            'stress management': f"Since your goal is {primary_goal.lower()}, try a {time_context} relaxation technique like deep breathing.",
+            'improved mood': f"To support your goal of {primary_goal.lower()}, do a small {activity_suggestion} to lift your spirits.",
+            'better sleep': f"With your goal of {primary_goal.lower()}, consider a {time_context} routine like journaling before bed.",
+            'self-discovery': f"Your goal is {primary_goal.lower()}. Reflect on a recent experience that taught you something new."
+        }
+        goal_suggestion = goal_suggestions.get(primary_goal.lower(), f"Your goal is {primary_goal.lower()}. Try {activity_suggestion} to stay aligned.")
+        if goal_suggestion not in suggestions:
+            suggestions.append(goal_suggestion)
+
+    # Add journaling encouragement if frequency is low
     if journaling_freq < 3:
-        suggestions.append("Journal daily to connect with your emotions.")
+        freq_suggestion = f"Journaling helps with {primary_goal or 'self-reflection'}. Try writing daily this week!"
+        if freq_suggestion not in suggestions:
+            suggestions.append(freq_suggestion)
+
+    # Optional: Use Hugging Face for generative suggestions (if API is reliable)
+    try:
+        prompt = f"Generate a short, supportive suggestion for someone feeling {primary_emotion.lower()} with a goal of {primary_goal or 'well-being'}."
+        generative_result = query_huggingface("distilgpt2", {"inputs": prompt, "max_length": 50})
+        if generative_result and isinstance(generative_result, list) and 'generated_text' in generative_result[0]:
+            gen_suggestion = generative_result[0]['generated_text'].strip()
+            if gen_suggestion and len(gen_suggestion) < 100 and gen_suggestion not in suggestions:
+                suggestions.append(gen_suggestion)
+    except Exception as e:
+        logger.warning(f"Generative AI suggestion failed: {str(e)}")
+
+    # Shuffle and limit to 3 suggestions
+    random.shuffle(suggestions)
     return suggestions[:3]
 
 def analyze_journal_entry(text, supabase, user_id):
@@ -180,6 +310,7 @@ def analyze_journal_entry(text, supabase, user_id):
         "suggestions": suggestions,
         "confidence": confidence
     }
+
 
 def get_supabase(use_service_role=False):
     if use_service_role:
