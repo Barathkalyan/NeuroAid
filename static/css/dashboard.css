@@ -117,6 +117,8 @@ body {
   flex-direction: column;
 }
 
+
+
 header {
   display: flex;
   justify-content: space-between;
@@ -270,9 +272,10 @@ header {
 footer {
   text-align: center;
   padding: 20px;
-  background: var(--card-bg, #2a3646);
+  background: #6d28d9;
   color: var(--text-primary);
-  font-size: 1.2rem;
+  font-size: 1.4rem;
+  font-weight:500;
   backdrop-filter: blur(4px);
   border-top: 1px solid var(--glass-border);
   margin-top: auto;
@@ -479,6 +482,12 @@ footer {
   }
 }
 
+.recent-reflections{
+  background-color: white;
+
+
+}
+
 @media (max-width: 600px) {
   .sidebar {
     width: 100%;
@@ -651,7 +660,7 @@ footer {
 }
 
 .entry-preview {
-  background: var(--card-bg, #2a3646);
+  background: white;
   border: 1px solid var(--glass-border);
   border-radius: 10px;
   padding: 15px;
