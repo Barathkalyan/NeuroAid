@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dropdown.css') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/welcome.css') }}" />
   <link id="theme-stylesheet" rel="stylesheet" href="{{ url_for('static', filename='css/themes/' + theme + '.css') }}">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 </head>
 <body>
   <div class="app-container">
@@ -65,21 +65,21 @@
               <i class="ri-calendar-line"></i>
               <div>
                 <h3>Journaling Streak</h3>
-                <p><strong id="streak-value">7 Days</strong></p>
+                <p><strong id="streak-value">0 Days</strong></p>
               </div>
             </div>
             <div class="stat-box">
               <i class="ri-booklet-line"></i>
               <div>
                 <h3>Total Entries</h3>
-                <p><strong id="entries-count">10 entries</strong></p>
+                <p><strong id="entries-count">0 entries</strong></p>
               </div>
             </div>
             <div class="stat-box">
               <i class="ri-emotion-happy-line"></i>
               <div>
                 <h3>Average Mood</h3>
-                <p><strong>Positive</strong></p>
+                <p><strong>Neutral</strong></p>
               </div>
             </div>
           </div>

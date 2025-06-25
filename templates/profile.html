@@ -6,11 +6,21 @@
   <title>NeuroAid - Profile</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/profile.css') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dropdown.css') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/welcome.css') }}" />
   <link id="theme-stylesheet" rel="stylesheet" href="{{ url_for('static', filename='css/themes/' + theme + '.css') }}">
+  <style>
+    .input-container input.editable {
+      border: 2px solid #7c3aed;
+      background-color: #f9f9f9;
+    }
+    .input-container input:disabled {
+      background-color: #e9ecef;
+    }
+  </style>
   <script src="{{ url_for('static', filename='js/utils.js') }}" defer></script>
   <script src="{{ url_for('static', filename='js/profile.js') }}" defer></script>
 </head>
@@ -36,16 +46,16 @@
     <main class="main-content">
       <header>
         <div class="welcome-container">
-          <div class="welcome-text">Welcome to NeuroAid, {{ user_name }}</div>
+          <div class="welcome-text">Welcome to NeuroAid, {{ name }}</div>
           <div class="quote-text"></div>
         </div>
         <div class="profile-dropdown">
+          <div class="profile">
+            <img src="{{ profile_data.profile_pic_url if profile_data.get('profile_pic_url') else 'https://randomuser.me/api/portraits/men/32.jpg' }}" alt="Profile" id="header-profile-pic" />
+            <span>{{ name }}</span>
+            <i class="ri-arrow-down-s-line"></i>
+          </div>
           <div class="dropdown-content">
-            <div class="user-info">
-              <p><i class="ri-user-line"></i> {{ user_name }}</p>
-              <p><i class="ri-mail-line"></i> {{ user_email }}</p>
-              <p><i class="ri-calendar-line"></i> Joined: {{ joined_date }}</p>
-            </div>
             <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
             <a href="{{ url_for('settings') }}"><i class="ri-settings-3-line"></i> Settings</a>
             <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
@@ -60,24 +70,7 @@
           <div class="progress-container">
             <div class="progress-circle">
               <svg class="progress-ring" width="100" height="100">
-                <circle class="progress-ring__background"
-                  cx="50"
-                  cy="50"
-                  r="44"
-                  fill="none"
-                  stroke-width="10"
-                  stroke="#e9ecef"
-                  stroke-linecap="round"/>
-                <circle class="progress-ring__circle"
-                  cx="50"
-                  cy="50"
-                  r="44"
-                  fill="none"
-                  stroke-width="10"
-                  stroke="#2c2c2c"
-                  stroke-linecap="round"
-                  transform="rotate(-90, 50, 50)"
-                  style="stroke-dasharray: {{ completion_dasharray }} 276.46;"/>
+                <circle class="progress-ring__circle" stroke="#7c3aed" stroke-width="8" fill="transparent" r="44" cx="50" cy="50" style="stroke-dasharray: {{ 276.46 * (completion_percentage / 100) }} 276.46;" />
               </svg>
               <span class="progress-text">{{ completion_percentage }}% Complete</span>
             </div>
@@ -229,6 +222,7 @@
       <span>© 2025 NeuroAid.</span>
     </footer>
   </div>
+  <script src="{{ url_for('static', filename='js/profile.js') }}"></script>
   <script src="{{ url_for('static', filename='js/dropdown.js') }}"></script>
   <script src="{{ url_for('static', filename='js/welcome.js') }}"></script>
 </body>

@@ -298,16 +298,24 @@ def get_mood_data():
             date = datetime.fromisoformat(created_at).replace(tzinfo=ZoneInfo("UTC"))
             date_str = date.strftime('%Y-%m-%d')
             if date_str in date_map:
+<<<<<<< HEAD
                 mood = entry['analysis'].get('mood', 3)
                 confidence = entry['analysis'].get('confidence', 0.0)
                 date_map[date_str]['moods'].append(mood)
                 date_map[date_str]['confidences'].append(confidence)
                 logger.info(f"Entry date: {date}, Mood: {mood}, Confidence: {confidence}")
+=======
+                mood = entry['analysis'].get('mood', 3) if entry.get('analysis') else 3
+                confidence = entry['analysis'].get('confidence', 0.0) if entry.get('analysis') else 0.0
+                date_map[date_str]['moods'].append(mood)
+                date_map[date_str]['confidences'].append(confidence)
+>>>>>>> 47dab7869e18a249a402adc883d747a3309ddb81
 
         for date_str in date_map:
             moods = date_map[date_str]['moods']
             confidences = date_map[date_str]['confidences']
             avg_mood = sum(moods) / len(moods) if moods else 0
+            avg_mood = sum(moods) / len(moods) if moods else 3
             avg_confidence = sum(confidences) / len(confidences) if confidences else 0
             mood_data.append(round(avg_mood, 2))
             confidence_data.append(round(avg_confidence, 2))
@@ -343,6 +351,9 @@ def get_mood_data():
                 current_date -= timedelta(days=1)
             else:
                 break
+        while current_date in entry_dates:
+            streak += 1
+            current_date -= timedelta(days=1)
 
         logger.info(f"Calculated journal streak for user {user_id}: {streak} days")
 
@@ -356,6 +367,13 @@ def get_mood_data():
     except Exception as e:
         logger.error(f"Error fetching mood data: {str(e)}")
         return jsonify({'error': str(e)}), 500
+        return jsonify({
+            'labels': ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+            'data': [3] * 7,
+            'numEntries': 0,
+            'streak': 0,
+            'confidence': [0] * 7
+        }), 200
 
 @app.route('/api/gratitude', methods=['GET', 'POST'])
 def handle_gratitude():
@@ -1278,6 +1296,13 @@ def settings():
     success = None
 
     # Initialize profile_info with defaults
+        return jsonify({'success': False, 'error': 'User not logged in'}), 401
+
+    if session.get('two_factor_enabled') and not session.get('2fa_verified'):
+        return jsonify({'success': False, 'error': '2FA verification required'}), 401
+
+    supabase = get_supabase(use_service_role=True)
+    user_id = session['user']
     profile_info = {
         'profile_pic_url': None,
         'two_factor_enabled': False,
@@ -1314,6 +1339,18 @@ def settings():
             logger.info(f"Profile data fetched: {profile_info}")
         else:
             logger.info(f"No profile found for user_id: {user_id}, creating a new profile")
+        # Fetch user data
+        user_data = supabase.table('users').select('email').eq('id', user_id).limit(1).execute()
+        if not user_data.data:
+            logger.error(f"No user found for user_id: {user_id}")
+            return jsonify({'success': False, 'error': 'User not found'}), 404
+        email = user_data.data[0]['email']
+
+        # Fetch profile data
+        profile_data = supabase.table('profiles').select('name, profile_pic_url').eq('user_id', user_id).limit(1).execute()
+        if profile_data.data:
+            profile_info['profile_pic_url'] = profile_data.data[0].get('profile_pic_url')
+        else:
             default_name = email.split('@')[0]
             supabase.table('profiles').insert({
                 'user_id': user_id,
@@ -1340,6 +1377,12 @@ def settings():
             logger.info(f"User preferences fetched: {preferences}")
         else:
             logger.info(f"No user preferences found for user_id: {user_id}, creating a new entry")
+
+        # Fetch preferences
+        preferences_data = supabase.table('user_preferences').select('two_factor_enabled, theme, reminder_time, notification_preference').eq('user_id', user_id).limit(1).execute()
+        if preferences_data.data:
+            profile_info.update(preferences_data.data[0])
+        else:
             supabase.table('user_preferences').insert({
                 'user_id': user_id,
                 'language': 'tamil',
@@ -1353,6 +1396,9 @@ def settings():
         if request.method == 'POST':
             try:
                 # Handle form submission
+
+        if request.method == 'POST':
+            try:
                 new_email = request.form.get('email', email).strip().lower()
                 password = request.form.get('password')
                 confirm_password = request.form.get('confirm_password')
@@ -1419,16 +1465,38 @@ def settings():
                     .execute()
 
                 # Update user_preferences table
+                    return jsonify({'success': False, 'error': 'Email is required'}), 400
+
+                # Check if email already exists
+                existing_user = supabase.table('users').select('id').eq('email', new_email).neq('id', user_id).execute()
+                if existing_user.data:
+                    return jsonify({'success': False, 'error': 'Email already exists'}), 400
+
+                # Validate password
+                if password and password != confirm_password:
+                    return jsonify({'success': False, 'error': 'Passwords do not match'}), 400
+
+                # Update users table
+                update_user_data = {'email': new_email}
+                if password:
+                    update_user_data['password'] = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                supabase.table('users').update(update_user_data).eq('id', user_id).execute()
+
+                # Update preferences
                 update_preferences_data = {
                     'two_factor_enabled': two_factor_enabled,
                     'theme': theme,
                     'reminder_time': reminder_time,
                     'notification_preference': notification_preference
                 }
+<<<<<<< HEAD
                 supabase.table('user_preferences')\
                     .update(update_preferences_data)\
                     .eq('user_id', user_id)\
                     .execute()
+=======
+                supabase.table('user_preferences').update(update_preferences_data).eq('user_id', user_id).execute()
+>>>>>>> 47dab7869e18a249a402adc883d747a3309ddb81
 
                 # Update session
                 session['user_email'] = new_email
@@ -1442,6 +1510,28 @@ def settings():
                 logger.error(f"Error updating settings for user_id: {user_id}: {str(e)}")
                 error = str(e)
 
+                return jsonify({'success': True, 'message': 'Settings updated successfully'})
+
+            except Exception as e:
+                logger.error(f"Error updating settings for user_id: {user_id}: {str(e)}")
+                return jsonify({'success': False, 'error': str(e)}), 500
+
+        # GET request: Render template
+        dropdown_data = get_user_dropdown_data(supabase, user_id)
+        return render_template('settings.html',
+                              email=email,
+                              profile_data=profile_info,
+                              two_factor_enabled=profile_info['two_factor_enabled'],
+                              theme=profile_info['theme'],
+                              reminder_time=profile_info['reminder_time'],
+                              notification_preference=profile_info['notification_preference'],
+                              error=None,
+                              success=None,
+                              **dropdown_data)
+
+    except Exception as e:
+        logger.error(f"Error in settings: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
         # Fetch dropdown data
         dropdown_data = get_user_dropdown_data(supabase, user_id)
 
@@ -5956,6 +6046,7 @@ document.addEventListener('DOMContentLoaded', () => {
   <title>NeuroAid - Home</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dropdown.css') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/welcome.css') }}" />

@@ -51,20 +51,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const formData = new FormData(form);
-        const data = {
-            email: formData.get('email'),
-            password: password || null,
-            two_factor_enabled: formData.get('two_factor_enabled') === 'on',
-            theme: formData.get('theme'),
-            reminder_time: formData.get('reminder_time'),
-            notification_preference: formData.get('notification_preference')
-        };
 
         try {
             const response = await fetch('/settings', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
+                body: formData // Send FormData instead of JSON
             });
             const result = await response.json();
 
@@ -73,10 +64,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Update displayed email in header
                 const userMenuSpan = document.querySelector('.user-menu span');
                 if (userMenuSpan) {
-                    userMenuSpan.textContent = data.email.split('@')[0];
+                    userMenuSpan.textContent = formData.get('email').split('@')[0];
                 }
                 // Update theme stylesheet if changed
-                themeStylesheet.href = `/static/css/themes/${data.theme}.css`;
+                themeStylesheet.href = `/static/css/themes/${formData.get('theme')}.css`;
             } else {
                 showMessage('error', result.error || 'Failed to update settings.');
             }

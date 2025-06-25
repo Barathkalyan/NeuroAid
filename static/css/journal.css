@@ -18,23 +18,15 @@ body {
   margin-bottom: 30px;
 }
 
-.journal-header h2 {
-  color: #2d2d2d;
-  margin-bottom: 10px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 32px;
+.journal-header h2, .journal-header p, .entry-content {
+  color: var(--text-primary);
 }
-
 .journal-header p {
-  color: #666;
-  margin-bottom: 15px;
-  font-size: 25px;
+  color: var(--text-secondary);
 }
 
 .journal-meta {
-   align-items: center;
+  align-items: center;
   justify-content: space-between;
   color: #7c3aed;
   font-size: 20px;
@@ -46,7 +38,7 @@ body {
 
 #editor {
   height: 600px;
-  width:100%;
+  width: 100%;
   font-size: 23px;
   background-color: #f4f0fa;
   border: 1px solid #7a7a8c;
@@ -78,7 +70,6 @@ body {
 .journal-actions {
   margin-top: 20px;
   text-align: right;
-
 }
 
 .save-btn:hover {
@@ -105,4 +96,50 @@ body {
   border-radius: 8px;
   margin-bottom: 15px;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+/* Extracted and modified styles from inline CSS */
+.error-message {
+  color: #b71c1c;
+  background-color: #ffebee;
+  padding: 10px;
+  border-radius: 5px;
+  margin-bottom: 20px;
+}
+
+.entries-section h3 {
+  color: #2d2d2d;
+  margin-top: 40px;
+  margin-bottom: 20px;
+  font-size: 28px;
+}
+
+.entry-card {
+  background-color: #f4f0fa;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 15px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.entry-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 20px;
+  color: #7c3aed;
+  margin-bottom: 10px;
+}
+
+.delete-entry-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding-top: 10px;
+  padding-left: 10px;
+  color: #b71c1c;
+}
+
+.entry-content {
+  color: #2d2d2d;
+  font-size: 18px;
 }

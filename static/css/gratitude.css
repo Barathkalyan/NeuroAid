@@ -12,11 +12,13 @@
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
             margin-bottom: 30px;
         }
-        .gratitude-form h3 {
-            color: #000000;
-            margin-bottom: 15px;
-            font-size: 25px;
+        .gratitude-form h3, .gratitude-form label, .streak-counter p, .timeline-entry .entry-content p {
+        color: var(--text-primary);
         }
+        .timeline-entry .date {
+        color: var(--primary);
+        }
+        
         .gratitude-form label {
             display: block;
             color: #363333;
