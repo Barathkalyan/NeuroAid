@@ -13,8 +13,6 @@ from io import BytesIO
 import base64
 import os
 import random
-from datetime import datetime
-from zoneinfo import ZoneInfo
 
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'your-secret-key')
@@ -26,7 +24,7 @@ logger = logging.getLogger(__name__)
 # Supabase configuration
 SUPABASE_URL = os.getenv('SUPABASE_URL', 'https://kkzymljvdzbydqugbwuw.supabase.co')
 SUPABASE_ANON_KEY = os.getenv('SUPABASE_ANON_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtrenltbGp2ZHpieWRxdWdid3V3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ5OTcyMzgsImV4cCI6MjA2MDU3MzIzOH0.d6Xb4PrfYlcilkLOGWbPIG2WZ2c2rocZZEKCojwWfgs')
-SUPABASE_SERVICE_KEY = os.getenv('SUPABASE_SERVICE_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtrenltbGp2ZHpieWRxdWdid3V3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0NDk5NzIzOCwiZXhwIjoyMDYwNTczMjM4fQ.yuRT1q-FigehZoeFccdP_zk4m5sgHulpbg_us1IgpRw')  # Replace with actual service role key
+SUPABASE_SERVICE_KEY = os.getenv('SUPABASE_SERVICE_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtrenltbGp2ZHpieWRxdWdid3V3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0NDk5NzIzOCwiZXhwIjoyMDYwNTczMjM4fQ.yuRT1q-FigehZoeFccdP_zk4m5sgHulpbg_us1IgpRw')
 HF_API_KEY = os.getenv('HF_API_KEY', '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')
 
 # Initialize Supabase clients
@@ -138,7 +136,6 @@ import random
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-# Define a broader pool of suggestion templates categorized by emotion and activity type
 SUGGESTION_TEMPLATES = {
     'sadness': [
         "{tone} you’re feeling {emotion}. Try writing about a memory that brings you comfort.",
@@ -177,7 +174,6 @@ SUGGESTION_TEMPLATES = {
     ]
 }
 
-# Activity mappings based on user preferences
 ACTIVITY_MAPPINGS = {
     'meditation': ['a mindfulness meditation', 'a guided breathing session', 'a calming visualization'],
     'exercise': ['a quick workout', 'a short run', 'some yoga stretches'],
@@ -202,46 +198,35 @@ def generate_suggestion(emotions, mood, supabase, user_id):
     if not emotions:
         return ["Try writing more to help me understand your feelings."]
 
-    # Get user preferences
     user_prefs = get_user_preferences(supabase, user_id)
     preferred_activities = user_prefs.get('preferred_activities', [])
     primary_goal = user_prefs.get('primary_goal', 'general well-being')
 
-    # Get language preference for music/podcast suggestions
     language_prefs = supabase.table('user_preferences')\
         .select('language')\
         .eq('user_id', user_id)\
         .execute()
     language = language_prefs.data[0]['language'] if language_prefs.data else 'tamil'
 
-    # Determine time of day for contextual suggestions
     current_hour = datetime.now(ZoneInfo("Asia/Kolkata")).hour
     time_context = 'morning' if 5 <= current_hour < 12 else 'afternoon' if 12 <= current_hour < 17 else 'evening'
 
-    # Get journaling frequency and recent emotions
     journaling_freq = get_journaling_frequency(supabase, user_id)
     recent_emotions = get_recent_emotions(supabase, user_id)
 
-    # Select top emotions
     top_emotions = sorted(emotions, key=lambda x: x['score'], reverse=True)[:2]
     primary_emotion = top_emotions[0]['label']
     primary_score = top_emotions[0]['score']
     secondary_emotion = top_emotions[1]['label'] if len(top_emotions) > 1 else None
 
-    # Determine tone based on mood
     tone = "I’m sorry to hear" if mood <= 2 else "I can see" if mood == 3 else "It’s great to hear"
 
-    # Initialize suggestions list
     suggestions = []
-
-    # Select suggestion templates based on primary emotion
     available_templates = SUGGESTION_TEMPLATES.get(primary_emotion, SUGGESTION_TEMPLATES['neutral'])
 
-    # Personalize with user preferences
     activity = random.choice(preferred_activities) if preferred_activities else 'writing'
     activity_suggestion = random.choice(ACTIVITY_MAPPINGS.get(activity, ['a relaxing activity']))
 
-    # Generate 2-3 suggestions
     for _ in range(2):
         template = random.choice(available_templates)
         suggestion = template.format(
@@ -253,7 +238,6 @@ def generate_suggestion(emotions, mood, supabase, user_id):
         if suggestion not in suggestions:
             suggestions.append(suggestion)
 
-    # Add a goal-oriented suggestion if primary_goal exists
     if primary_goal:
         goal_suggestions = {
             'stress management': f"Since your goal is {primary_goal.lower()}, try a {time_context} relaxation technique like deep breathing.",
@@ -265,13 +249,11 @@ def generate_suggestion(emotions, mood, supabase, user_id):
         if goal_suggestion not in suggestions:
             suggestions.append(goal_suggestion)
 
-    # Add journaling encouragement if frequency is low
     if journaling_freq < 3:
         freq_suggestion = f"Journaling helps with {primary_goal or 'self-reflection'}. Try writing daily this week!"
         if freq_suggestion not in suggestions:
             suggestions.append(freq_suggestion)
 
-    # Optional: Use Hugging Face for generative suggestions (if API is reliable)
     try:
         prompt = f"Generate a short, supportive suggestion for someone feeling {primary_emotion.lower()} with a goal of {primary_goal or 'well-being'}."
         generative_result = query_huggingface("distilgpt2", {"inputs": prompt, "max_length": 50})
@@ -282,7 +264,6 @@ def generate_suggestion(emotions, mood, supabase, user_id):
     except Exception as e:
         logger.warning(f"Generative AI suggestion failed: {str(e)}")
 
-    # Shuffle and limit to 3 suggestions
     random.shuffle(suggestions)
     return suggestions[:3]
 
@@ -311,7 +292,6 @@ def analyze_journal_entry(text, supabase, user_id):
         "confidence": confidence
     }
 
-
 def get_supabase(use_service_role=False):
     if use_service_role:
         if 'supabase_service' not in g:
@@ -321,17 +301,15 @@ def get_supabase(use_service_role=False):
         if 'supabase_anon' not in g:
             g.supabase_anon = supabase_anon
         return g.supabase_anon
-    
+
 def get_user_dropdown_data(supabase, user_id):
     try:
-        # Fetch email and created_date from users table
         user_data = supabase.table('users')\
             .select('email, created_date')\
             .eq('id', user_id)\
             .limit(1)\
             .execute()
         
-        # Fetch name from profiles table
         profile_data = supabase.table('profiles')\
             .select('name')\
             .eq('user_id', user_id)\
@@ -342,7 +320,6 @@ def get_user_dropdown_data(supabase, user_id):
         email = user_data.data[0]['email'] if user_data.data else 'Not found'
         created_date = user_data.data[0]['created_date'] if user_data.data and user_data.data[0]['created_date'] else '2025-01-01'
         
-        # Format created_date
         if created_date:
             if '.' in created_date:
                 created_date = created_date.split('.')[0] + '+00:00'
@@ -816,11 +793,9 @@ def login():
             error = 'Email and password are required.'
             return render_template('login.html', error=error), 400
         
-        # Normalize email to lowercase for the query
         email = email.strip().lower()
         logger.info(f"Attempting login for email: {email}")
         
-        # Use service role to bypass RLS for login
         supabase = get_supabase(use_service_role=True)
         try:
             user_response = supabase.table('users').select('id, email, password').eq('email', email).execute()
@@ -880,11 +855,9 @@ def signup():
             error = 'Passwords do not match!'
             return render_template('signup.html', error=error), 400
 
-        # Normalize email to lowercase during signup
         email = email.strip().lower()
         logger.info(f"Attempting signup for email: {email}")
 
-        # Use service role for signup to bypass RLS
         supabase = get_supabase(use_service_role=True)
         try:
             existing_user = supabase.table('users').select('id').eq('email', email).execute()
@@ -986,7 +959,6 @@ def index():
         suggestions = ["Unable to load suggestions. Try writing!"]
         recent_entries_data = []
 
-    # Fetch dropdown data
     dropdown_data = get_user_dropdown_data(supabase, user_id)
 
     return render_template('index.html', 
@@ -1124,13 +1096,12 @@ def gratitude():
     if session.get('two_factor_enabled') and not session.get('2fa_verified'):
         return redirect(url_for('verify_2fa'))
 
-    supabase = get_supabase(use_service_role=True)  # Use service role to bypass RLS
+    supabase = get_supabase(use_service_role=True)
     user_id = session['user']
     theme = session.get('theme', 'light')
     profile_info = {'profile_pic_url': None}
 
     try:
-        # Fetch theme from user_preferences for consistency
         preferences_data = supabase.table('user_preferences')\
             .select('theme')\
             .eq('user_id', user_id)\
@@ -1138,9 +1109,8 @@ def gratitude():
             .execute()
         if preferences_data.data:
             theme = preferences_data.data[0].get('theme', 'light')
-            session['theme'] = theme  # Update session for consistency
+            session['theme'] = theme
 
-        # Fetch profile data (for profile picture in dropdown)
         profile_data = supabase.table('profiles')\
             .select('profile_pic_url')\
             .eq('user_id', user_id)\
@@ -1159,9 +1129,7 @@ def gratitude():
 
     except Exception as e:
         logger.error(f"Error fetching data for gratitude route for user_id {user_id}: {str(e)}")
-        # Continue rendering with default values
 
-    # Fetch dropdown data (includes user_name, user_email, joined_date)
     dropdown_data = get_user_dropdown_data(supabase, user_id)
 
     return render_template('gratitude.html',
@@ -1290,7 +1258,6 @@ def profile():
                               completion_dasharray=0,
                               **get_user_dropdown_data(supabase, user_id))
 
-
 @app.route('/update_profile_field', methods=['POST'])
 def update_profile_field():
     if 'user' not in session:
@@ -1304,7 +1271,6 @@ def update_profile_field():
 
     try:
         if field == 'email':
-            # Update email in the users table
             response = supabase.table('users')\
                 .update({'email': value})\
                 .eq('id', user_id)\
@@ -1314,7 +1280,6 @@ def update_profile_field():
             else:
                 return jsonify({'success': False, 'error': 'Failed to update email'}), 500
         elif field in ['name', 'username']:
-            # Update name or username in the profiles table
             response = supabase.table('profiles')\
                 .update({field: value})\
                 .eq('user_id', user_id)\
@@ -1387,12 +1352,10 @@ def update_mental_health_goals():
         logger.error(f"Error updating mental health goals: {str(e)}")
         return jsonify({'error': 'Failed to update mental health goals'}), 500
 
-
-# Updated /settings route to use user_preferences table
 @app.route('/settings', methods=['GET', 'POST'])
 def settings():
     if 'user' not in session:
-        logger.info("User not logged in, redirecting to login.")
+        logger.info(f"User not logged in, redirecting to login at {datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%I:%M %p IST')}")
         return jsonify({'success': False, 'error': 'User not logged in'}), 401
 
     if session.get('two_factor_enabled') and not session.get('2fa_verified'):
@@ -1412,7 +1375,7 @@ def settings():
         # Fetch user data
         user_data = supabase.table('users').select('email').eq('id', user_id).limit(1).execute()
         if not user_data.data:
-            logger.error(f"No user found for user_id: {user_id}")
+            logger.error(f"No user found for user_id: {user_id} at {datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%I:%M %p IST')}")
             return jsonify({'success': False, 'error': 'User not found'}), 404
         email = user_data.data[0]['email']
 
@@ -1442,6 +1405,7 @@ def settings():
                 'notification_preference': 'email'
             }).execute()
 
+        current_time_ist = datetime.now(ZoneInfo("Asia/Kolkata")).strftime('%I:%M %p IST')
         if request.method == 'POST':
             try:
                 new_email = request.form.get('email', email).strip().lower()
@@ -1456,12 +1420,10 @@ def settings():
                 if not new_email:
                     return jsonify({'success': False, 'error': 'Email is required'}), 400
 
-                # Check if email already exists
                 existing_user = supabase.table('users').select('id').eq('email', new_email).neq('id', user_id).execute()
                 if existing_user.data:
                     return jsonify({'success': False, 'error': 'Email already exists'}), 400
 
-                # Validate password
                 if password and password != confirm_password:
                     return jsonify({'success': False, 'error': 'Passwords do not match'}), 400
 
@@ -1485,11 +1447,11 @@ def settings():
                 session['theme'] = theme
                 session['two_factor_enabled'] = two_factor_enabled
 
-                logger.info(f"Settings updated for user_id: {user_id}")
+                logger.info(f"Settings updated for user_id: {user_id} at {current_time_ist}")
                 return jsonify({'success': True, 'message': 'Settings updated successfully'})
 
             except Exception as e:
-                logger.error(f"Error updating settings for user_id: {user_id}: {str(e)}")
+                logger.error(f"Error updating settings for user_id: {user_id} at {current_time_ist}: {str(e)}")
                 return jsonify({'success': False, 'error': str(e)}), 500
 
         # GET request: Render template
@@ -1503,28 +1465,12 @@ def settings():
                               notification_preference=profile_info['notification_preference'],
                               error=None,
                               success=None,
+                              current_time=current_time_ist,
                               **dropdown_data)
 
     except Exception as e:
-        logger.error(f"Error in settings: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-        # Fetch dropdown data
+        logger.error(f"Error in settings for user_id: {user_id} at {datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%I:%M %p IST')}: {str(e)}")
         dropdown_data = get_user_dropdown_data(supabase, user_id)
-
-        # GET request or POST with error/success: Render the settings page
-        return render_template('settings.html',
-                              email=email,
-                              profile_data=profile_info,
-                              two_factor_enabled=profile_info['two_factor_enabled'],
-                              theme=profile_info['theme'],
-                              reminder_time=profile_info['reminder_time'],
-                              notification_preference=profile_info['notification_preference'],
-                              error=error,
-                              success=success,
-                              **dropdown_data)
-
-    except Exception as e:
-        logger.error(f"Error in settings: {str(e)}")
         return render_template('settings.html',
                               email='Not found',
                               profile_data=profile_info,
@@ -1534,40 +1480,27 @@ def settings():
                               notification_preference='email',
                               error='An error occurred while fetching settings',
                               success=None,
-                              **get_user_dropdown_data(supabase, user_id))
+                              current_time=datetime.now(ZoneInfo("Asia/Kolkata")).strftime('%I:%M %p IST'),
+                              **dropdown_data)
 
 # Updated /export_data route to include user_preferences
 @app.route('/export_data', methods=['GET'])
 def export_data():
     if 'user' not in session:
-        logger.info("User not logged in, redirecting to login.")
+        logger.info(f"User not logged in, redirecting to login at {datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%I:%M %p IST')}")
         return jsonify({'success': False, 'error': 'User not logged in'}), 401
 
     supabase = get_supabase(use_service_role=True)
     user_id = session['user']
 
     try:
-        user_data = supabase.table('users')\
-            .select('email')\
-            .eq('id', user_id)\
-            .limit(1)\
-            .execute()
-
+        user_data = supabase.table('users').select('email').eq('id', user_id).limit(1).execute()
         if not user_data.data:
-            logger.error(f"No user found for user_id: {user_id}")
+            logger.error(f"No user found for user_id: {user_id} at {datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%I:%M %p IST')}")
             return jsonify({'success': False, 'error': 'User not found'}), 404
 
-        profile_data = supabase.table('profiles')\
-            .select('name, username, profile_pic_url, age, gender, location, preferred_language, primary_goal, engagement_frequency, preferred_activities, created_at, updated_at')\
-            .eq('user_id', user_id)\
-            .limit(1)\
-            .execute()
-
-        preferences_data = supabase.table('user_preferences')\
-            .select('language, theme, two_factor_enabled, reminder_time, notification_preference')\
-            .eq('user_id', user_id)\
-            .limit(1)\
-            .execute()
+        profile_data = supabase.table('profiles').select('name, username, profile_pic_url, age, gender, location, preferred_language, primary_goal, engagement_frequency, preferred_activities, created_at, updated_at').eq('user_id', user_id).limit(1).execute()
+        preferences_data = supabase.table('user_preferences').select('language, theme, two_factor_enabled, reminder_time, notification_preference').eq('user_id', user_id).limit(1).execute()
 
         export_data = {
             'user': {
@@ -1578,24 +1511,25 @@ def export_data():
             'preferences': preferences_data.data[0] if preferences_data.data else {}
         }
 
-        logger.info(f"Data exported for user_id: {user_id}")
+        logger.info(f"Data exported for user_id: {user_id} at {datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%I:%M %p IST')}")
         return jsonify({'success': True, 'data': export_data})
 
     except Exception as e:
-        logger.error(f"Error exporting data for user_id: {user_id}: {str(e)}")
+        logger.error(f"Error exporting data for user_id: {user_id} at {datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%I:%M %p IST')}: {str(e)}")
         return jsonify({'success': False, 'error': 'Failed to export data'}), 500
 
 # Updated /delete_account route to also delete user_preferences
 @app.route('/delete_account', methods=['POST'])
 def delete_account():
     if 'user' not in session:
-        logger.info("User not logged in, redirecting to login.")
+        logger.info(f"User not logged in, redirecting to login at {datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%I:%M %p IST')}")
         return jsonify({'success': False, 'error': 'User not logged in'}), 401
 
     supabase = get_supabase(use_service_role=True)
     user_id = session['user']
 
     try:
+        # Delete all related data
         supabase.table('journal_entries').delete().eq('user_id', user_id).execute()
         supabase.table('gratitude_entries').delete().eq('user_id', user_id).execute()
         supabase.table('user_preferences').delete().eq('user_id', user_id).execute()
@@ -1603,24 +1537,25 @@ def delete_account():
         supabase.table('users').delete().eq('id', user_id).execute()
 
         session.clear()
-        logger.info(f"Account deleted for user_id: {user_id}")
+        logger.info(f"Account deleted for user_id: {user_id} at {datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%I:%M %p IST')}")
         return jsonify({'success': True, 'message': 'Account deleted successfully'})
 
     except Exception as e:
-        logger.error(f"Error deleting account for user_id: {user_id}: {str(e)}")
+        logger.error(f"Error deleting account for user_id: {user_id} at {datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%I:%M %p IST')}: {str(e)}")
         return jsonify({'success': False, 'error': 'Failed to delete account'}), 500
 
 @app.route('/logout')
 def logout():
     if 'user' in session:
         user_email = session.get('user_email', 'Unknown')
+        logout_time = datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%I:%M %p IST on %B %d, %Y')
         session.pop('user', None)
         session.pop('user_email', None)
         session.pop('last_activity', None)
         session.pop('theme', None)
         session.pop('2fa_verified', None)
         session.pop('two_factor_enabled', None)
-        logger.info(f"User {user_email} logged out.")
+        logger.info(f"User {user_email} logged out at {logout_time}")
     return redirect(url_for('login'))
 
 if __name__ == '__main__':
