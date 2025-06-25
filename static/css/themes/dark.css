@@ -1,88 +1,126 @@
+/* Dark Theme Styles for NeuroAid */
 :root {
-  --primary: #a78bfa;
-  --secondary: #2d3748;
-  --accent: #b794f4;
-  --glass-bg: rgba(45, 55, 72, 0.8);
-  --glass-border: rgba(100, 100, 100, 0.5);
-  --shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-  --header-bg: linear-gradient(90deg, #4c1d95 0%, #7c3aed 100%);
-  --text-primary: #ffffff; /* Bright white for main text */
-  --text-secondary: #d1d5db; /* Light gray for secondary text */
-  --background: #1a202c;
+  --background-color: #1f2937;
+  --text-color: #f9fafb;
+  --card-background: #374151;
+  --card-border: #4b5563;
+  --button-background: #7c3aed;
+  --button-text: #ffffff;
+  --button-hover: #6d28d9;
+  --link-color: #a78bfa;
+  --sidebar-background: #111827;
+  --sidebar-text: #f9fafb;
+  --header-background: #111827;
+  --footer-text: #9ca3af;
+  --dropdown-background: #374151;
+  --dropdown-text: #f9fafb;
+  --entry-meta: #9ca3af;
+  --entry-snippet: #d1d5db;
+}
+
+body {
+  background-color: var(--background-color);
+  color: var(--text-color);
+  font-family: 'Inter', sans-serif;
 }
 
 .sidebar {
-  background: var(--glass-bg);
-  border-right: 1px solid var(--glass-border);
+  background-color: var(--sidebar-background);
+  color: var(--sidebar-text);
+  border-right: 1px solid var(--card-border);
+}
+
+.sidebar .logo h1 {
+  color: var(--sidebar-text);
+}
+
+.sidebar .logo span {
+  color: var(--link-color);
 }
 
 .sidebar nav a {
-  color: var(--text-primary);
+  color: var(--sidebar-text);
 }
 
 .sidebar nav a:hover,
 .sidebar nav a.active {
-  background: var(--primary);
-  color: #fff;
+  background-color: #1f2937;
+  color: var(--link-color);
 }
 
-.logo h1,
-.logo h1 span {
-  color: var(--text-primary);
+.main-content {
+  background-color: var(--background-color);
 }
 
-/* Input fields for better visibility */
-input, textarea {
-  background: #2d3748; /* Darker than content background */
-  color: var(--text-primary);
-  border: 1px solid var(--glass-border);
-  border-radius: 5px;
-  padding: 8px;
+header {
+  background-color: var(--header-background);
+  border-bottom: 1px solid var(--card-border);
 }
 
-/* Content area cards */
-.content-card {
-  background: #1f2937; /* Slightly lighter than main background */
-  color: var(--text-primary);
-  border-radius: 10px;
-  padding: 15px;
+.welcome-text,
+.quote-text {
+  color: var(--text-color);
 }
 
-/* Buttons */
-button, .btn {
-  background: var(--primary);
-  color: #ffffff;
-  border: none;
-  border-radius: 5px;
-  padding: 8px 16px;
-  cursor: pointer;
+.profile-dropdown .profile {
+  color: var(--text-color);
 }
 
-button:hover, .btn:hover {
-  background: var(--accent);
+.dropdown-content {
+  background-color: var(--dropdown-background);
+  color: var(--dropdown-text);
+  border: 1px solid var(--card-border);
 }
 
-/* Placeholder text */
-input::placeholder, textarea::placeholder {
-  color: var(--text-secondary);
+.dropdown-content a,
+.dropdown-content .user-info p {
+  color: var(--dropdown-text);
 }
 
-/* Specific section headers */
-h1, h2, h3 {
-  color: var(--text-primary);
+.dropdown-content a:hover {
+  background-color: #4b5563;
 }
 
-/* Ensure all text is readable */
-p, label, span {
-  color: var(--text-primary);
+.suggestions-card,
+.recent-reflections,
+.welcome-message {
+  background-color: var(--card-background);
+  border: 1px solid var(--card-border);
+  color: var(--text-color);
 }
 
-/* Tabs or sub-navigation */
-.tab {
-  color: var(--text-secondary);
+.suggestions-card h3,
+.recent-reflections h3,
+.welcome-message h2 {
+  color: var(--text-color);
 }
 
-.tab.active {
-  color: var(--text-primary);
-  border-bottom: 2px solid var(--primary);
+.suggestions-card ul li,
+.recent-reflections .entry-snippet {
+  color: var(--entry-snippet);
+}
+
+.recent-reflections .entry-meta {
+  color: var(--entry-meta);
+}
+
+.neuroaid-btn {
+  background-color: var(--button-background);
+  color: var(--button-text);
+}
+
+.neuroaid-btn:hover {
+  background-color: var(--button-hover);
+}
+
+a {
+  color: var(--link-color);
+}
+
+a:hover {
+  color: var(--button-hover);
+}
+
+footer {
+  color: var(--footer-text);
 }

@@ -1,12 +1,126 @@
+/* Light Theme Styles for NeuroAid */
 :root {
-  --primary: #7c3aed;
-  --secondary: #f9faff;
-  --accent: #d4bfff;
-  --glass-bg: rgba(255, 255, 255, 0.9);
-  --glass-border: rgba(200, 200, 200, 0.3);
-  --shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
-  --header-bg: linear-gradient(90deg, #a78bfa 0%, #c084fc 100%);
-  --text-primary: #1f2937;
-  --text-secondary: #6b7280;
-  --background: #f3f4f6;
+  --background-color: #f3f4f6;
+  --text-color: #2d2d2d;
+  --card-background: #ffffff;
+  --card-border: #e5e7eb;
+  --button-background: #7c3aed;
+  --button-text: #ffffff;
+  --button-hover: #6d28d9;
+  --link-color: #7c3aed;
+  --sidebar-background: #ffffff;
+  --sidebar-text: #2d2d2d;
+  --header-background: #ffffff;
+  --footer-text: #6b7280;
+  --dropdown-background: #ffffff;
+  --dropdown-text: #2d2d2d;
+  --entry-meta: #6b7280;
+  --entry-snippet: #374151;
+}
+
+body {
+  background-color: var(--background-color);
+  color: var(--text-color);
+  font-family: 'Inter', sans-serif;
+}
+
+.sidebar {
+  background-color: var(--sidebar-background);
+  color: var(--sidebar-text);
+  border-right: 1px solid var(--card-border);
+}
+
+.sidebar .logo h1 {
+  color: var(--sidebar-text);
+}
+
+.sidebar .logo span {
+  color: var(--link-color);
+}
+
+.sidebar nav a {
+  color: var(--sidebar-text);
+}
+
+.sidebar nav a:hover,
+.sidebar nav a.active {
+  background-color: #f3f4f6;
+  color: var(--link-color);
+}
+
+.main-content {
+  background-color: var(--background-color);
+}
+
+header {
+  background-color: var(--header-background);
+  border-bottom: 1px solid var(--card-border);
+}
+
+.welcome-text,
+.quote-text {
+  color: var(--text-color);
+}
+
+.profile-dropdown .profile {
+  color: var(--text-color);
+}
+
+.dropdown-content {
+  background-color: var(--dropdown-background);
+  color: var(--dropdown-text);
+  border: 1px solid var(--card-border);
+}
+
+.dropdown-content a,
+.dropdown-content .user-info p {
+  color: var(--dropdown-text);
+}
+
+.dropdown-content a:hover {
+  background-color: #f3f4f6;
+}
+
+.suggestions-card,
+.recent-reflections,
+.welcome-message {
+  background-color: var(--card-background);
+  border: 1px solid var(--card-border);
+  color: var(--text-color);
+}
+
+.suggestions-card h3,
+.recent-reflections h3,
+.welcome-message h2 {
+  color: var(--text-color);
+}
+
+.suggestions-card ul li,
+.recent-reflections .entry-snippet {
+  color: var(--entry-snippet);
+}
+
+.recent-reflections .entry-meta {
+  color: var(--entry-meta);
+}
+
+.neuroaid-btn {
+  background-color: var(--button-background);
+  color: var(--button-text);
+}
+
+.neuroaid-btn:hover {
+  background-color: var(--button-hover);
+}
+
+a {
+  color: var(--link-color);
+}
+
+a:hover {
+  color: var(--button-hover);
+}
+
+footer {
+  color: var(--footer-text);
 }
