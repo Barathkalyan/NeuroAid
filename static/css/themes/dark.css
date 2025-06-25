@@ -1,27 +1,32 @@
-/* Dark Theme Styles for NeuroAid */
+/* Dark Theme Styles for NeuroAid - Enhanced for Visibility and Appeal */
 :root {
-  --background-color: #1f2937;
-  --text-color: #f9fafb;
-  --card-background: #374151;
-  --card-border: #4b5563;
-  --button-background: #7c3aed;
-  --button-text: #ffffff;
-  --button-hover: #6d28d9;
-  --link-color: #a78bfa;
-  --sidebar-background: #111827;
-  --sidebar-text: #f9fafb;
-  --header-background: #111827;
-  --footer-text: #9ca3af;
-  --dropdown-background: #374151;
-  --dropdown-text: #f9fafb;
-  --entry-meta: #9ca3af;
-  --entry-snippet: #d1d5db;
+  --background-color: #1a202c; /* Slightly lighter slate for better depth */
+  --text-color: #e5e7eb; /* Softer white for better readability */
+  --card-background: #2d3748; /* Lighter gray for cards */
+  --card-border: #4a5568; /* Subtle border color */
+  --button-background: #7c3aed; /* Purple base */
+  --button-text: #ffffff; /* White text */
+  --button-hover: #6b21a8; /* Darker purple hover */
+  --link-color: #a78bfa; /* Lavender link */
+  --sidebar-background: #1a202c; /* Matches background for seamless integration */
+  --sidebar-text: #e5e7eb; /* Consistent with text-color */
+  --header-background: #818ea5; /* Matches card background */
+  --footer-text: #a0aec0; /* Lighter gray for footer */
+  --dropdown-background: #2d3748; /* Consistent with cards */
+  --dropdown-text: #e5e7eb; /* Readable dropdown text */
+  --entry-meta: #a0aec0; /* Lighter meta text */
+  --entry-snippet: #cbd5e0; /* Softer snippet text */
+  --input-background: #4a5568; /* Dark input background */
+  --input-text: #e5e7eb; /* Readable input text */
+  --shadow-light: 0 4px 6px rgba(0, 0, 0, 0.1); /* Subtle shadow */
+  --shadow-hover: 0 10px 15px rgba(0, 0, 0, 0.2); /* Enhanced hover shadow */
 }
 
 body {
   background-color: var(--background-color);
   color: var(--text-color);
   font-family: 'Inter', sans-serif;
+  transition: background-color 0.3s, color 0.3s; /* Smooth theme transition */
 }
 
 .sidebar,
@@ -31,90 +36,217 @@ header,
 .suggestions-card,
 .recent-reflections,
 .quick-actions {
-  background-color: var(--card-background) !important;
+  background-color: var(--card-background);
+  border-radius: 8px; /* Rounded corners for modern look */
+  box-shadow: var(--shadow-light); /* Subtle elevation */
+}
+
+.welcome-message p{
+  color: #59db0e;
 }
 
 .sidebar {
   color: var(--sidebar-text);
   border-right: 1px solid var(--card-border);
+  transition: background-color 0.3s;
 }
 
 .sidebar .logo h1 {
   color: var(--sidebar-text);
+  font-weight: 700;
 }
 
 .sidebar .logo span {
   color: var(--link-color);
+  font-weight: 600;
+}
+
+.home-section h2{
+  color: #ffffff ;
 }
 
 .sidebar nav a {
   color: var(--sidebar-text);
+  padding: 10px 15px;
+  border-radius: 4px;
+  transition: background-color 0.2s, color 0.2s;
 }
 
 .sidebar nav a:hover,
 .sidebar nav a.active {
-  background-color: #1f2937;
+  background-color: #4a5568; /* Lighter hover background */
   color: var(--link-color);
+  box-shadow: var(--shadow-hover); /* Enhanced hover effect */
 }
 
 header {
   border-bottom: 1px solid var(--card-border);
+  padding: 10px 20px;
+  background: linear-gradient(90deg, #2d3748, #4a5568); /* Gradient for depth */
 }
 
 .welcome-text,
 .quote-text,
 .suggestions-card h3,
-.recent-reflections h3,
-.welcome-message h2 {
+.recent-reflections h3{
   color: var(--text-color);
+  font-weight: 600;
 }
 
 .profile-dropdown .profile {
   color: var(--text-color);
+  padding: 8px 12px;
+  border-radius: 4px;
 }
 
 .dropdown-content {
   background-color: var(--dropdown-background);
   color: var(--dropdown-text);
   border: 1px solid var(--card-border);
+  border-radius: 6px;
+  box-shadow: var(--shadow-light);
 }
 
 .dropdown-content a,
 .dropdown-content .user-info p {
   color: var(--dropdown-text);
+  padding: 8px 12px;
+  transition: background-color 0.2s;
 }
 
 .dropdown-content a:hover {
-  background-color: #4b5563;
+  background-color: #4a5568;
+  color: var(--link-color);
 }
 
 .suggestions-card ul li,
 .recent-reflections .entry-snippet {
   color: var(--entry-snippet);
+  line-height: 1.6;
 }
 
 .recent-reflections .entry-meta {
   color: var(--entry-meta);
+  font-size: 0.875rem;
 }
 
 .neuroaid-btn {
   background-color: var(--button-background);
-  color: var(--button-text);
+  color:#4ecca3;   
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s, box-shadow 0.2s;
 }
 
 .neuroaid-btn:hover {
   background-color: var(--button-hover);
+  color: #4ecca3 ;
+  box-shadow: var(--shadow-hover);
 }
 
 a {
   color: var(--link-color);
+  text-decoration: none;
+  transition: color 0.2s;
 }
 
 a:hover {
   color: var(--button-hover);
+  text-decoration: underline;
 }
 
 footer {
   color: var(--footer-text);
   background-color: var(--card-background);
+  padding: 10px 20px;
+  border-top: 1px solid var(--card-border);
+  border-radius: 8px 8px 0 0;
+}
+
+/* Additional Styles for Invisible Elements */
+input,
+textarea,
+select {
+  background-color: var(--input-background);
+  color: var(--input-text);
+  border: 1px solid var(--card-border);
+  border-radius: 4px;
+  padding: 8px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: var(--button-background);
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.2); /* Purple glow */
+  outline: none;
+}
+
+button:not(.neuroaid-btn) {
+  background-color: var(--card-background);
+  color: var(--text-color);
+  border: 1px solid var(--card-border);
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s;
+}
+
+button:not(.neuroaid-btn):hover {
+  background-color: #4a5568;
+  border-color: var(--button-hover);
+}
+
+.modal {
+  background-color: var(--card-background);
+  color: var(--text-color);
+  border-radius: 8px;
+  box-shadow: var(--shadow-light);
+  padding: 20px;
+}
+
+.modal-overlay {
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+/* progress page */
+
+.stats-section h2{
+  color: #fff;
+}
+
+.stats-section h3{
+  color:#59db0e;
+}
+
+.stat-box{
+  background-color:grey;
+}
+
+#streak-value, #entries-count, #mood{
+  color:#fff;
+}
+
+.chart-section h2{
+  color:#fff;
+}
+
+.chart-card {
+  background: var(--entry-meta);
+  border-radius: 16px;
+  padding: 24px;
+  border: 1px solid black;
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  width: 100%; /* Ensure chart takes full width */
+  height:600px;
+}
+
+.chart-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 10px 12px 40px rgba(0, 0, 0, 0.1);
 }
