@@ -24,8 +24,17 @@ body {
   font-family: 'Inter', sans-serif;
 }
 
+.sidebar,
+.main-content,
+header,
+.welcome-message,
+.suggestions-card,
+.recent-reflections,
+.quick-actions {
+  background-color: var(--card-background) !important;
+}
+
 .sidebar {
-  background-color: var(--sidebar-background);
   color: var(--sidebar-text);
   border-right: 1px solid var(--card-border);
 }
@@ -48,17 +57,15 @@ body {
   color: var(--link-color);
 }
 
-.main-content {
-  background-color: var(--background-color);
-}
-
 header {
-  background-color: var(--header-background);
   border-bottom: 1px solid var(--card-border);
 }
 
 .welcome-text,
-.quote-text {
+.quote-text,
+.suggestions-card h3,
+.recent-reflections h3,
+.welcome-message h2 {
   color: var(--text-color);
 }
 
@@ -79,20 +86,6 @@ header {
 
 .dropdown-content a:hover {
   background-color: #4b5563;
-}
-
-.suggestions-card,
-.recent-reflections,
-.welcome-message {
-  background-color: var(--card-background);
-  border: 1px solid var(--card-border);
-  color: var(--text-color);
-}
-
-.suggestions-card h3,
-.recent-reflections h3,
-.welcome-message h2 {
-  color: var(--text-color);
 }
 
 .suggestions-card ul li,
@@ -123,4 +116,5 @@ a:hover {
 
 footer {
   color: var(--footer-text);
+  background-color: var(--card-background);
 }
