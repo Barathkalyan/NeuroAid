@@ -48,7 +48,7 @@
       <a href="{{ url_for('progress') }}"><i class="ri-bar-chart-2-line"></i> Progress</a>
       <a href="{{ url_for('vibe') }}"><i class="ri-music-2-line"></i> Vibe</a>
       <a href="{{ url_for('gratitude') }}"><i class="ri-heart-line"></i> Gratitude</a>
-      <a href="{{ url_for('settings')}}"><i class="ri-settings-3-line"></i> Settings</a>
+      <a href="{{ url_for('settings') }}"><i class="ri-settings-3-line"></i> Settings</a>
       <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
       <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
     </nav>
@@ -58,18 +58,18 @@
     <main class="main-content">
       <header>
         <div class="welcome-container">
-          <div class="welcome-text">Welcome to NeuroAid, {{ user_name }}</div>
+          <div class="welcome-text">Welcome to NeuroAid, {{ user_name | default('Unknown') }}</div>
           <div class="quote-text"></div>
         </div>
         <div class="profile-dropdown">
           <div class="profile">
             <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile" />
-            <span>{{ session.get('user_email', 'User').split('@')[0] }}</span>
+            <span>{{ user_name | default('Unknown') }}</span>
             <i class="ri-arrow-down-s-line"></i>
           </div>
-          <div class="dropdown-content">
+          <div class="dropdown-content" style="z-index: 1000;">
             <div class="user-info">
-              <p><i class="ri-user-line"></i> {{ user_name }}</p>
+              <p><i class="ri-user-line"></i> {{ user_name | default('Unknown') }}</p>
               <p><i class="ri-mail-line"></i> {{ user_email }}</p>
               <p><i class="ri-calendar-line"></i> Joined: {{ joined_date }}</p>
             </div>

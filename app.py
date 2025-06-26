@@ -316,7 +316,7 @@ def get_user_dropdown_data(supabase, user_id):
             .limit(1)\
             .execute()
         
-        user_name = profile_data.data[0]['name'] if profile_data.data and profile_data.data[0]['name'] else 'Unknown'
+        user_name = profile_data.data[0]['name'] if profile_data.data and profile_data.data[0]['name'] else None
         email = user_data.data[0]['email'] if user_data.data else 'Not found'
         created_date = user_data.data[0]['created_date'] if user_data.data and user_data.data[0]['created_date'] else '2025-01-01'
         
@@ -337,7 +337,7 @@ def get_user_dropdown_data(supabase, user_id):
     except Exception as e:
         logger.error(f"Error fetching dropdown data for user {user_id}: {str(e)}")
         return {
-            'user_name': 'Unknown',
+            'user_name': None,  # Return None to let template handle "Unknown"
             'user_email': 'Not found',
             'joined_date': 'January 01, 2025'
         }
@@ -1112,7 +1112,7 @@ def gratitude():
             session['theme'] = theme
 
         profile_data = supabase.table('profiles')\
-            .select('profile_pic_url')\
+            .select('profile_pic_url, name')\
             .eq('user_id', user_id)\
             .limit(1)\
             .execute()
@@ -1120,11 +1120,10 @@ def gratitude():
             profile_info['profile_pic_url'] = profile_data.data[0].get('profile_pic_url')
         else:
             logger.info(f"No profile found for user_id: {user_id}, creating a new profile")
-            default_name = (session.get('user_email', 'user') or 'user').split('@')[0]
             supabase.table('profiles').insert({
                 'user_id': user_id,
-                'name': default_name,
-                'username': f"@{default_name}"
+                'name': None,  # Set name to None instead of email's first word
+                'username': f"@{session.get('user_email', 'user').split('@')[0]}"  # Username can still use email's first word
             }).execute()
 
     except Exception as e:

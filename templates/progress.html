@@ -26,7 +26,7 @@
         <a href="{{ url_for('progress') }}" class="active"><i class="ri-bar-chart-2-line"></i> Progress</a>
         <a href="{{ url_for('vibe') }}"><i class="ri-music-2-line"></i> Vibe</a>
         <a href="{{ url_for('gratitude') }}"><i class="ri-heart-line"></i> Gratitude</a>
-        <a href="{{ url_for('settings')}}"><i class="ri-settings-3-line"></i> Settings</a>
+        <a href="{{ url_for('settings') }}"><i class="ri-settings-3-line"></i> Settings</a>
         <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
         <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
       </nav>
@@ -42,10 +42,10 @@
           <div class="profile-dropdown">
             <div class="profile">
               <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile" id="header-profile-pic" />
-              <span>{{ session.get('user_email', 'User').split('@')[0] }}</span>
+              <span>{{ user_name }}</span>
               <i class="ri-arrow-down-s-line"></i>
             </div>
-            <div class="dropdown-content">
+            <div class="dropdown-content" style="z-index: 1000;">
               <div class="user-info">
                 <p><i class="ri-user-line"></i> {{ user_name }}</p>
                 <p><i class="ri-mail-line"></i> {{ user_email }}</p>
@@ -79,7 +79,7 @@
               <i class="ri-emotion-happy-line"></i>
               <div>
                 <h3>Average Mood</h3>
-                <p><strong id= "mood">Neutral</strong></p>
+                <p><strong id="mood">Neutral</strong></p>
               </div>
             </div>
           </div>

@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/vibe.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/dropdown.css') }}" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/welcome.css') }}" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/welcome.css') }}" />
     <link id="theme-stylesheet" rel="stylesheet" href="{{ url_for('static', filename='css/themes/' + theme + '.css') }}">
 </head>
 <body>
@@ -36,25 +36,26 @@
             <main class="main-content" role="main">
                 <header class="main-header">
                     <div class="welcome-container">
-                    <div class="welcome-text">Welcome to NeuroAid, {{ user_name }}</div>
-                    <div class="quote-text"></div>
+                        <div class="welcome-text">Welcome to NeuroAid, {{ user_name }}</div>
+                        <div class="quote-text"></div>
                     </div>
-                <div class="profile-dropdown">
-                <div class="profile">
-                    <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile" />
-                    <span>{{ session.get('user_email', 'User').split('@')[0] }}</span>
-                    <i class="ri-arrow-down-s-line"></i>
-                    <div class="dropdown-content">
-                    <div class="user-info">
-                        <p><i class="ri-user-line"></i> {{ user_name }}</p>
-                        <p><i class="ri-mail-line"></i> {{ user_email }}</p>
-                        <p><i class="ri-calendar-line"></i> Joined: {{ joined_date }}</p>
+                    <div class="profile-dropdown">
+                        <div class="profile">
+                            <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile" />
+                            <span>{{ user_name }}</span>
+                            <i class="ri-arrow-down-s-line"></i>
+                        </div>
+                        <div class="dropdown-content" style="z-index: 1000;">
+                            <div class="user-info">
+                                <p><i class="ri-user-line"></i> {{ user_name }}</p>
+                                <p><i class="ri-mail-line"></i> {{ user_email }}</p>
+                                <p><i class="ri-calendar-line"></i> Joined: {{ joined_date }}</p>
+                            </div>
+                            <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
+                            <a href="{{ url_for('settings') }}"><i class="ri-settings-3-line"></i> Settings</a>
+                            <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
+                        </div>
                     </div>
-                    <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
-                    <a href="{{ url_for('settings') }}"><i class="ri-settings-3-line"></i> Settings</a>
-                    <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
-                    </div>
-          </div>
                 </header>
 
                 <section class="music-recommendations-section" aria-labelledby="music-recommendations-title">
