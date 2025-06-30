@@ -1,1762 +1,3521 @@
-# File: app.py
-```py
-from flask import Flask, render_template, request, redirect, url_for, session, g, jsonify
-from supabase import create_client, Client
-import bcrypt
-import logging
-import requests
-from datetime import datetime, timedelta
-import time
-from zoneinfo import ZoneInfo
-import uuid
-import pyotp
-import qrcode
-from io import BytesIO
-import base64
-import os
-import random
-
-app = Flask(__name__)
-app.secret_key = os.getenv('FLASK_SECRET_KEY', 'your-secret-key')
-app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-# Supabase configuration
-SUPABASE_URL = os.getenv('SUPABASE_URL', 'https://kkzymljvdzbydqugbwuw.supabase.co')
-SUPABASE_ANON_KEY = os.getenv('SUPABASE_ANON_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtrenltbGp2ZHpieWRxdWdid3V3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ5OTcyMzgsImV4cCI6MjA2MDU3MzIzOH0.d6Xb4PrfYlcilkLOGWbPIG2WZ2c2rocZZEKCojwWfgs')
-SUPABASE_SERVICE_KEY = os.getenv('SUPABASE_SERVICE_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtrenltbGp2ZHpieWRxdWdid3V3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0NDk5NzIzOCwiZXhwIjoyMDYwNTczMjM4fQ.yuRT1q-FigehZoeFccdP_zk4m5sgHulpbg_us1IgpRw')
-HF_API_KEY = os.getenv('HF_API_KEY', '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')
-
-# Initialize Supabase clients
-supabase_anon: Client = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
-supabase_service: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
-
-logger.info("Supabase clients initialized: anon_key and service_key")
-
-def query_huggingface(model: str, payload: dict, retries=3, backoff_factor=1):
-    headers = {"Authorization": f"Bearer {HF_API_KEY}"}
-    url = f"https://api-inference.huggingface.co/models/{model}"
-    for attempt in range(retries):
-        try:
-            response = requests.post(url, headers=headers, json=payload)
-            response.raise_for_status()
-            return response.json()
-        except requests.exceptions.HTTPError as e:
-            if response.status_code == 429:
-                wait_time = backoff_factor * (2 ** attempt)
-                logger.warning(f"Rate limit hit, retrying in {wait_time}s (attempt {attempt+1}/{retries})")
-                time.sleep(wait_time)
-                continue
-            logger.error(f"HTTPError calling model '{model}': {e}, Response: {response.text}")
-            return None
-        except Exception as e:
-            logger.error(f"Unexpected error calling model '{model}': {e}")
-            return None
-    logger.error(f"Failed to query model '{model}' after {retries} retries")
-    return None
-
-def simple_keyword_analysis(text):
-    text = text.lower()
-    emotion_keywords = {
-        'sadness': ['sad', 'unhappy', 'down', 'depressed', 'lonely', 'gloomy'],
-        'anger': ['angry', 'mad', 'frustrated', 'annoyed', 'irritated', 'furious'],
-        'joy': ['happy', 'joyful', 'great', 'amazing', 'excited', 'delighted'],
-        'anxiety': ['anxious', 'nervous', 'worried', 'scared', 'tense', 'afraid'],
-        'gratitude': ['grateful', 'thankful', 'appreciate', 'blessed'],
-        'hope': ['hopeful', 'optimistic', 'encouraged', 'inspired']
-    }
-
-    emotions = []
-    total_words = len(text.split())
-    for emotion, keywords in emotion_keywords.items():
-        count = sum(text.count(keyword) for keyword in keywords)
-        score = min(0.9, (count / max(total_words, 1)) * 0.8) if count > 0 else 0
-        if score > 0:
-            emotions.append({"label": emotion, "score": score})
-
-    if not emotions:
-        emotions.append({"label": "neutral", "score": 0.5})
-    return emotions
-
-def derive_mood_from_emotions(emotions):
-    if not emotions:
-        return 3, 0.5
-
-    positive_emotions = ['joy', 'love', 'gratitude', 'hope', 'pride', 'amusement', 'optimism']
-    negative_emotions = ['sadness', 'anger', 'fear', 'disgust', 'shame', 'frustration', 'anxiety']
-    neutral_emotions = ['neutral', 'confusion', 'surprise']
-
-    top_emotion = max(emotions, key=lambda x: x['score'])
-    emotion_label = top_emotion['label']
-    confidence = top_emotion['score']
-
-    if emotion_label in positive_emotions:
-        mood_score = 5 if confidence > 0.7 else 4
-    elif emotion_label in negative_emotions:
-        mood_score = 1 if confidence > 0.7 else 2
-    else:
-        mood_score = 3
-    return mood_score, confidence
-
-def get_recent_emotions(supabase, user_id, days=7):
-    start_date = (datetime.now(ZoneInfo("UTC")) - timedelta(days=days)).isoformat()
-    try:
-        query = supabase.table('journal_entries')\
-            .select('analysis->emotions')\
-            .eq('user_id', user_id)\
-            .gt('created_at', start_date)\
-            .limit(50)\
-            .execute()
-        all_emotions = []
-        for entry in query.data:
-            emotions = entry['emotions'] if 'emotions' in entry else []
-            all_emotions.extend([e['label'] for e in emotions if e['score'] > 0.3])
-        emotion_counts = {}
-        for emotion in all_emotions:
-            emotion_counts[emotion] = emotion_counts.get(emotion, 0) + 1
-        return emotion_counts
-    except Exception as e:
-        logger.error(f"Error fetching recent emotions: {str(e)}")
-        return {}
-
-def get_journaling_frequency(supabase, user_id, days=7):
-    start_date = (datetime.now(ZoneInfo("UTC")) - timedelta(days=days)).isoformat()
-    try:
-        entries = supabase.table('journal_entries')\
-            .select('created_at')\
-            .eq('user_id', user_id)\
-            .gt('created_at', start_date)\
-            .execute()
-        return len(entries.data)
-    except Exception as e:
-        logger.error(f"Error calculating journaling frequency: {str(e)}")
-        return 0
-
-import random
-from datetime import datetime
-from zoneinfo import ZoneInfo
-
-SUGGESTION_TEMPLATES = {
-    'sadness': [
-        "{tone} you’re feeling {emotion}. Try writing about a memory that brings you comfort.",
-        "{tone} you’re feeling {emotion}. Consider a short walk to clear your mind.",
-        "{tone} you’re feeling {emotion}. How about listening to some calming {language} music?",
-        "{tone} you’re feeling {emotion}. Reflect on something you’re grateful for today.",
-        "{tone} you’re feeling {emotion}. Try a breathing exercise: inhale for 4, hold for 4, exhale for 4."
-    ],
-    'anger': [
-        "{tone} you’re feeling {emotion}. Take a moment to jot down what’s frustrating you.",
-        "{tone} you’re feeling {emotion}. Try a quick physical activity like stretching or jumping jacks.",
-        "{tone} you’re feeling {emotion}. Listen to an energetic {language} playlist to channel your energy.",
-        "{tone} you’re feeling {emotion}. Write a letter to yourself about letting go of this feeling.",
-        "{tone} you’re feeling {emotion}. Try counting backwards from 10 to calm your mind."
-    ],
-    'anxiety': [
-        "{tone} you’re feeling {emotion}. List five things you can see around you to ground yourself.",
-        "{tone} you’re feeling {emotion}. Try a guided meditation in {language} for a few minutes.",
-        "{tone} you’re feeling {emotion}. Write about a safe place you can imagine.",
-        "{tone} you’re feeling {emotion}. Focus on slow, deep breaths for a minute.",
-        "{tone} you’re feeling {emotion}. Jot down one thing you can control today."
-    ],
-    'joy': [
-        "{tone} you’re feeling {emotion}! Celebrate by doing something you love, like {activity}.",
-        "{tone} you’re feeling {emotion}! Share a happy moment in your journal.",
-        "{tone} you’re feeling {emotion}! Listen to an upbeat {language} playlist to keep the vibe going.",
-        "{tone} you’re feeling {emotion}! Write about a goal you’re excited to pursue.",
-        "{tone} you’re feeling {emotion}! Do a quick sketch or doodle to express your happiness."
-    ],
-    'neutral': [
-        "{tone} you’re feeling balanced. Try exploring a new {activity} today.",
-        "{tone} your mood is steady. Write about something you’re curious about.",
-        "{tone} you’re feeling neutral. How about a short {language} podcast to spark inspiration?",
-        "{tone} your mood is calm. Reflect on a small win from this week.",
-        "{tone} you’re feeling neutral. Set a small intention for the rest of your day."
-    ]
+# File: static/css/base.css
+```css
+:root {
+  --primary: #7c3aed;
+  --secondary: #f9faff;
+  --accent: #d4bfff;
+  --glass-bg: rgba(255, 255, 255, 0.9);
+  --glass-border: rgba(200, 200, 200, 0.3);
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+  --text-primary: #1f2937;
+  --text-secondary: #6b7280;
+  --background: #f3f4f6;
+  --font-size-h1: 2.5rem;
+  --font-size-h2: 1.8rem;
+  --font-size-h3: 1.4rem;
+  --font-size-body: 1rem;
+  --font-size-small: 0.875rem;
+  --spacing-xs: 8px;
+  --spacing-sm: 16px;
+  --spacing-md: 24px;
+  --spacing-lg: 32px;
+  --container-max-width: 1200px;
+  --button-padding: 12px 24px;
+  --button-border-radius: 8px;
 }
 
-ACTIVITY_MAPPINGS = {
-    'meditation': ['a mindfulness meditation', 'a guided breathing session', 'a calming visualization'],
-    'exercise': ['a quick workout', 'a short run', 'some yoga stretches'],
-    'writing': ['writing a short story', 'journaling your thoughts', 'penning a poem'],
-    'music': ['listening to music', 'playing an instrument', 'singing along to a song'],
-    'reading': ['reading a favorite book', 'exploring a new article', 'diving into a novel']
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Inter', sans-serif;
 }
 
-def get_user_preferences(supabase, user_id):
-    try:
-        preferences = supabase.table('profiles')\
-            .select('preferred_activities, primary_goal')\
-            .eq('user_id', user_id)\
-            .limit(1)\
-            .execute()
-        return preferences.data[0] if preferences.data else {'preferred_activities': [], 'primary_goal': None}
-    except Exception as e:
-        logger.error(f"Error fetching user preferences: {str(e)}")
-        return {'preferred_activities': [], 'primary_goal': None}
-
-def generate_suggestion(emotions, mood, supabase, user_id):
-    if not emotions:
-        return ["Try writing more to help me understand your feelings."]
-
-    user_prefs = get_user_preferences(supabase, user_id)
-    preferred_activities = user_prefs.get('preferred_activities', [])
-    primary_goal = user_prefs.get('primary_goal', 'general well-being')
-
-    language_prefs = supabase.table('user_preferences')\
-        .select('language')\
-        .eq('user_id', user_id)\
-        .execute()
-    language = language_prefs.data[0]['language'] if language_prefs.data else 'tamil'
-
-    current_hour = datetime.now(ZoneInfo("Asia/Kolkata")).hour
-    time_context = 'morning' if 5 <= current_hour < 12 else 'afternoon' if 12 <= current_hour < 17 else 'evening'
-
-    journaling_freq = get_journaling_frequency(supabase, user_id)
-    recent_emotions = get_recent_emotions(supabase, user_id)
-
-    top_emotions = sorted(emotions, key=lambda x: x['score'], reverse=True)[:2]
-    primary_emotion = top_emotions[0]['label']
-    primary_score = top_emotions[0]['score']
-    secondary_emotion = top_emotions[1]['label'] if len(top_emotions) > 1 else None
-
-    tone = "I’m sorry to hear" if mood <= 2 else "I can see" if mood == 3 else "It’s great to hear"
-
-    suggestions = []
-    available_templates = SUGGESTION_TEMPLATES.get(primary_emotion, SUGGESTION_TEMPLATES['neutral'])
-
-    activity = random.choice(preferred_activities) if preferred_activities else 'writing'
-    activity_suggestion = random.choice(ACTIVITY_MAPPINGS.get(activity, ['a relaxing activity']))
-
-    for _ in range(2):
-        template = random.choice(available_templates)
-        suggestion = template.format(
-            tone=tone,
-            emotion=primary_emotion.lower(),
-            activity=activity_suggestion,
-            language=language
-        )
-        if suggestion not in suggestions:
-            suggestions.append(suggestion)
-
-    if primary_goal:
-        goal_suggestions = {
-            'stress management': f"Since your goal is {primary_goal.lower()}, try a {time_context} relaxation technique like deep breathing.",
-            'improved mood': f"To support your goal of {primary_goal.lower()}, do a small {activity_suggestion} to lift your spirits.",
-            'better sleep': f"With your goal of {primary_goal.lower()}, consider a {time_context} routine like journaling before bed.",
-            'self-discovery': f"Your goal is {primary_goal.lower()}. Reflect on a recent experience that taught you something new."
-        }
-        goal_suggestion = goal_suggestions.get(primary_goal.lower(), f"Your goal is {primary_goal.lower()}. Try {activity_suggestion} to stay aligned.")
-        if goal_suggestion not in suggestions:
-            suggestions.append(goal_suggestion)
-
-    if journaling_freq < 3:
-        freq_suggestion = f"Journaling helps with {primary_goal or 'self-reflection'}. Try writing daily this week!"
-        if freq_suggestion not in suggestions:
-            suggestions.append(freq_suggestion)
-
-    try:
-        prompt = f"Generate a short, supportive suggestion for someone feeling {primary_emotion.lower()} with a goal of {primary_goal or 'well-being'}."
-        generative_result = query_huggingface("distilgpt2", {"inputs": prompt, "max_length": 50})
-        if generative_result and isinstance(generative_result, list) and 'generated_text' in generative_result[0]:
-            gen_suggestion = generative_result[0]['generated_text'].strip()
-            if gen_suggestion and len(gen_suggestion) < 100 and gen_suggestion not in suggestions:
-                suggestions.append(gen_suggestion)
-    except Exception as e:
-        logger.warning(f"Generative AI suggestion failed: {str(e)}")
-
-    random.shuffle(suggestions)
-    return suggestions[:3]
-
-def analyze_journal_entry(text, supabase, user_id):
-    emotion_result = query_huggingface("SamLowe/roberta-base-go_emotions", {"inputs": text})
-
-    emotions = []
-    if emotion_result:
-        if isinstance(emotion_result, list) and len(emotion_result) > 0:
-            first = emotion_result[0]
-            if isinstance(first, list):
-                emotions = [{"label": e['label'], "score": e['score']} for e in first if isinstance(e, dict)]
-            elif isinstance(first, dict):
-                emotions = [{"label": first['label'], "score": first['score']}]
-    else:
-        logger.warning("Hugging Face API failed, using keyword analysis")
-        emotions = simple_keyword_analysis(text)
-
-    mood_score, confidence = derive_mood_from_emotions(emotions)
-    suggestions = generate_suggestion(emotions, mood_score, supabase, user_id)
-
-    return {
-        "mood": mood_score,
-        "emotions": emotions,
-        "suggestions": suggestions,
-        "confidence": confidence
-    }
-
-def get_supabase(use_service_role=False):
-    if use_service_role:
-        if 'supabase_service' not in g:
-            g.supabase_service = supabase_service
-        return g.supabase_service
-    else:
-        if 'supabase_anon' not in g:
-            g.supabase_anon = supabase_anon
-        return g.supabase_anon
-
-def get_user_dropdown_data(supabase, user_id):
-    try:
-        user_data = supabase.table('users')\
-            .select('email, created_date')\
-            .eq('id', user_id)\
-            .limit(1)\
-            .execute()
-        
-        profile_data = supabase.table('profiles')\
-            .select('name')\
-            .eq('user_id', user_id)\
-            .limit(1)\
-            .execute()
-        
-        user_name = profile_data.data[0]['name'] if profile_data.data and profile_data.data[0]['name'] else 'Unknown'
-        email = user_data.data[0]['email'] if user_data.data else 'Not found'
-        created_date = user_data.data[0]['created_date'] if user_data.data and user_data.data[0]['created_date'] else '2025-01-01'
-        
-        if created_date:
-            if '.' in created_date:
-                created_date = created_date.split('.')[0] + '+00:00'
-            else:
-                created_date = created_date.replace('Z', '+00:00')
-            formatted_date = datetime.fromisoformat(created_date).astimezone(ZoneInfo("Asia/Kolkata")).strftime('%B %d, %Y')
-        else:
-            formatted_date = 'January 01, 2025'
-        
-        return {
-            'user_name': user_name,
-            'user_email': email,
-            'joined_date': formatted_date
-        }
-    except Exception as e:
-        logger.error(f"Error fetching dropdown data for user {user_id}: {str(e)}")
-        return {
-            'user_name': 'Unknown',
-            'user_email': 'Not found',
-            'joined_date': 'January 01, 2025'
-        }
-
-@app.teardown_appcontext
-def teardown_supabase(exception):
-    if 'supabase_anon' in g:
-        g.pop('supabase_anon')
-    if 'supabase_service' in g:
-        g.pop('supabase_service')
-
-@app.before_request
-def make_session_permanent():
-    session.permanent = True
-    if 'user' in session and 'last_activity' in session:
-        last_activity = datetime.fromisoformat(session['last_activity'])
-        if (datetime.now(ZoneInfo("UTC")) - last_activity) > app.config['PERMANENT_SESSION_LIFETIME']:
-            session.pop('user', None)
-            session.pop('user_email', None)
-            session.pop('access_token', None)
-            session.pop('last_activity', None)
-            session.pop('two_factor_enabled', None)
-            session.pop('2fa_verified', None)
-            logger.info("Session expired, user logged out.")
-            return redirect(url_for('login'))
-    if 'user' in session:
-        session['last_activity'] = datetime.now(ZoneInfo("UTC")).isoformat()
-
-@app.route('/api/mood_data', methods=['GET'])
-def get_mood_data():
-    if 'user' not in session:
-        return jsonify({'error': 'Unauthorized'}), 401
-    supabase = get_supabase()
-    user_id = session['user']
-    start_date = (datetime.now(ZoneInfo("UTC")) - timedelta(days=7)).isoformat()
-    try:
-        entries = supabase.table('journal_entries')\
-            .select('analysis, created_at')\
-            .eq('user_id', user_id)\
-            .gt('created_at', start_date)\
-            .order('created_at', desc=False)\
-            .execute()
-        logger.info(f"Fetched {len(entries.data)} journal entries for user {user_id}")
-
-        end_date = datetime.now(ZoneInfo("UTC")).replace(hour=23, minute=59, second=59, microsecond=999999)
-        current_date = (end_date - timedelta(days=6)).replace(hour=0, minute=0, second=0, microsecond=0)
-        labels = []
-        mood_data = []
-        confidence_data = []
-        date_map = {}
-
-        for i in range(7):
-            date_str = current_date.strftime('%Y-%m-%d')
-            labels.append(current_date.strftime('%b %d'))
-            date_map[date_str] = {'moods': [], 'confidences': []}
-            current_date += timedelta(days=1)
-
-        for entry in entries.data:
-            created_at = entry['created_at']
-            if '.' in created_at:
-                created_at = created_at.split('.')[0] + '+00:00'
-            else:
-                created_at = created_at.replace('Z', '+00:00')
-            date = datetime.fromisoformat(created_at).replace(tzinfo=ZoneInfo("UTC"))
-            date_str = date.strftime('%Y-%m-%d')
-            if date_str in date_map:
-                mood = entry['analysis'].get('mood', 3) if entry.get('analysis') else 3
-                confidence = entry['analysis'].get('confidence', 0.0) if entry.get('analysis') else 0.0
-                date_map[date_str]['moods'].append(mood)
-                date_map[date_str]['confidences'].append(confidence)
-
-        for date_str in date_map:
-            moods = date_map[date_str]['moods']
-            confidences = date_map[date_str]['confidences']
-            avg_mood = sum(moods) / len(moods) if moods else 3
-            avg_confidence = sum(confidences) / len(confidences) if confidences else 0
-            mood_data.append(round(avg_mood, 2))
-            confidence_data.append(round(avg_confidence, 2))
-
-        all_entries = supabase.table('journal_entries')\
-            .select('created_at')\
-            .eq('user_id', user_id)\
-            .order('created_at', desc=True)\
-            .execute()
-
-        streak = 0
-        current_date = datetime.now(ZoneInfo("UTC")).replace(hour=0, minute=0, second=0, microsecond=0)
-        entry_dates = set()
-
-        for entry in all_entries.data:
-            created_at = entry['created_at']
-            if '.' in created_at:
-                created_at = created_at.split('.')[0] + '+00:00'
-            else:
-                created_at = created_at.replace('Z', '+00:00')
-            entry_date = datetime.fromisoformat(created_at).replace(tzinfo=ZoneInfo("UTC"))
-            entry_date = entry_date.replace(hour=0, minute=0, second=0, microsecond=0)
-            entry_dates.add(entry_date)
-
-        while current_date in entry_dates:
-            streak += 1
-            current_date -= timedelta(days=1)
-
-        logger.info(f"Calculated journal streak for user {user_id}: {streak} days")
-
-        return jsonify({
-            'labels': labels,
-            'data': mood_data,
-            'numEntries': len(entries.data),
-            'streak': streak,
-            'confidence': confidence_data
-        })
-    except Exception as e:
-        logger.error(f"Error fetching mood data: {str(e)}")
-        return jsonify({
-            'labels': ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-            'data': [3] * 7,
-            'numEntries': 0,
-            'streak': 0,
-            'confidence': [0] * 7
-        }), 200
-
-@app.route('/api/gratitude', methods=['GET', 'POST'])
-def handle_gratitude():
-    if 'user' not in session:
-        logger.warning("User not authenticated for /api/gratitude")
-        return jsonify({'error': 'Unauthorized'}), 401
-
-    supabase = get_supabase()
-    user_id = session['user']
-
-    if request.method == 'POST':
-        try:
-            data = request.get_json()
-            thing1 = data.get('thing1')
-            thing2 = data.get('thing2')
-            thing3 = data.get('thing3')
-
-            if not thing1 or not thing2 or not thing3:
-                return jsonify({'success': False, 'error': 'All fields are required'}), 400
-
-            gratitude_entry = {
-                'user_id': user_id,
-                'thing1': thing1,
-                'thing2': thing2,
-                'thing3': thing3,
-                'created_at': datetime.now(ZoneInfo("UTC")).isoformat()
-            }
-
-            supabase.table('gratitude_entries').insert(gratitude_entry).execute()
-            logger.info(f"Gratitude entry saved for user_id: {user_id}")
-            return jsonify({'success': True}), 200
-        except Exception as e:
-            logger.error(f"Error saving gratitude entry: {str(e)}")
-            return jsonify({'success': False, 'error': str(e)}), 500
-
-    else:
-        try:
-            entries = supabase.table('gratitude_entries')\
-                .select('thing1, thing2, thing3, created_at')\
-                .eq('user_id', user_id)\
-                .order('created_at', desc=True)\
-                .execute()
-
-            formatted_entries = []
-            for entry in entries.data:
-                created_at_str = entry['created_at']
-                if '.' in created_at_str:
-                    created_at_str = created_at_str.split('.')[0] + '+00:00'
-                else:
-                    created_at_str = created_at_str.replace('Z', '+00:00')
-                entry_date = datetime.fromisoformat(created_at_str).replace(tzinfo=ZoneInfo("UTC"))
-                entry_date_ist = entry_date.astimezone(ZoneInfo("Asia/Kolkata"))
-                formatted_entries.append({
-                    'thing1': entry['thing1'],
-                    'thing2': entry['thing2'],
-                    'thing3': entry['thing3'],
-                    'date': entry_date_ist.strftime('%B %d, %Y')
-                })
-
-            all_entries = supabase.table('gratitude_entries')\
-                .select('created_at')\
-                .eq('user_id', user_id)\
-                .order('created_at', desc=True)\
-                .execute()
-
-            streak = 0
-            current_date = datetime.now(ZoneInfo("UTC")).replace(hour=0, minute=0, second=0, microsecond=0)
-            entry_dates = set()
-
-            for entry in all_entries.data:
-                created_at = entry['created_at']
-                if '.' in created_at:
-                    created_at = created_at.split('.')[0] + '+00:00'
-                else:
-                    created_at = created_at.replace('Z', '+00:00')
-                entry_date = datetime.fromisoformat(created_at).replace(tzinfo=ZoneInfo("UTC"))
-                entry_date = entry_date.replace(hour=0, minute=0, second=0, microsecond=0)
-                entry_dates.add(entry_date)
-
-            while True:
-                if current_date in entry_dates:
-                    streak += 1
-                    current_date -= timedelta(days=1)
-                else:
-                    break
-
-            logger.info(f"Calculated gratitude streak for user {user_id}: {streak} days")
-
-            return jsonify({
-                'entries': formatted_entries,
-                'streak': streak
-            })
-        except Exception as e:
-            logger.error(f"Error fetching gratitude entries: {str(e)}")
-            return jsonify({'error': str(e)}), 500
-
-@app.route('/api/recommend_music', methods=['GET'])
-def recommend_music():
-    if 'user' not in session:
-        logger.warning("User not authenticated for /api/recommend_music")
-        return jsonify({'error': 'Unauthorized'}), 401
-
-    supabase = get_supabase()
-    user_id = session['user']
-    date = request.args.get('date')
-
-    try:
-        query = supabase.table('journal_entries')\
-            .select('analysis->mood')\
-            .eq('user_id', user_id)
-        
-        if date:
-            try:
-                start_date = datetime.fromisoformat(date.replace('Z', '+00:00')).replace(tzinfo=ZoneInfo("UTC"))
-                end_date = start_date.replace(hour=23, minute=59, second=59, microsecond=999999)
-                query = query.gte('created_at', start_date.isoformat()).lte('created_at', end_date.isoformat())
-            except ValueError:
-                logger.error(f"Invalid date format: {date}")
-                return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD'}), 400
-        
-        query = query.order('created_at', desc=True).limit(1)
-        entries = query.execute()
-        
-        mood = entries.data[0]['mood'] if entries.data else 3
-        
-        preferences = supabase.table('user_preferences')\
-            .select('language')\
-            .eq('user_id', user_id)\
-            .execute()
-        language = preferences.data[0]['language'] if preferences.data else 'tamil'
-
-        MOOD_PLAYLISTS = {
-    'tamil': {
-        1: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWX3SoTqhs2rq',
-        2: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWVV27DiNWxkR',
-        3: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWXz6ZFxA5jKQ',
-        4: 'https://open.spotify.com/embed/playlist/2Yra1CyIYaJ2YNz49yjh4i',
-        5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWUnAwRxD2pxH'
-    },
-    'english': {
-        1: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX9sIqqvKsjG8',
-        2: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX3rxVfibe1L0',
-        3: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX0BcQWzuB7ZO',
-        4: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXcBWIGoYBM5M',
-        5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWUa8ZRTfalSI'
-    },
-    'hindi': {
-        1: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWYkaDif7Ztbp',
-        2: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWUVpAXiEPK8P',
-        3: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX4dyzvuaRJ0n',
-        4: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX4SBhb3fqCJd',
-        5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX4ZrmoTDh6zJ'
-    },
-    'telugu': {
-        1: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWXLeA8Omikj7',
-        2: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXapHi7gXtXo2',
-        3: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXdbXrPNafg9d',
-        4: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXaKIA8E7WcJj',
-        5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWXi7h5CniH97'
-    },
-    'malayalam': {
-        1: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWWhB4HOWKFQc',
-        2: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX6KYgZMe25iS',
-        3: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXbqXxdO1a3nX',
-        4: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWZz8QXaU2aX5',
-        5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWVoDnLC9PqaD'
-    },
-    'kannada': {
-        1: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWXh3XHYZ7Sx1',
-        2: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX33aWnYYWvdf',
-        3: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWVXaB8Ox0zRJ',
-        4: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXe3a8d5bfgGk',
-        5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWUTJW8w3JNz2'
-    }
+body {
+  background: var(--background);
+  min-height: 100vh;
+  color: var(--text-primary);
 }
 
-        playlist_url = MOOD_PLAYLISTS.get(language, MOOD_PLAYLISTS['tamil']).get(mood)
-        
-        if not playlist_url:
-            logger.error(f"No playlist found for mood {mood} and language {language}")
-            return jsonify({'error': 'No playlist available for this mood and language'}), 404
-
-        return jsonify({'embedUrl': playlist_url, 'mood': mood}), 200
-
-    except Exception as e:
-        logger.error(f"Error recommending Spotify playlist: {str(e)}")
-        return jsonify({'error': 'Internal server error'}), 500
-
-@app.route('/api/update_language', methods=['GET', 'POST'])
-def update_language():
-    if 'user' not in session:
-        logger.warning("User not authenticated for /api/update_language")
-        return jsonify({'error': 'Unauthorized'}), 401
-
-    supabase = get_supabase()
-    user_id = session['user']
-
-    if request.method == 'GET':
-        try:
-            preferences = supabase.table('user_preferences')\
-                .select('language')\
-                .eq('user_id', user_id)\
-                .execute()
-            language = preferences.data[0]['language'] if preferences.data else 'tamil'
-            return jsonify({'language': language}), 200
-        except Exception as e:
-            logger.error(f"Error fetching user language: {str(e)}")
-            return jsonify({'error': 'Failed to fetch language'}), 500
-                                  
-    try:
-        data = request.get_json()
-        language = data.get('language', 'tamil')
-        valid_languages = ['tamil', 'hindi', 'telugu', 'malayalam', 'kannada', 'english']
-        if language not in valid_languages:
-            return jsonify({'error': 'Invalid language'}), 400
-
-        supabase.table('user_preferences').update({'language': language}).eq('user_id', user_id).execute()
-        logger.info(f"Language updated to {language} for user {user_id}")
-        return jsonify({'success': True}), 200
-    except Exception as e:
-        logger.error(f"Error updating language: {str(e)}")
-        return jsonify({'error': 'Failed to update language'}), 500
-
-@app.route('/setup_2fa', methods=['GET', 'POST'])
-def setup_2fa():
-    if 'user' not in session:
-        return redirect(url_for('login'))
-    
-    supabase = get_supabase()
-    user_id = session['user']
-    
-    if request.method == 'POST':
-        try:
-            totp = pyotp.TOTP(pyotp.random_base32())
-            secret = totp.secret
-            supabase.table('user_preferences').update({
-                'two_factor_secret': secret,
-                'two_factor_enabled': True
-            }).eq('user_id', user_id).execute()
-            
-            provisioning_uri = totp.provisioning_uri(
-                name=session['user_email'],
-                issuer_name='NeuroAid'
-            )
-            
-            img = qrcode.make(provisioning_uri)
-            buffered = BytesIO()
-            img.save(buffered)
-            qr_code = base64.b64encode(buffered.getvalue()).decode('utf-8')
-            
-            return render_template('setup_2fa.html', qr_code=qr_code, secret=secret)
-        except Exception as e:
-            logger.error(f"Error setting up 2FA: {str(e)}")
-            supabase.table('user_preferences').update({
-                'two_factor_enabled': False,
-                'two_factor_secret': None
-            }).eq('user_id', user_id).execute()
-            session['two_factor_enabled'] = False
-            return render_template('setup_2fa.html', error="Failed to set up 2FA. Please try again.")
-    
-    try:
-        preferences = supabase.table('user_preferences')\
-            .select('two_factor_secret')\
-            .eq('user_id', user_id)\
-            .execute()
-        
-        if preferences.data and preferences.data[0].get('two_factor_secret'):
-            return redirect(url_for('verify_2fa'))
-        
-        return render_template('setup_2fa.html')
-    except Exception as e:
-        logger.error(f"Error checking 2FA setup: {str(e)}")
-        return render_template('setup_2fa.html', error="Error checking 2FA status.")
-
-@app.route('/verify_2fa', methods=['GET', 'POST'])
-def verify_2fa():
-    if 'user' not in session:
-        return redirect(url_for('login'))
-    
-    supabase = get_supabase()
-    user_id = session['user']
-    
-    if request.method == 'POST':
-        try:
-            code = request.form.get('code')
-            preferences = supabase.table('user_preferences')\
-                .select('two_factor_secret')\
-                .eq('user_id', user_id)\
-                .execute()
-            
-            if not preferences.data or not preferences.data[0].get('two_factor_secret'):
-                return render_template('verify_2fa.html', error="2FA not set up.")
-            
-            secret = preferences.data[0]['two_factor_secret']
-            totp = pyotp.TOTP(secret)
-            
-            if totp.verify(code):
-                session['2fa_verified'] = True
-                return redirect(url_for('index'))
-            else:
-                return render_template('verify_2fa.html', error="Invalid 2FA code.")
-        except Exception as e:
-            logger.error(f"Error verifying 2FA: {str(e)}")
-            return render_template('verify_2fa.html', error="Error verifying 2FA code.")
-    
-    try:
-        preferences = supabase.table('user_preferences')\
-            .select('two_factor_enabled, two_factor_secret')\
-            .eq('user_id', user_id)\
-            .execute()
-        
-        if not preferences.data or not preferences.data[0].get('two_factor_enabled') or not preferences.data[0].get('two_factor_secret'):
-            supabase.table('user_preferences').update({
-                'two_factor_enabled': False,
-                'two_factor_secret': None
-            }).eq('user_id', user_id).execute()
-            session['two_factor_enabled'] = False
-            return redirect(url_for('index'))
-        
-        return render_template('verify_2fa.html')
-    except Exception as e:
-        logger.error(f"Error checking 2FA status on verify: {str(e)}")
-        return render_template('verify_2fa.html', error="Error checking 2FA status.")
-
-@app.route('/', methods=['GET', 'POST'])
-def login():
-    error = None
-    if request.method == 'POST':
-        email = request.form.get('email')
-        password = request.form.get('password')
-        if not email or not password:
-            error = 'Email and password are required.'
-            return render_template('login.html', error=error), 400
-        
-        email = email.strip().lower()
-        logger.info(f"Attempting login for email: {email}")
-        
-        supabase = get_supabase(use_service_role=True)
-        try:
-            user_response = supabase.table('users').select('id, email, password').eq('email', email).execute()
-            logger.info(f"Supabase query response for email {email}: {user_response.data}")
-            
-            if not user_response.data:
-                error = 'User not found.'
-                return render_template('login.html', error=error), 401
-            
-            user = user_response.data[0]
-            stored_password = user['password'].encode('utf-8')
-            if bcrypt.checkpw(password.encode('utf-8'), stored_password):
-                session['user'] = str(user['id'])
-                session['user_email'] = email
-                session['last_activity'] = datetime.now(ZoneInfo("UTC")).isoformat()
-                try:
-                    preferences = supabase.table('user_preferences')\
-                        .select('theme, two_factor_enabled, two_factor_secret')\
-                        .eq('user_id', user['id'])\
-                        .execute()
-                    session['theme'] = preferences.data[0].get('theme', 'light') if preferences.data else 'light'
-                    two_factor_enabled = preferences.data[0].get('two_factor_enabled', False) if preferences.data else False
-                    two_factor_secret = preferences.data[0].get('two_factor_secret') if preferences.data else None
-                    session['two_factor_enabled'] = two_factor_enabled
-                    if two_factor_enabled and two_factor_secret:
-                        return redirect(url_for('verify_2fa'))
-                    logger.info(f"User {email} logged in successfully, user_id: {user['id']}, theme: {session['theme']}")
-                    return redirect(url_for('index'))
-                except Exception as e:
-                    logger.error(f"Error fetching user preferences: {str(e)}")
-                    session['theme'] = 'light'
-                    session['two_factor_enabled'] = False
-                    logger.info(f"User {email} logged in with default preferences, user_id: {user['id']}")
-                    return redirect(url_for('index'))
-            else:
-                error = 'Invalid credentials.'
-                return render_template('login.html', error=error), 401
-        except Exception as e:
-            error = 'Unable to log in right now. Please try again later.'
-            logger.error(f"Login error: {str(e)}")
-            return render_template('login.html', error=error), 500
-    return render_template('login.html', error=error)
-
-@app.route('/signup', methods=['GET', 'POST'])
-def signup():
-    error = None
-    if request.method == 'POST':
-        email = request.form.get('email')
-        password = request.form.get('password')
-        confirm_password = request.form.get('confirm_password')
-
-        if not email or not password or not confirm_password:
-            error = 'Email, password, and confirm password are required.'
-            return render_template('signup.html', error=error), 400
-
-        if password != confirm_password:
-            error = 'Passwords do not match!'
-            return render_template('signup.html', error=error), 400
-
-        email = email.strip().lower()
-        logger.info(f"Attempting signup for email: {email}")
-
-        supabase = get_supabase(use_service_role=True)
-        try:
-            existing_user = supabase.table('users').select('id').eq('email', email).execute()
-            if existing_user.data:
-                error = 'Email already exists.'
-                return render_template('signup.html', error=error), 400
-
-            user_id = str(uuid.uuid4())
-            hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-            user_data = {'id': user_id, 'email': email, 'password': hashed_password}
-            supabase.table('users').insert(user_data).execute()
-
-            preferences_data = {
-                'user_id': user_id,
-                'two_factor_enabled': False,
-                'two_factor_secret': None,
-                'theme': 'light',
-                'reminder_time': '09:00',
-                'notification_preference': 'email'
-            }
-            supabase.table('user_preferences').insert(preferences_data).execute()
-
-            logger.info(f"User {email} signed up successfully with user_id: {user_id}")
-            return redirect(url_for('login'))
-        except Exception as e:
-            error = 'Unable to sign up right now. Please try again later.'
-            logger.error(f"Signup error: {str(e)}")
-            return render_template('signup.html', error=error), 400
-
-    return render_template('signup.html', error=error)
-
-@app.route('/index')
-def index():
-    if 'user' not in session:
-        logger.info("User not logged in, redirecting to login.")
-        return redirect(url_for('login'))
-
-    if session.get('two_factor_enabled') and not session.get('2fa_verified'):
-        return redirect(url_for('verify_2fa'))
-
-    supabase = get_supabase()
-    user_id = session['user']
-    logger.info(f"Fetching data for user_id: {user_id}")
-
-    utc_now = datetime.now(ZoneInfo("UTC"))
-    ist_now = utc_now.astimezone(ZoneInfo("Asia/Kolkata"))
-    today_start = utc_now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
-    today_end = utc_now.replace(hour=23, minute=59, second=59, microsecond=999999).isoformat()
-
-    suggestions = None
-    recent_entries_data = []
-
-    try:
-        latest_entry_query = supabase.table('journal_entries')\
-            .select('created_at, analysis')\
-            .eq('user_id', user_id)\
-            .order('created_at', desc=True)\
-            .limit(1)
-        latest_entry = latest_entry_query.execute()
-
-        if latest_entry.data:
-            created_at_str = latest_entry.data[0]['created_at']
-            if '.' in created_at_str:
-                created_at_str = created_at_str.split('.')[0] + '+00:00'
-            else:
-                created_at_str = created_at_str.replace('Z', '+00:00')
-            entry_date = datetime.fromisoformat(created_at_str).replace(tzinfo=ZoneInfo("UTC"))
-            entry_date_ist = entry_date.astimezone(ZoneInfo("Asia/Kolkata"))
-            current_date_ist = ist_now.date()
-
-            if entry_date_ist.date() == current_date_ist:
-                suggestions = latest_entry.data[0]['analysis'].get('suggestions', [])
-            else:
-                suggestions = ["Write a journal entry for today!"]
-        else:
-            suggestions = ["Write a journal entry to get suggestions!"]
-
-        recent_entries_query = supabase.table('journal_entries')\
-            .select('id, content, created_at')\
-            .eq('user_id', user_id)\
-            .order('created_at', desc=True)\
-            .limit(3)
-        recent_entries = recent_entries_query.execute()
-
-        recent_entries_data = recent_entries.data if recent_entries.data else []
-        for entry in recent_entries_data:
-            created_at_str = entry['created_at']
-            if '.' in created_at_str:
-                created_at_str = created_at_str.split('.')[0] + '+00:00'
-            else:
-                created_at_str = created_at_str.replace('Z', '+00:00')
-            entry_date = datetime.fromisoformat(created_at_str).replace(tzinfo=ZoneInfo("UTC"))
-            entry_date_ist = entry_date.astimezone(ZoneInfo("Asia/Kolkata"))
-            entry['created_at'] = entry_date_ist.strftime('%B %d, %Y')
-            entry['content_snippet'] = (entry['content'][:50] + '…') if len(entry['content']) > 50 else entry['content']
-
-    except Exception as e:
-        logger.error(f"Error fetching data for index: {str(e)}")
-        suggestions = ["Unable to load suggestions. Try writing!"]
-        recent_entries_data = []
-
-    dropdown_data = get_user_dropdown_data(supabase, user_id)
-
-    return render_template('index.html', 
-                          suggestions=suggestions, 
-                          recent_entries=recent_entries_data, 
-                          theme=session.get('theme', 'light'),
-                          **dropdown_data)
-
-@app.route('/journal', methods=['GET', 'POST'])
-def journal():
-    if 'user' not in session:
-        logger.info("User not logged in, redirecting to login.")
-        return redirect(url_for('login'))
-
-    if session.get('two_factor_enabled') and not session.get('2fa_verified'):
-        return redirect(url_for('verify_2fa'))
-
-    supabase = get_supabase()
-    user_id = session['user']
-    current_date = datetime.now(ZoneInfo("UTC")).astimezone(ZoneInfo("Asia/Kolkata")).strftime('%B %d, %Y')
-
-    if request.method == 'POST':
-        content = request.form.get('content')
-        if content:
-            try:
-                analysis = analyze_journal_entry(content, supabase, user_id)
-                journal_data = {
-                    'user_id': user_id,
-                    'content': content,
-                    'created_at': datetime.now(ZoneInfo("UTC")).isoformat(),
-                    'analysis': analysis
-                }
-                supabase.table('journal_entries').insert(journal_data).execute()
-                logger.info(f"Journal entry saved for user_id: {user_id}")
-                return redirect(url_for('journal'))
-            except Exception as e:
-                logger.error(f"Journal save error: {str(e)}")
-                return render_template('Journal.html', 
-                                      error="Failed to save entry.", 
-                                      current_date=current_date, 
-                                      theme=session.get('theme', 'light'),
-                                      **get_user_dropdown_data(supabase, user_id))
-
-    try:
-        entries = supabase.table('journal_entries')\
-            .select('id, content, created_at')\
-            .eq('user_id', user_id)\
-            .order('created_at', desc=True)\
-            .execute()
-
-        for entry in entries.data:
-            created_at_str = entry['created_at']
-            if '.' in created_at_str:
-                created_at_str = created_at_str.split('.')[0] + '+00:00'
-            else:
-                created_at_str = created_at_str.replace('Z', '+00:00')
-            entry_date = datetime.fromisoformat(created_at_str).replace(tzinfo=ZoneInfo("UTC"))
-            entry_date_ist = entry_date.astimezone(ZoneInfo("Asia/Kolkata"))
-            entry['created_at'] = entry_date_ist.strftime('%Y-%m-%d %H:%M:%S')
-
-        return render_template('Journal.html', 
-                              entries=entries.data if entries.data else [], 
-                              current_date=current_date, 
-                              theme=session.get('theme', 'light'),
-                              **get_user_dropdown_data(supabase, user_id))
-    except Exception as e:
-        logger.error(f"Journal fetch error: {str(e)}")
-        return render_template('Journal.html', 
-                              error="Failed to load entries.", 
-                              current_date=current_date, 
-                              theme=session.get('theme', 'light'),
-                              **get_user_dropdown_data(supabase, user_id))
-
-@app.route('/delete_entry/<entry_id>', methods=['DELETE'])
-def delete_entry(entry_id):
-    if 'user' not in session:
-        logger.info("User not logged in, redirecting to login.")
-        return "Unauthorized", 401
-    
-    supabase = get_supabase()
-    user_id = session['user']
-
-    try:
-        response = supabase.table('journal_entries').select('*').eq('id', entry_id).execute()
-        if not response.data or response.data[0]['user_id'] != user_id:
-            return "Forbidden", 403
-        
-        supabase.table('journal_entries').delete().eq('id', entry_id).execute()
-        logger.info(f"Entry {entry_id} deleted by user {user_id}.")
-        return "Deleted", 200
-    except Exception as e:
-        logger.error(f"Delete error: {str(e)}")
-        return "Unable to delete entry.", 500
-    
-@app.route('/progress')
-def progress():
-    if 'user' not in session:
-        logger.info("User not logged in, redirecting to login.")
-        return redirect(url_for('login'))
-
-    if session.get('two_factor_enabled') and not session.get('2fa_verified'):
-        return redirect(url_for('verify_2fa'))
-
-    supabase = get_supabase()
-    user_id = session['user']
-    dropdown_data = get_user_dropdown_data(supabase, user_id)
-
-    return render_template('progress.html', 
-                          theme=session.get('theme', 'light'),
-                          **dropdown_data)
-
-@app.route('/vibe')
-def vibe():
-    if 'user' not in session:
-        logger.info("User not logged in, redirecting to login.")
-        return redirect(url_for('login'))
-
-    if session.get('two_factor_enabled') and not session.get('2fa_verified'):
-        return redirect(url_for('verify_2fa'))
-
-    supabase = get_supabase()
-    user_id = session['user']
-    dropdown_data = get_user_dropdown_data(supabase, user_id)
-
-    return render_template('vibe.html', 
-                          theme=session.get('theme', 'light'),
-                          **dropdown_data)
-
-@app.route('/gratitude')
-def gratitude():
-    if 'user' not in session:
-        logger.info("User not logged in, redirecting to login.")
-        return redirect(url_for('login'))
-
-    if session.get('two_factor_enabled') and not session.get('2fa_verified'):
-        return redirect(url_for('verify_2fa'))
-
-    supabase = get_supabase(use_service_role=True)
-    user_id = session['user']
-    theme = session.get('theme', 'light')
-    profile_info = {'profile_pic_url': None}
-
-    try:
-        preferences_data = supabase.table('user_preferences')\
-            .select('theme')\
-            .eq('user_id', user_id)\
-            .limit(1)\
-            .execute()
-        if preferences_data.data:
-            theme = preferences_data.data[0].get('theme', 'light')
-            session['theme'] = theme
-
-        profile_data = supabase.table('profiles')\
-            .select('profile_pic_url')\
-            .eq('user_id', user_id)\
-            .limit(1)\
-            .execute()
-        if profile_data.data:
-            profile_info['profile_pic_url'] = profile_data.data[0].get('profile_pic_url')
-        else:
-            logger.info(f"No profile found for user_id: {user_id}, creating a new profile")
-            default_name = (session.get('user_email', 'user') or 'user').split('@')[0]
-            supabase.table('profiles').insert({
-                'user_id': user_id,
-                'name': default_name,
-                'username': f"@{default_name}"
-            }).execute()
-
-    except Exception as e:
-        logger.error(f"Error fetching data for gratitude route for user_id {user_id}: {str(e)}")
-
-    dropdown_data = get_user_dropdown_data(supabase, user_id)
-
-    return render_template('gratitude.html',
-                          theme=theme,
-                          profile_data=profile_info,
-                          **dropdown_data)
-
-@app.route('/profile')
-def profile():
-    if 'user' not in session:
-        logger.info("User not logged in, redirecting to login.")
-        return redirect(url_for('login'))
-
-    if session.get('two_factor_enabled') and not session.get('2fa_verified'):
-        return redirect(url_for('verify_2fa'))
-
-    supabase = get_supabase()
-    user_id = session['user']
-    logger.info(f"Fetching profile for user_id: {user_id}")
-
-    try:
-        user_data = supabase.table('users')\
-            .select('email')\
-            .eq('id', user_id)\
-            .limit(1)\
-            .execute()
-
-        if not user_data.data:
-            logger.error(f"No user found for user_id: {user_id}")
-            return render_template('profile.html', 
-                                  theme=session.get('theme', 'light'), 
-                                  name='Unknown', 
-                                  email='Not found', 
-                                  username='@unknown', 
-                                  profile_data={}, 
-                                  completion_percentage=0, 
-                                  completion_dasharray=0,
-                                  **get_user_dropdown_data(supabase, user_id))
-
-        user = user_data.data[0]
-        email = user['email'] or 'Not found'
-
-        profile_data = supabase.table('profiles')\
-            .select('name, username, age, gender, location, preferred_language, primary_goal, engagement_frequency, preferred_activities, profile_pic_url')\
-            .eq('user_id', user_id)\
-            .limit(1)\
-            .execute()
-
-        if profile_data.data:
-            profile = profile_data.data[0]
-            name = profile['name'] if profile['name'] else 'Unknown'
-            username = profile['username'] if profile['username'] else '@unknown'
-            profile_info = {
-                'age': profile['age'],
-                'gender': profile['gender'],
-                'location': profile['location'],
-                'preferred_language': profile['preferred_language'],
-                'primary_goal': profile['primary_goal'],
-                'engagement_frequency': profile['engagement_frequency'],
-                'preferred_activities': profile['preferred_activities'] or [],
-                'profile_pic_url': profile['profile_pic_url']
-            }
-        else:
-            logger.info(f"No profile found for user_id: {user_id}, creating a new profile")
-            default_name = email.split('@')[0]
-            supabase.table('profiles').insert({'user_id': user_id, 'name': default_name, 'username': f"@{default_name}"}).execute()
-            profile_data = supabase.table('profiles')\
-                .select('name, username, age, gender, location, preferred_language, primary_goal, engagement_frequency, preferred_activities, profile_pic_url')\
-                .eq('user_id', user_id)\
-                .limit(1)\
-                .execute()
-            profile = profile_data.data[0]
-            name = profile['name']
-            username = profile['username']
-            profile_info = {
-                'age': None,
-                'gender': None,
-                'location': None,
-                'preferred_language': None,
-                'primary_goal': None,
-                'engagement_frequency': None,
-                'preferred_activities': [],
-                'profile_pic_url': None
-            }
-
-        required_fields = ['name', 'username', 'email']
-        optional_fields = ['age', 'gender', 'location', 'preferred_language', 'primary_goal', 'engagement_frequency']
-        activity_fields = ['preferred_activities']
-
-        filled_required = 0
-        for field in required_fields:
-            value = locals().get(field)
-            if field == 'email':
-                if value and value != 'Not found':
-                    filled_required += 1
-            else:
-                if value and value not in ['Unknown', '@unknown']:
-                    filled_required += 1
-
-        filled_optional = sum(1 for field in optional_fields if profile_info[field])
-        filled_activities = 1 if profile_info['preferred_activities'] else 0
-        total_fields = len(required_fields) + len(optional_fields) + len(activity_fields)
-        filled_fields = filled_required + filled_optional + filled_activities
-        completion_percentage = int((filled_fields / total_fields) * 100)
-        completion_dasharray = round(276.46 * (completion_percentage / 100), 2)
-
-        return render_template('profile.html', 
-                              theme=session.get('theme', 'light'),
-                              name=name,
-                              email=email,
-                              username=username,
-                              profile_data=profile_info,
-                              completion_percentage=completion_percentage,
-                              completion_dasharray=completion_dasharray,
-                              **get_user_dropdown_data(supabase, user_id))
-
-    except Exception as e:
-        logger.error(f"Error fetching profile data: {str(e)}")
-        return render_template('profile.html', 
-                              theme=session.get('theme', 'light'),
-                              name='Unknown',
-                              email='Not found',
-                              username='@unknown',
-                              profile_data={},
-                              completion_percentage=0,
-                              completion_dasharray=0,
-                              **get_user_dropdown_data(supabase, user_id))
-
-@app.route('/update_profile_field', methods=['POST'])
-def update_profile_field():
-    if 'user' not in session:
-        return jsonify({'success': False, 'error': 'User not logged in'}), 401
-
-    data = request.get_json()
-    field = data.get('field')
-    value = data.get('value')
-    user_id = session['user']
-    supabase = get_supabase()
-
-    try:
-        if field == 'email':
-            response = supabase.table('users')\
-                .update({'email': value})\
-                .eq('id', user_id)\
-                .execute()
-            if response.data:
-                return jsonify({'success': True}), 200
-            else:
-                return jsonify({'success': False, 'error': 'Failed to update email'}), 500
-        elif field in ['name', 'username']:
-            response = supabase.table('profiles')\
-                .update({field: value})\
-                .eq('user_id', user_id)\
-                .execute()
-            if response.data:
-                return jsonify({'success': True}), 200
-            else:
-                return jsonify({'success': False, 'error': f'Failed to update {field}'}), 500
-        else:
-            return jsonify({'success': False, 'error': 'Invalid field'}), 400
-    except Exception as e:
-        logger.error(f"Error updating profile field {field}: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/upload_profile_pic', methods=['POST'])
-def upload_profile_pic():
-    if 'user' not in session:
-        return jsonify({'error': 'Unauthorized'}), 401
-    supabase = get_supabase()
-    user_id = session['user']
-    file = request.files.get('profile-pic')
-    if not file:
-        return jsonify({'error': 'No file uploaded'}), 400
-    try:
-        file_path = f"profiles/{user_id}/{uuid.uuid4()}.jpg"
-        supabase.storage.from_('profile-pics').upload(file_path, file.read())
-        url = supabase.storage.from_('profile-pics').get_public_url(file_path)
-        supabase.table('profiles').update({'profile_pic_url': url}).eq('user_id', user_id).execute()
-        return jsonify({'success': True, 'url': url}), 200
-    except Exception as e:
-        logger.error(f"Error uploading profile picture: {str(e)}")
-        return jsonify({'error': 'Upload failed'}), 500
-
-@app.route('/update_personal_details', methods=['POST'])
-def update_personal_details():
-    if 'user' not in session:
-        return jsonify({'error': 'Unauthorized'}), 401
-    supabase = get_supabase()
-    user_id = session['user']
-    data = request.get_json()
-
-    try:
-        supabase.table('profiles').update({
-            'age': data.get('age'),
-            'gender': data.get('gender'),
-            'location': data.get('location'),
-            'preferred_language': data.get('preferred_language')
-        }).eq('user_id', user_id).execute()
-        return jsonify({'success': True}), 200
-    except Exception as e:
-        logger.error(f"Error updating personal details: {str(e)}")
-        return jsonify({'error': 'Failed to update personal details'}), 500
-
-@app.route('/update_mental_health_goals', methods=['POST'])
-def update_mental_health_goals():
-    if 'user' not in session:
-        return jsonify({'error': 'Unauthorized'}), 401
-    supabase = get_supabase()
-    user_id = session['user']
-    data = request.get_json()
-
-    try:
-        supabase.table('profiles').update({
-            'primary_goal': data.get('primary_goal'),
-            'engagement_frequency': data.get('engagement_frequency'),
-            'preferred_activities': data.get('preferred_activities')
-        }).eq('user_id', user_id).execute()
-        return jsonify({'success': True}), 200
-    except Exception as e:
-        logger.error(f"Error updating mental health goals: {str(e)}")
-        return jsonify({'error': 'Failed to update mental health goals'}), 500
-
-@app.route('/settings', methods=['GET', 'POST'])
-def settings():
-    if 'user' not in session:
-        logger.info(f"User not logged in, redirecting to login at {datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%I:%M %p IST')}")
-        return jsonify({'success': False, 'error': 'User not logged in'}), 401
-
-    if session.get('two_factor_enabled') and not session.get('2fa_verified'):
-        return jsonify({'success': False, 'error': '2FA verification required'}), 401
-
-    supabase = get_supabase(use_service_role=True)
-    user_id = session['user']
-    profile_info = {
-        'profile_pic_url': None,
-        'two_factor_enabled': False,
-        'theme': 'light',
-        'reminder_time': '09:00',
-        'notification_preference': 'email'
-    }
-
-    try:
-        # Fetch user data
-        user_data = supabase.table('users').select('email').eq('id', user_id).limit(1).execute()
-        if not user_data.data:
-            logger.error(f"No user found for user_id: {user_id} at {datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%I:%M %p IST')}")
-            return jsonify({'success': False, 'error': 'User not found'}), 404
-        email = user_data.data[0]['email']
-
-        # Fetch profile data
-        profile_data = supabase.table('profiles').select('name, profile_pic_url').eq('user_id', user_id).limit(1).execute()
-        if profile_data.data:
-            profile_info['profile_pic_url'] = profile_data.data[0].get('profile_pic_url')
-        else:
-            default_name = email.split('@')[0]
-            supabase.table('profiles').insert({
-                'user_id': user_id,
-                'name': default_name,
-                'username': f"@{default_name}"
-            }).execute()
-
-        # Fetch preferences
-        preferences_data = supabase.table('user_preferences').select('two_factor_enabled, theme, reminder_time, notification_preference').eq('user_id', user_id).limit(1).execute()
-        if preferences_data.data:
-            profile_info.update(preferences_data.data[0])
-        else:
-            supabase.table('user_preferences').insert({
-                'user_id': user_id,
-                'language': 'tamil',
-                'theme': 'light',
-                'two_factor_enabled': False,
-                'reminder_time': '09:00',
-                'notification_preference': 'email'
-            }).execute()
-
-        current_time_ist = datetime.now(ZoneInfo("Asia/Kolkata")).strftime('%I:%M %p IST')
-        if request.method == 'POST':
-            try:
-                new_email = request.form.get('email', email).strip().lower()
-                password = request.form.get('password')
-                confirm_password = request.form.get('confirm_password')
-                two_factor_enabled = request.form.get('two_factor_enabled') == 'on'
-                theme = request.form.get('theme', profile_info['theme'])
-                reminder_time = request.form.get('reminder_time', profile_info['reminder_time'])
-                notification_preference = request.form.get('notification_preference', profile_info['notification_preference'])
-
-                # Validate inputs
-                if not new_email:
-                    return jsonify({'success': False, 'error': 'Email is required'}), 400
-
-                existing_user = supabase.table('users').select('id').eq('email', new_email).neq('id', user_id).execute()
-                if existing_user.data:
-                    return jsonify({'success': False, 'error': 'Email already exists'}), 400
-
-                if password and password != confirm_password:
-                    return jsonify({'success': False, 'error': 'Passwords do not match'}), 400
-
-                # Update users table
-                update_user_data = {'email': new_email}
-                if password:
-                    update_user_data['password'] = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-                supabase.table('users').update(update_user_data).eq('id', user_id).execute()
-
-                # Update preferences
-                update_preferences_data = {
-                    'two_factor_enabled': two_factor_enabled,
-                    'theme': theme,
-                    'reminder_time': reminder_time,
-                    'notification_preference': notification_preference
-                }
-                supabase.table('user_preferences').update(update_preferences_data).eq('user_id', user_id).execute()
-
-                # Update session
-                session['user_email'] = new_email
-                session['theme'] = theme
-                session['two_factor_enabled'] = two_factor_enabled
-
-                logger.info(f"Settings updated for user_id: {user_id} at {current_time_ist}")
-                return jsonify({'success': True, 'message': 'Settings updated successfully'})
-
-            except Exception as e:
-                logger.error(f"Error updating settings for user_id: {user_id} at {current_time_ist}: {str(e)}")
-                return jsonify({'success': False, 'error': str(e)}), 500
-
-        # GET request: Render template
-        dropdown_data = get_user_dropdown_data(supabase, user_id)
-        return render_template('settings.html',
-                              email=email,
-                              profile_data=profile_info,
-                              two_factor_enabled=profile_info['two_factor_enabled'],
-                              theme=profile_info['theme'],
-                              reminder_time=profile_info['reminder_time'],
-                              notification_preference=profile_info['notification_preference'],
-                              error=None,
-                              success=None,
-                              current_time=current_time_ist,
-                              **dropdown_data)
-
-    except Exception as e:
-        logger.error(f"Error in settings for user_id: {user_id} at {datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%I:%M %p IST')}: {str(e)}")
-        dropdown_data = get_user_dropdown_data(supabase, user_id)
-        return render_template('settings.html',
-                              email='Not found',
-                              profile_data=profile_info,
-                              two_factor_enabled=False,
-                              theme='light',
-                              reminder_time='09:00',
-                              notification_preference='email',
-                              error='An error occurred while fetching settings',
-                              success=None,
-                              current_time=datetime.now(ZoneInfo("Asia/Kolkata")).strftime('%I:%M %p IST'),
-                              **dropdown_data)
-
-# Updated /export_data route to include user_preferences
-@app.route('/export_data', methods=['GET'])
-def export_data():
-    if 'user' not in session:
-        logger.info(f"User not logged in, redirecting to login at {datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%I:%M %p IST')}")
-        return jsonify({'success': False, 'error': 'User not logged in'}), 401
-
-    supabase = get_supabase(use_service_role=True)
-    user_id = session['user']
-
-    try:
-        user_data = supabase.table('users').select('email').eq('id', user_id).limit(1).execute()
-        if not user_data.data:
-            logger.error(f"No user found for user_id: {user_id} at {datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%I:%M %p IST')}")
-            return jsonify({'success': False, 'error': 'User not found'}), 404
-
-        profile_data = supabase.table('profiles').select('name, username, profile_pic_url, age, gender, location, preferred_language, primary_goal, engagement_frequency, preferred_activities, created_at, updated_at').eq('user_id', user_id).limit(1).execute()
-        preferences_data = supabase.table('user_preferences').select('language, theme, two_factor_enabled, reminder_time, notification_preference').eq('user_id', user_id).limit(1).execute()
-
-        export_data = {
-            'user': {
-                'email': user_data.data[0]['email'],
-                'id': user_id
-            },
-            'profile': profile_data.data[0] if profile_data.data else {},
-            'preferences': preferences_data.data[0] if preferences_data.data else {}
-        }
-
-        logger.info(f"Data exported for user_id: {user_id} at {datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%I:%M %p IST')}")
-        return jsonify({'success': True, 'data': export_data})
-
-    except Exception as e:
-        logger.error(f"Error exporting data for user_id: {user_id} at {datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%I:%M %p IST')}: {str(e)}")
-        return jsonify({'success': False, 'error': 'Failed to export data'}), 500
-
-# Updated /delete_account route to also delete user_preferences
-@app.route('/delete_account', methods=['POST'])
-def delete_account():
-    if 'user' not in session:
-        logger.info(f"User not logged in, redirecting to login at {datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%I:%M %p IST')}")
-        return jsonify({'success': False, 'error': 'User not logged in'}), 401
-
-    supabase = get_supabase(use_service_role=True)
-    user_id = session['user']
-
-    try:
-        # Delete all related data
-        supabase.table('journal_entries').delete().eq('user_id', user_id).execute()
-        supabase.table('gratitude_entries').delete().eq('user_id', user_id).execute()
-        supabase.table('user_preferences').delete().eq('user_id', user_id).execute()
-        supabase.table('profiles').delete().eq('user_id', user_id).execute()
-        supabase.table('users').delete().eq('id', user_id).execute()
-
-        session.clear()
-        logger.info(f"Account deleted for user_id: {user_id} at {datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%I:%M %p IST')}")
-        return jsonify({'success': True, 'message': 'Account deleted successfully'})
-
-    except Exception as e:
-        logger.error(f"Error deleting account for user_id: {user_id} at {datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%I:%M %p IST')}: {str(e)}")
-        return jsonify({'success': False, 'error': 'Failed to delete account'}), 500
-
-@app.route('/logout')
-def logout():
-    if 'user' in session:
-        user_email = session.get('user_email', 'Unknown')
-        logout_time = datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%I:%M %p IST on %B %d, %Y')
-        session.pop('user', None)
-        session.pop('user_email', None)
-        session.pop('last_activity', None)
-        session.pop('theme', None)
-        session.pop('2fa_verified', None)
-        session.pop('two_factor_enabled', None)
-        logger.info(f"User {user_email} logged out at {logout_time}")
-    return redirect(url_for('login'))
-
-if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+h1 { font-size: var(--font-size-h1); font-weight: 600; line-height: 1.3; color: var(--text-primary); }
+h2 { font-size: var(--font-size-h2); font-weight: 600; line-height: 1.3; color: var(--text-primary); }
+h3 { font-size: var(--font-size-h3); font-weight: 500; line-height: 1.3; color: var(--text-primary); }
+p, label, input, select, textarea {
+  font-size: var(--font-size-body);
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+
+.card {
+  background: var(--glass-bg);
+  border-radius: 16px;
+  padding: var(--spacing-md);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow);
+  transition: all 0.3s ease;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.container {
+  max-width: var(--container-max-width);
+  margin: 0 auto;
+  padding: var(--spacing-md);
+}
+
+.neuroaid-btn {
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  padding: var(--button-padding);
+  border-radius: var(--button-border-radius);
+  font-size: var(--font-size-body);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.neuroaid-btn:hover {
+  background: #6d28d9;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.neuroaid-btn.danger {
+  background: #dc2626;
+}
+
+.neuroaid-btn.danger:hover {
+  background: #b91c1c;
+}
 ```
 
-# File: example quill/journal.html
-```html
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>NeuroAid Journal</title>
+# File: static/css/dashboard.css
+```css
+/* Remove hardcoded :root variables to rely on themes/dark.css */
+/* Variables like --card-bg, --text-primary, etc., are sourced from themes/dark.css */
 
-  <!-- Quill CSS -->
-  <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet" />
-<style>
-  body {
-  font-family: 'Poppins', sans-serif;
-  padding: 2rem;
-  background-color: #f3f4f6;
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Inter', sans-serif;
 }
 
-h1, p {
-  color: #2D2D2D;
+body {
+  min-height: 100vh;
+  background: var(--background);
+  display: flex;
+  flex-direction: column;
+}
+
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.container {
+  display: flex;
+}
+
+.sidebar {
+  width: 260px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(10px);
+  border-right: 1px solid var(--glass-border);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
+  z-index: 1000;
+  transition: all 0.3s ease;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo i {
+  font-size: 2rem;
+  color: var(--primary);
+}
+
+.dropdown-content .user-info {
+  padding: 10px;
+  border-bottom: 1px solid #eee;
+  font-size: 14px;
+  color: var(--text-primary);
+  z-index: 1;
+}
+
+.dropdown-content .user-info p {
+  margin: 5px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dropdown-content .user-info i {
+  font-size: 16px;
+  color: var(--primary);
+}
+
+.logo h1 {
+  font-size: 2.3rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.logo h1 span {
+  color: var(--primary);
+}
+
+.sidebar nav {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sidebar nav a {
+  color: var(--text-primary);
+  text-decoration: none;
+  font-size: 1.3rem;
+  font-weight: 500;
+  padding: 12px 16px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  transition: all 0.3s ease;
+}
+
+.sidebar nav a:hover,
+.sidebar nav a.active {
+  background: var(--primary);
+  color: #fff;
+}
+
+.main-content {
+  margin-left: 260px;
+  flex: 1;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+}
+
+
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  background: var(--header-bg);
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--glass-border);
+  margin-bottom: 24px;
+}
+
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: rgba(255, 255, 255, 0.3);
+  padding: 14px 20px;
+  border-radius: 10px;
+  width: 450px;
+}
+
+.search-bar i {
+  color: #fff;
+  font-size: 1.5rem;
+}
+
+.search-bar input {
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-size: 1.2rem;
+  outline: none;
+  width: 100%;
+}
+
+.search-bar input::placeholder {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 1.2rem;
+}
+
+.profile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.profile img {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  object-fit: cover;
+}
+
+.profile span {
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.profile i {
+  color: #fff;
+  font-size: 1.2rem;
+}
+
+.dashboard {
+  flex: 1;
+}
+
+.dashboard h2, .card-content h3, .card-content p, .stats-section h2, .chart-section h2, .insights-section h2 {
+  color: var(--text-primary);
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
+}
+
+.card {
+  background: var(--card-bg, #2a3646);
+  border-radius: 16px;
+  padding: 24px;
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  color: var(--text-primary);
+}
+
+.card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1);
+}
+
+.card-icon {
+  font-size: 2.2rem;
+  color: var(--primary);
+  background: var(--secondary);
+  border-radius: 12px;
+  padding: 12px;
+  min-width: 48px;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.card-content h3 {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.card-content p, .insights-content {
+  color: var(--text-secondary);
+}
+
+.card-button {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.card-button a {
+  color: #fff;
+  text-decoration: none;
+}
+
+.card-button:hover {
+  background: #6d28d9;
+}
+
+.card.welcome .card-icon { background: #f5f3ff; color: #7c3aed; }
+.card.journal .card-icon { background: #f5f3ff; color: #8b5cf6; }
+.card.mood .card-icon { background: #f5f3ff; color: #a78bfa; }
+.card.tips .card-icon { background: #f5f3ff; color: #c084fc; }
+
+footer {
+  text-align: center;
+  padding: 20px;
+  background: #6d28d9;
+  color: var(--text-primary);
+  font-size: 1.4rem;
+  font-weight:500;
+  backdrop-filter: blur(4px);
+  border-top: 1px solid var(--glass-border);
+  margin-top: auto;
+  width: 100%;
+}
+
+.quick-actions {
+  display: flex;
+  gap: 35px;
+}
+
+.action-button {
+  background: none;
+}
+
+.action-button:hover {
+  background: none;
+}
+
+/* Stats section */
+.stats-section {
+  margin-bottom: 32px;
+}
+
+.stats-section h2 {
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.stats-section h2 i {
+  color: var(--primary);
+  font-size: 2rem;
+}
+
+.stats-boxes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
+  width: 100%;
+}
+
+.stat-box {
+  background: var(--card-bg, #2a3646);
+  border-radius: 16px;
+  padding: 24px;
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  color: var(--text-primary);
+}
+
+.stat-box:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1);
+}
+
+.stat-box i {
+  font-size: 2.2rem;
+  color: var(--primary);
+  background: var(--secondary);
+  border-radius: 12px;
+  padding: 12px;
+  min-width: 48px;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stat-box h3 {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.stat-box p {
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+
+/* Chart section */
+.chart-section {
+  margin-bottom: 32px;
+}
+
+.chart-section h2 {
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.chart-section h2 i {
+  color: var(--primary);
+  font-size: 2rem;
+}
+
+.chart-card {
+  background: var(--card-bg, #2a3646);
+  border-radius: 16px;
+  padding: 10px;
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow);
+  width: 100%;
+  min-height: 670px;
+  overflow: visible;
+  color: var(--text-primary);
+}
+
+.chart-card canvas {
+  width: 100% !important;
+  max-width: 900px;
+  height: 650px !important;
+  margin: 0 auto;
+}
+
+/* Insights section */
+.insights-section {
+  margin-bottom: 32px;
+}
+
+.insights-section h2 {
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.insights-section h2 i {
+  color: var(--primary);
+  font-size: 2rem;
+}
+
+.insights-content {
+  background: var(--card-bg, #2a3646);
+  border-radius: 16px;
+  padding: 24px;
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow);
+  font-size: 1rem;
+  color: var(--text-primary);
+  line-height: 1.5;
+  width: 100%;
+}
+
+/* Responsive Styles */
+@media (max-width: 900px) {
+  .sidebar {
+    width: 80px;
+    align-items: center;
+  }
+
+  .sidebar .logo h1 {
+    display: none;
+  }
+
+  .sidebar nav a {
+    justify-content: center;
+    padding: 12px;
+  }
+
+  .sidebar nav a span {
+    display: none;
+  }
+
+  .main-content {
+    margin-left: 80px;
+  }
+
+  .search-bar {
+    width: 300px;
+  }
+
+  .stats-boxes {
+    grid-template-columns: 1fr;
+  }
+
+  .chart-card {
+    min-height: 670px;
+  }
+
+  .chart-card canvas {
+    max-width: 100%;
+    height: 400px !important;
+  }
+}
+
+.recent-reflections{
+  background-color: white;
+
+
+}
+
+@media (max-width: 600px) {
+  .sidebar {
+    width: 100%;
+    height: auto;
+    position: static;
+    flex-direction: row;
+    justify-content: space-between;
+    padding: 16px;
+  }
+
+  .sidebar nav {
+    flex-direction: row;
+    gap: 8px;
+  }
+
+  .main-content {
+    margin-left: 0;
+    padding: 16px;
+  }
+
+  .card-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .stats-section h2,
+  .chart-section h2,
+  .insights-section h2 {
+    font-size: 1.6rem;
+  }
+
+  .stat-box,
+  .chart-card,
+  .insights-content {
+    padding: 16px;
+  }
+
+  .search-bar {
+    width: 100%;
+    padding: 10px 16px;
+  }
+
+  .search-bar i {
+    font-size: 1.2rem;
+  }
+
+  .search-bar input,
+  .search-bar input::placeholder {
+    font-size: 1rem;
+  }
+
+  .chart-card {
+    min-height: 450px;
+  }
+
+  .chart-card canvas {
+    height: 300px !important;
+  }
+}
+
+/* Reusable button styles */
+.neuroaid-btn {
+  background-color: var(--primary);
+  margin-top: 20px;
+  color: #fff;
+  border: none;
+  padding-top: 30px;
+  padding-bottom: 30px;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: transform 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.neuroaid-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+  background-color: #6d28d9;
+}
+
+.neuroaid-btn:active {
+  transform: scale(0.95);
+}
+
+.neuroaid-btn.loading {
+  position: relative;
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+.neuroaid-btn.loading::after {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border: 2px solid #fff;
+  border-top: 2px solid transparent;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+@keyframes spin {
+  0% { transform: translateY(-50%) rotate(0deg); }
+  100% { transform: translateY(-50%) rotate(360deg); }
+}
+
+/* Extracted inline styles from dashboard page */
+.welcome-message {
+  margin-bottom: 30px;
+}
+
+.welcome-message h2 {
+  color: var(--text-primary);
+  font-size: 42px;
+  display: flex;
+  align-items: center;
+}
+
+.welcome-message p {
+  color: var(--text-primary);
+  font-family: 'Inter', 'Arial', sans-serif;
+  font-size: 26px;
+  font-weight: 500;
+  margin-top: 15px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.suggestions-card {
+  background: var(--card-bg, #2a3646);
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  margin-bottom: 30px;
+  color: var(--text-primary);
+}
+
+.suggestions-card h3 {
+  color: var(--text-primary);
+  font-size: 30px;
+  margin-bottom: 15px;
+  display: flex;
+  align-items: center;
+}
+
+.suggestions-card ul {
+  list-style-type: disc;
+  padding-left: 20px;
+  margin-top: 25px;
+  color: var(--text-primary);
+  font-size: 22px;
+}
+
+.suggestions-card ul li {
+  margin-bottom: 10px;
+  display: flex;
+  gap: 15px;
+  margin-top: 15px;
+}
+
+.suggestions-card p {
+  color: var(--text-secondary);
+  margin-bottom: 10px;
+  display: flex;
+  gap: 15px;
+  margin-top: 15px;
+}
+
+.entry-preview {
+  background: white;
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  padding: 15px;
+  margin-bottom: 10px;
+  box-shadow: var(--shadow);
+  color: var(--text-primary);
+}
+
+.entry-meta {
+  font-size: 20px;
+  color: #ffffff;
+  margin-bottom: 5px;
+}
+
+.entry-snippet {
+  color: #e5e7eb;
+  font-size: 18px;
+  margin: 15px 0;
+}
+
+.entry-preview a {
+  color: var(--accent);
+  font-size: 18px;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.entry-preview a:hover {
+  color: #ffffff;
+}
+```
+
+# File: static/css/dropdown.css
+```css
+.profile-dropdown {
+    position: relative;
+    display: inline-block;
+}
+.dropdown-content{
+   display: none; /* Hidden by default */
+  position: absolute;
+  top: 100%; /* Position below the profile trigger */
+  right: 0; /* Align to the right of the parent */
+  background-color: #fff;
+  min-width: 200px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  z-index: 1000;
+}
+.dropdown-content .user-info {
+  padding: 10px;
+  border-bottom: 1px solid #eee;
+  font-size: 14px;
+  color: #333;
+}
+
+.dropdown-content .user-info p {
+  margin: 5px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dropdown-content .user-info i {
+  font-size: 16px;
+  color: #7c3aed;
+}
+.profile {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    padding: 5px 10px;
+    border-radius: 5px;
+    transition: background-color 0.3s;
+}
+
+.profile:hover {
+    background-color: #f0f0f0;
+}
+
+.profile img {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+}
+
+.profile span {
+    font-size: 16px;
+    font-weight: 500;
+    color: #2d2d2d;
+}
+
+.dropdown-content {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background-color: #ffffff;
+    min-width: 200px;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    z-index: 1;
+    overflow: hidden;
+}
+
+.dropdown-content .user-info {
+    padding: 12px 16px;
+    border-bottom: 1px solid #eee;
+}
+
+.dropdown-content .user-info p {
+    margin: 4px 0;
+    font-size: 14px;
+    color: #2d2d2d;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.dropdown-content .user-info p i {
+    font-size: 16px;
+    color: #7c3aed;
+}
+
+.dropdown-content a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    color: #2d2d2d;
+    text-decoration: none;
+    font-size: 14px;
+    transition: background-color 0.3s;
+}
+
+.dropdown-content a:hover {
+    background-color: #f7f7f7;
+}
+
+.dropdown-content a i {
+    font-size: 16px;
+    color: #7c3aed;
+}
+
+/* Theme-specific styles */
+.theme-dark .profile span {
+    color: #ffffff;
+}
+
+.theme-dark .profile:hover {
+    background-color: #444;
+}
+
+.theme-dark .dropdown-content {
+    background-color: #333;
+}
+
+.theme-dark .dropdown-content .user-info {
+    border-bottom: 1px solid #555;
+}
+
+.theme-dark .dropdown-content .user-info p {
+    color: #ffffff;
+}
+
+.theme-dark .dropdown-content .user-info p i {
+    color: #a78bfa;
+}
+
+.theme-dark .dropdown-content a {
+    color: #ffffff;
+}
+
+.theme-dark .dropdown-content a:hover {
+    background-color: #555;
+}
+
+.theme-dark .dropdown-content a i {
+    color: #a78bfa;
+}
+
+.theme-calming .profile span {
+    color: #7c3aed;
+}
+
+.theme-calming .profile:hover {
+    background-color: #e8e1fa;
+}
+
+.theme-calming .dropdown-content {
+    background-color: #f4f0fa;
+}
+
+.theme-calming .dropdown-content .user-info {
+    border-bottom: 1px solid #d1c4e9;
+}
+
+.theme-calming .dropdown-content .user-info p {
+    color: #5b2cb3;
+}
+
+.theme-calming .dropdown-content .user-info p i {
+    color: #7c3aed;
+}
+
+.theme-calming .dropdown-content a {
+    color: #5b2cb3;
+}
+
+.theme-calming .dropdown-content a:hover {
+    background-color: #e8e1fa;
+}
+
+.theme-calming .dropdown-content a i {
+    color: #7c3aed;
+}
+```
+
+# File: static/css/gratitude.css
+```css
+.gratitude-section {
+            margin-top: 20px;
+        }
+.gratitude-section h2{
+    font-size: 32px;
+    margin-bottom: 20px;
+}
+        .gratitude-form {
+            background-color: #e8e1fa;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            margin-bottom: 30px;
+        }
+        .gratitude-form h3, .gratitude-form label, .streak-counter p, .timeline-entry .entry-content p {
+        color: var(--text-primary);
+        }
+        .timeline-entry .date {
+        color: var(--primary);
+        }
+        
+        .gratitude-form label {
+            display: block;
+            color: #363333;
+            font-size: 20px;
+            margin-bottom: 5px;
+        }
+        .gratitude-form textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #c7bbe4;
+            border-radius: 15px;
+            font-size: 16px;
+            resize: vertical;
+            margin-bottom: 15px;
+        }
+
+        .suggestions {
+            margin-top: 10px;
+            color: #3d3939;
+            font-style: italic;
+            font-size: 14px;
+        }
+        .streak-counter {
+            background-color: #ffffff;
+            border: 1px solid #c7bbe4;
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.07);
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .streak-counter i {
+            color: #7c3aed;
+            font-size: 24px;
+        }
+        .streak-counter p {
+            margin: 0;
+            color: #202020;
+            font-size: 18px;
+        }
+        .timeline {
+            margin-top: 20px;
+        }
+
+        .timeline h3{
+            font-size: 28px;
+        }
+        .timeline-entry {
+            background-color: #ffffff;
+            border: 1px solid #c7bbe4;
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.07);
+            margin-bottom: 10px;
+        }
+        .timeline-entry .date {
+            font-size: 16px;
+            color: #7c3aed;
+            margin-bottom: 5px;
+        }
+        .timeline-entry .entry-content p {
+            margin: 5px 0;
+            color: #202020;
+            font-size: 16px;
+        }
+```
+
+# File: static/css/journal.css
+```css
+body {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  display: flex;
+  background-color: #f5f5f5;
+}
+
+.journal-section {
+  width: 1400px;
+  margin: 0 auto;
+  background-color: #ffffff;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.journal-header {
+  margin-bottom: 30px;
+}
+
+.journal-header h2, .journal-header p, .entry-content {
+  color: var(--text-primary);
+}
+.journal-header p {
+  color: var(--text-secondary);
+}
+
+.journal-meta {
+  align-items: center;
+  justify-content: space-between;
+  color: #7c3aed;
+  font-size: 20px;
+  font-weight: 500;
+  background-color: #f4f0fa;
+  padding: 8px 12px;
+  border-radius: 5px;
 }
 
 #editor {
-  height: 300px;
-  background-color: #F4F0FA;
-  border: 1px solid #7A7A8C;
-  padding: 1rem;
+  height: 600px;
+  width: 100%;
+  font-size: 23px;
+  background-color: #f4f0fa;
+  border: 1px solid #7a7a8c;
   border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
 }
 
-.save-btn {
-  margin-top: 1rem;
-  padding: 10px 20px;
-  background-color: #7c3aed;
-  color: #ffffff;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: 500;
-  transition: background-color 0.3s ease;
+.ql-toolbar.ql-snow {
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+  border-color: #7a7a8c;
+  background-color: #fff;
+  padding: 8px;
+}
+
+.ql-container.ql-snow {
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
+  border-color: #7a7a8c;
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+}
+
+.ql-editor {
+  background-color: #f4f0fa;
+  color: #2d2d2d;
+}
+
+.journal-actions {
+  margin-top: 20px;
+  text-align: right;
 }
 
 .save-btn:hover {
-  background-color: #D8C4E6;
+  background-color: #6b21a8;
 }
-</style>
-</head>
-<body>
 
-  <h1>📝 Your Daily Journal</h1>
-  <p>Write freely and reflect on your day.</p>
+.delete-entry-btn {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background-color: #ef4444;
+  color: white;
+  padding: 5px 10px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  z-index: 10;  
+}
 
-  <!-- Editor Container -->
-  <div id="editor"></div>
+.entry-card {
+  position: relative;
+  background-color: #f4f0fa;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 15px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
 
-  <!-- Save Button -->
-  <button class="save-btn" onclick="saveJournal()">Save Entry</button>
+/* Extracted and modified styles from inline CSS */
+.error-message {
+  color: #b71c1c;
+  background-color: #ffebee;
+  padding: 10px;
+  border-radius: 5px;
+  margin-bottom: 20px;
+}
 
-  <!-- Quill JS -->
-  <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
+.entries-section h3 {
+  color: #2d2d2d;
+  margin-top: 40px;
+  margin-bottom: 20px;
+  font-size: 28px;
+}
 
-  <!-- Quill Init -->
-  <script>
-    const quill = new Quill('#editor', {
-      theme: 'snow'
-    });
+.entry-card {
+  background-color: #f4f0fa;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 15px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
 
-    function saveJournal() {
-      const content = quill.root.innerHTML;
-      console.log("Journal Content:", content);
-      alert("Journal saved (check console)");
-      // Later: send `content` to Supabase or your backend here
-    }
-  </script>
+.entry-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 20px;
+  color: #7c3aed;
+  margin-bottom: 10px;
+}
 
-</body>
-</html>
+.delete-entry-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding-top: 10px;
+  padding-left: 10px;
+  color: #b71c1c;
+}
 
+.entry-content {
+  color: #2d2d2d;
+  font-size: 18px;
+}
+```
+
+# File: static/css/profile.css
+```css
+.profile-section {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.input-container input.editable {
+        border: 2px solid #7c3aed;
+        background-color: #f9f9f9;
+  }
+.input-container input:disabled {
+        background-color: #e9ecef;
+  }
+.profile-header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.profile-header h2 {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.profile-header p {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+}
+
+.progress-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.progress-circle {
+  position: relative;
+  width: 100px;
+  height: 100px;
+}
+
+.progress-ring__circle {
+  transition: stroke-dashoffset 0.35s;
+  transform: rotate(-90deg);
+  transform-origin: 50% 50%;
+}
+
+.progress-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--primary);
+}
+
+.card {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.85));
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding: 20px 24px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.card-header h3 {
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.status-indicator {
+  font-size: 0.9rem;
+  font-weight: 500;
+  padding: 6px 12px;
+  border-radius: 12px;
+  min-width: 140px;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid var(--glass-border);
+}
+
+.status-indicator.complete {
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+.status-indicator.incomplete {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.profile-overview {
+  padding: 24px;
+}
+
+.profile-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 40px;
+}
+
+.profile-picture {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.profile-picture img {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--glass-border);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.edit-button {
+  background: linear-gradient(145deg, #7c3aed, #6d28d9);
+  color: #fff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.2s;
+}
+
+.edit-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.3);
+}
+
+.form-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.form-field {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  width: 100%;
+}
+
+.form-field label {
+  width: 160px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #374151;
+  line-height: 1.5;
+}
+
+.input-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 48px; /* Ensures consistent height for alignment */
+}
+
+.form-field input,
+.form-field select {
+  flex: 1;
+  padding: 12px 16px;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 4px rgba(0, 0, 0, 0.05);
+  transition: box-shadow 0.2s, background 0.2s;
+  min-height: 48px; /* Consistent height for inputs and selects */
+  box-sizing: border-box;
+}
+
+.form-field input:focus,
+.form-field select:focus {
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.2), 0 2px 6px rgba(0, 0, 0, 0.1);
+  outline: none;
+}
+
+.form-field input[readonly] {
+  background: #f3f4f6;
+  cursor: not-allowed;
+}
+
+.edit-field-btn {
+  background: linear-gradient(145deg, #7c3aed, #6d28d9);
+  color: #fff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.2s;
+  height: 40px; /* Match input height for alignment */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.edit-field-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.3);
+}
+
+.personal-details,
+.mental-health-goals {
+  padding: 24px;
+}
+
+.checkbox-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  width: 100%;
+}
+
+.checkbox-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.7);
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--glass-border);
+  transition: background 0.2s, box-shadow 0.2s;
+  min-width: 200px; /* Ensures consistent width for alignment */
+}
+
+.checkbox-option:hover {
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+}
+
+.checkbox-option input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--primary);
+  margin: 0; /* Remove default margin for better alignment */
+}
+
+.checkbox-option label {
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  font-weight: 500;
+  width: auto;
+  line-height: 1.5;
+}
+
+.form-field select {
+  appearance: none;
+  background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24"><path fill="%23374151" d="M7 10l5 5 5-5z"/></svg>') no-repeat right 16px center;
+  background-size: 12px;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin-top: 20px;
+  width: 100%;
+}
+
+.save-btn {
+  background: linear-gradient(145deg, #7c3aed, #6d28d9);
+  color: #fff;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 20px;
+  border-radius: 8px;
+  font-size: 1.2rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.2s;
+  height: 58px; /* Match input height for alignment */
+  align-self: center;
+}
+
+.save-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.3);
+}
+
+.privacy-security {
+  padding: 24px;
+}
+
+.action-group {
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+  width: 100%;
+  align-items: center;
+}
+
+.action-btn {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.9), rgba(240, 240, 240, 0.9));
+  color: var(--text-primary);
+  border: 1px solid var(--glass-border);
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.2s;
+  width: 100%;
+  max-width: 300px; /* Consistent width for alignment */
+  height: 48px; /* Match other buttons for alignment */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.action-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.action-btn.delete {
+  background: linear-gradient(145deg, #fee2e2, #fecaca);
+  color: #ef4444;
+  border-color: #ef4444;
+}
+
+.action-btn.delete:hover {
+  background: #ef4444;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+}
+
+.cta-message {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.85));
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.cta-message p {
+  font-size: 1rem;
+  color: var(--text-primary);
+}
+
+@media (max-width: 900px) {
+  .profile-content {
+    flex-direction: column;
+    align-items: center;
+    gap: 32px;
+  }
+
+  .form-field {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .form-field label {
+    width: auto;
+    font-size: 0.95rem;
+  }
+
+  .form-field input,
+  .form-field select,
+  .input-container {
+    width: 100%;
+    min-height: 44px; /* Slightly smaller for mobile */
+  }
+
+  .edit-field-btn,
+  .save-btn {
+    height: 44px; /* Match mobile input height */
+    width: 100%;
+    max-width: 120px; /* Prevent buttons from being too wide */
+  }
+
+  .personal-details,
+  .mental-health-goals,
+  .privacy-security {
+    padding: 20px;
+  }
+
+  .checkbox-container {
+    flex-direction: column;
+    gap: 16px;
+    align-items: flex-start;
+  }
+
+  .checkbox-option {
+    width: 100%;
+    max-width: 300px; /* Consistent width on mobile */
+  }
+
+  .form-actions {
+    justify-content: center;
+  }
+
+  .action-group {
+    align-items: center;
+  }
+
+  .action-btn {
+    max-width: 100%; /* Full width on mobile for better alignment */
+  }
+
+  .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 16px 20px;
+  }
+
+  .status-indicator {
+    min-width: auto;
+    width: fit-content;
+    padding: 4px 10px;
+  }
+}
+
+@media (max-width: 600px) {
+  .profile-picture img {
+    width: 100px;
+    height: 100px;
+  }
+
+  .profile-header h2 {
+    font-size: 1.6rem;
+  }
+
+  .card-header h3 {
+    font-size: 1.2rem;
+  }
+
+  .form-field input,
+  .form-field select {
+    font-size: 0.95rem;
+    padding: 10px 14px;
+    min-height: 40px;
+  }
+
+  .edit-field-btn,
+  .save-btn,
+  .action-btn {
+    font-size: 0.9rem;
+    padding: 8px 16px;
+    height: 40px;
+  }
+
+  .status-indicator {
+    font-size: 0.85rem;
+  }
+
+  .checkbox-option {
+    padding: 8px 14px;
+  }
+}
+```
+
+# File: static/css/progress.css
+```css
+/* CSS Variables for consistency */
+:root {
+  --primary: #7c3aed;
+  --secondary: #f9faff;
+  --accent: #d4bfff;
+  --glass-bg: rgba(255, 255, 255, 0.9);
+  --glass-border: rgba(200, 200, 200, 0.3);
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+  --header-bg: linear-gradient(90deg, #a78bfa 0%, #c084fc 100%);
+  --text-primary: #1f2937;
+  --text-secondary: #6b7280;
+}
+
+/* General reset */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Inter', sans-serif;
+}
+
+/* Body styling */
+body {
+  background: var(--secondary);
+  display: flex;
+  min-height: 100vh;
+}
+
+/* App container */
+.app-container {
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+}
+
+/* Sidebar */
+.sidebar {
+  width: 260px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(10px);
+  border-right: 1px solid var(--glass-border);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  position: fixed;
+  height: 100vh;
+  z-index: 100;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo i {
+  font-size: 2rem;
+  color: var(--primary);
+}
+
+
+.logo h1 span {
+  color: var(--primary);
+}
+
+.sidebar nav {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sidebar nav a {
+  color: var(--text-primary);
+  text-decoration: none;
+  font-size: 1rem;
+  font-weight: 500;
+  padding: 12px 16px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: background 0.3s, color 0.3s;
+}
+
+.sidebar nav a:hover,
+.sidebar nav a.active {
+  background: var(--primary);
+  color: #fff;
+}
+
+/* Wrapper for content */
+.wrapper {
+  flex: 1;
+  margin-left: 260px;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* Main content */
+.main-content {
+  flex: 1;
+  padding: 24px;
+  width: 1200px;
+  width: 100%;
+  margin: 0 auto; 
+}
+
+/* Header */
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  background: var(--header-bg);
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--glass-border);
+  margin-bottom: 24px;
+}
+
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: rgba(255, 255, 255, 0.3);
+  padding: 14px 20px;
+  border-radius: 10px;
+  width: 450px;
+  max-width: 100%;
+}
+
+.search-bar i {
+  color: #fff;
+  font-size: 1.5rem;
+}
+
+.search-bar input {
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-size: 1.2rem;
+  outline: none;
+  width: 100%;
+}
+
+.search-bar input::placeholder {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 1.2rem;
+}
+
+.profile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.profile img {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  object-fit: cover;
+}
+
+.profile span {
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.profile i {
+  color: #fff;
+  font-size: 1.2rem;
+}
+
+/* Stats section */
+.stats-section {
+  margin-bottom: 32px;
+}
+
+.stats-section h2 {
+  font-size: 32px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.stats-section h2 i {
+  color: var(--primary);
+  font-size: 2.2rem;
+}
+
+.stats-boxes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 30px;
+  width: 100%; }
+
+.stat-box {
+  background: var(--glass-bg);
+  border-radius: 16px;
+  height: 120px;
+  padding: 24px;
+  border: 5px solid var(--glass-border);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.stat-box:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1);
+}
+
+.stat-box i {
+  font-size: 2.2rem;
+  color: var(--primary);
+  background: var(--secondary);
+  border-radius: 12px;
+  padding: 12px;
+  min-width: 48px;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stat-box h3 {
+  font-size: 25px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.stat-box p {
+  font-size: 20px;
+  color: var(--text-secondary);
+  font-weight: 500;
+  line-height: 1.5;
+  letter-spacing: 1px;
+}
+
+/* Chart section */
+.chart-section {
+  margin-bottom: 32px;
+}
+
+.chart-section h2 {
+  font-size: 32px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.chart-section h2 i {
+  color: var(--primary);
+  font-size: 2rem;
+}
+
+.chart-card {
+  background: var(--glass-bg);
+  border-radius: 16px;
+  padding: 24px;
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  width: 100%; /* Ensure chart takes full width */
+  height:600px;
+}
+
+.chart-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 10px 12px 40px rgba(0, 0, 0, 0.1);
+}
+
+/* Insights section */
+.insights-section {
+  margin-bottom: 32px;
+}
+
+.insights-section h2 {
+  font-size: 30px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.insights-section h2 i {
+  color: var(--primary);
+  font-size: 2rem;
+}
+
+.insights-content {
+  background: var(--glass-bg);
+  border-radius: 16px;
+  padding: 24px;
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow);
+  font-size: 1rem;
+  color: var(--text-primary);
+  line-height: 1.5;
+  width: 100%; /* Ensure insights takes full width */
+}
+
+/* Footer */
+footer {
+  text-align: center;
+  padding: 20px;
+  background: var(--glass-bg);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  backdrop-filter: blur(4px);
+  border-top: 1px solid var(--glass-border);
+  margin-top: auto;
+  width: 100%;
+}
+/* Responsive design */
+@media (max-width: 900px) {
+  .sidebar {
+    width: 80px;
+    align-items: center;
+  }
+  .sidebar .logo h1 {
+    display: none;
+  }
+  .sidebar nav a {
+    justify-content: center;
+    padding: 12px;
+  }
+  .sidebar nav a span {
+    display: none;
+  }
+  .wrapper {
+    margin-left: 80px;
+  }
+  .main-content {
+    padding: 16px;
+  }
+  .search-bar {
+    width: 300px;
+  }
+  .stats-boxes {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 600px) {
+  .sidebar {
+    width: 100%;
+    height: auto;
+    position: static;
+    flex-direction: row;
+    justify-content: space-between;
+    padding: 16px;
+  }
+  .sidebar nav {
+    flex-direction: row;
+    gap: 8px;
+  }
+  .wrapper {
+    margin-left: 0;
+  }
+  .main-content {
+    padding: 16px;
+  }
+  .stats-section h2,
+  .chart-section h2,
+  .insights-section h2 {
+    font-size: 1.6rem;
+  }
+
+  .stat-box,
+  .chart-card,
+  .insights-content {
+    padding: 16px;
+  }
+
+  .search-bar {
+    width: 100%;
+    padding: 10px 16px;
+  }
+
+  .search-bar i {
+    font-size: 1.2rem;
+  }
+
+  .search-bar input,
+  .search-bar input::placeholder {
+    font-size: 1rem;
+  }
+}
+
+.sidebar nav a {
+  color: var(--text-primary);
+  text-decoration: none;
+  font-size: 1.3rem;
+  font-weight: 500;
+  padding: 12px 16px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  transition: all 0.3s ease;
+}
+```
+
+# File: static/css/settings.css
+```css
+:root {
+  --primary: #7c3aed;
+  --secondary: #f9faff;
+  --glass-bg: rgba(255, 255, 255, 0.9);
+  --glass-border: rgba(200, 200, 200, 0.3);
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+  --text-primary: #1f2937;
+  --text-secondary: #6b7280;
+}
+
+.settings-section {
+  margin-top: 20px;
+}
+
+.settings-section h2 {
+  font-size: 32px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.settings-section h2 i {
+  color: var(--primary);
+  font-size: 2rem;
+}
+
+.settings-card {
+  background: var(--glass-bg);
+  border-radius: 16px;
+  padding: 24px;
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow);
+  margin-bottom: 30px;
+}
+
+.settings-group {
+  margin-bottom: 24px;
+}
+
+.settings-group h3 {
+  font-size: 25px;
+  color: var(--text-primary);
+  margin-bottom: 15px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings-group h3 i {
+  color: var(--primary);
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  color: var(--text-primary);
+  font-size: 18px;
+  font-weight: 500;
+  margin-bottom: 5px;
+}
+
+.form-group input,
+.form-group select {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #c7bbe4;
+  border-radius: 8px;
+  font-size: 16px;
+  background-color: #f4f0fa;
+  color: var(--text-primary);
+  transition: border-color 0.3s ease;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  border-color: var(--primary);
+  outline: none;
+}
+
+.toggle-group {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.toggle-wrapper {
+  position: relative;
+  width: 50px;
+  height: 24px;
+}
+
+.toggle-wrapper input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  border-radius: 12px;
+  transition: background-color 0.3s ease;
+}
+
+.toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  border-radius: 50%;
+  transition: transform 0.3s ease;
+}
+
+.toggle-wrapper input:checked + .toggle-slider {
+  background-color: var(--primary);
+}
+
+.toggle-wrapper input:checked + .toggle-slider:before {
+  transform: translateX(26px);
+}
+
+.neuroaid-btn {
+  background-color: var(--primary);
+  color: white;
+  border: none;
+  padding: 15px 30px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 600;
+  transition: background-color 0.3s ease, transform 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.neuroaid-btn:hover {
+  background-color: #6d28d9;
+  transform: translateY(-2px);
+}
+
+.error-message,
+.success-message {
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  font-size: 16px;
+}
+
+.error-message {
+  background-color: #fee2e2;
+  color: #dc2626;
+}
+
+.success-message {
+  background-color: #d1fae5;
+  color: #10b981;
+}
+
+/* Action Group for Privacy & Security */
+.action-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.action-btn {
+  background-color: var(--primary);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 500;
+  transition: background-color 0.3s ease, transform 0.3s ease;
+}
+
+.action-btn:hover {
+  background-color: #6d28d9;
+  transform: translateY(-2px);
+}
+
+.action-btn.delete {
+  background-color: #dc2626;
+}
+
+.action-btn.delete:hover {
+  background-color: #b91c1c;
+}
+
+/* Responsive Design */
+@media (max-width: 600px) {
+  .settings-section h2 {
+    font-size: 28px;
+  }
+
+  .settings-group h3 {
+    font-size: 22px;
+  }
+
+  .form-group label {
+    font-size: 16px;
+  }
+
+  .form-group input,
+  .form-group select {
+    font-size: 14px;
+    padding: 10px;
+  }
+
+  .neuroaid-btn {
+    padding: 12px 20px;
+    font-size: 14px;
+  }
+
+  .action-btn {
+    padding: 8px 16px;
+    font-size: 14px;
+  }
+}
+
+.error-message,
+.success-message {
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  font-size: 1rem; /* Updated from 16px to match inline */
+}
+
+.error-message {
+  background-color: #fee2e2;
+  color: #dc2626;
+}
+
+.success-message {
+  background-color: #d1fae5;
+  color: #10b981;
+}
 
 ```
 
-# File: templates/index.html
-```html
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>NeuroAid - Home</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/dropdown.css') }}" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/welcome.css') }}" />
-  <link id="theme-stylesheet" rel="stylesheet" href="{{ url_for('static', filename='css/themes/' + theme + '.css') }}">
-</head>
-<body>
-  <div class="sidebar"> …sidebar contents… </div>
-    <div class="sidebar">
-    <div class="logo">
-      <i class="ri-brain-line"></i>
-      <h1>Neuro<span>Aid</span></h1>
-    </div>
-    <nav>
-      <a href="{{ url_for('index') }}" class="active"><i class="ri-home-5-line"></i> Home</a>
-      <a href="{{ url_for('journal') }}"><i class="ri-booklet-line"></i> Journal</a>
-      <a href="{{ url_for('progress') }}"><i class="ri-bar-chart-2-line"></i> Progress</a>
-      <a href="{{ url_for('vibe') }}"><i class="ri-music-2-line"></i> Vibe</a>
-      <a href="{{ url_for('gratitude') }}"><i class="ri-heart-line"></i> Gratitude</a>
-      <a href="{{ url_for('settings')}}"><i class="ri-settings-3-line"></i> Settings</a>
-      <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
-      <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
-    </nav>
-  </div>
+# File: static/css/setup_2fa.css
+```css
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Poppins', sans-serif;
+  background: var(--background);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+
+.login-container {
+  display: flex;
+  width: 100%;
+  max-width: var(--container-max-width);
+  min-height: 650px;
+  background: var(--glass-bg);
+  box-shadow: var(--shadow);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.branding {
+  flex: 1;
+  background: var(--secondary);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.branding h1 {
+  font-size: var(--font-size-h1);
+  font-weight: 600;
+  text-align: center;
+  color: var(--text-primary);
+}
+
+.branding h1 span {
+  color: var(--primary);
+}
+
+.login-box {
+  flex: 1;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  background: var(--glass-bg);
+}
+
+.login-box h2 {
+  font-size: var(--font-size-h2);
+  font-weight: 500;
+  text-align: center;
+  margin-bottom: 10px;
+  color: var(--text-primary);
+}
+
+.login-box p {
+  font-size: var(--font-size-body);
+  color: var(--text-secondary);
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+.qr-container {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+
+.qr-container img {
+  max-width: 300px;
+  height: auto;
+}
+
+.secret-code {
+  font-family: 'Poppins', monospace;
+  background: var(--secondary);
+  padding: 12px;
+  border-radius: 5px;
+  text-align: center;
+  margin-bottom: 10px;
+  font-size: var(--font-size-body);
+  color: var(--text-primary);
+  word-break: break-all;
+}
+
+button, a {
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  padding: var(--button-padding);
+  border-radius: var(--button-border-radius);
+  font-size: var(--font-size-body);
+  font-weight: 500;
+  cursor: pointer;
+  text-align: center;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  margin-top: 0;
+}
+
+button:hover, a:hover {
+  background: #6d28d9;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.login-link, .signup-link {
+  text-align: center;
+  margin-top: 10px;
+  font-size: var(--font-size-body);
+  color: var(--text-secondary);
+}
+
+.login-link a, .signup-link a {
+  color: var(--primary);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.login-link a:hover, .signup-link a:hover {
+  text-decoration: underline;
+}
+
+.error {
+  font-size: var(--font-size-body);
+  color: #b71c1c;
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+.abc {
+  margin-bottom: 10px;
+}
+
+@media (max-width: 768px) {
+  .login-container {
+    flex-direction: column;
+    max-width: 100%;
+    min-height: auto;
+    border-radius: 0;
+  }
+  .branding {
+    display: none;
+  }
+  .login-box {
+    padding: 20px;
+    width: 100%;
+  }
+  .login-box h2 {
+    font-size: 1.6rem;
+  }
+  .login-box p {
+    font-size: 0.875rem;
+  }
+  .qr-container img {
+    max-width: 200px;
+  }
+  .secret-code {
+    font-size: 0.875rem;
+  }
+  button, a {
+    font-size: 0.875rem;
+  }
+  .error {
+    font-size: 0.875rem;
+  }
+}
+```
+
+# File: static/css/signup.css
+```css
+:root {
+  /* Color scheme variables for easy theme management */
+  --lavender: #e6d0ec;
+  --purple: #b27dd3;
+  --light-bg: #f9f6fc;
+  --dark: #2c2c2c;
+  --muted-gray: #78768b;
+  --mint: #daf7f5;
+  --gradient: linear-gradient(135deg, #e6d0ec, #c4a3d8);
+}
+
+/* General reset and box-sizing settings */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Poppins', sans-serif;
+}
+
+/* Body styling to set the gradient background and centering of content */
+body {
+  background: var(--gradient); 
+  min-height: 100vh; 
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 30px; 
+}
+
+/* Main login container with flex layout */
+.login-container {
+  width: 1200px;
+  height: 700px;
+  display: flex;
+  background: var(--light-bg); 
+  border-radius: 30px; 
+  box-shadow: 0 40px 60px rgba(0, 0, 0, 0.15); 
+  overflow: hidden; 
+  animation: fadeIn 1s ease forwards; 
+}
+
+/* Branding section, left part of the page */
+.branding {
+  flex: 1; 
+  background: var(--purple);
+  color: white;
+  padding: 60px; 
+  display: flex; 
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  clip-path: polygon(0% 0, 100% 0, 85% 100%, 0% 100%); 
+}
+
+/* Login box where the form resides */
+.login-box {
+  flex: 1.2; 
+  padding: 80px 60px; 
+  display: flex;
+  flex-direction: column; 
+  justify-content: center;
+}
+
+/* Main heading style */
+.login-box h1 {
+  text-align: center;
+  margin-bottom: 100px; /* Space below the heading */
+  font-size: 5rem;
+  font-weight: 600;
+  letter-spacing: 1px;
+  animation: slideIn 1s ease forwards; 
+}
+
+/* Specific style for the span in the heading */
+.login-box h1 span {
+  color: red;
+}
+
+/* Tagline styling */
+.login-box p {
+  font-size: 1.5rem;
+  text-align: center;
+  position: relative;
+  bottom: 75px;
+  opacity: 0.9;
+  animation: fadeIn 1.2s ease forwards; 
+}
+
+/* Subheading style for 'Login' */
+.login-box h2 {
+  font-size: 2.5rem;
+  font-weight: 600;
+  text-align: center;
+  position: relative;
+  bottom: 55px;
+  margin-bottom: 40px;
+  color: var(--dark);
+}
+
+/* Form container styling */
+form {
+  position: relative;
+  bottom: 60px; 
+  display: flex;
+  flex-direction: column; 
+  gap: 24px; /* Space between inputs */
+}
+
+/* input field */
+.input-group {
+  position: relative; 
+}
+
+.input-group input {
+  width: 100%; 
+  padding: 16px 14px; 
+  border-radius: 14px;
+  border: 1.5px solid var(--muted-gray); 
+  background: transparent; 
+  color: var(--dark); 
+  font-size: 1rem;
+  transition: border-color 0.3s ease, background 0.3s ease; 
+}
+
+/* Focused input field styling */
+.input-group input:focus {
+  border-color: var(--purple); 
+  background-color: #f5effb; 
+}
+
+/* Label styling for inputs */
+.input-group label {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted-gray);
+  background: var(--light-bg); 
+  padding: 0 6px;
+  transition: all 0.25s ease;
+  pointer-events: none; 
+}
+
+/* When the input is focused or filled, adjust the label position */
+.input-group input:focus + label,
+.input-group input:not(:placeholder-shown) + label {
+  top: -10px;
+  left: 12px;
+  font-size: 0.8rem;
+  color: var(--purple); 
+}
+
+/*submit button */
+button {
+  padding: 16px;
+  border: none;
+  background: var(--dark); 
+  color: white;
+  font-size: 1rem;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: background 0.3s ease, transform 0.2s ease; 
+}
+
+/* Button hover effect */
+button:hover {
+  background-color: var(--muted-gray); 
+  transform: translateY(-2px);
+}
+
+/* Link to sign-up page styling */
+.signup-link {
+  margin-top: 20px;
+  text-align: center;
+  font-size: 1rem;
+  color: var(--muted-gray);
+  position: relative;
+  bottom: 50px;
+}
+
+/* Styling for the sign-up link */
+.signup-link a {
+  color: #000;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+/* sign-up link on hover */
+.signup-link a:hover {
+  text-decoration: underline;
+}
+
+.login-link {
+  margin-top: 20px;
+  text-align: center;
+  font-size: 1rem;
+  color: var(--muted-gray);
+  position: relative;
+  bottom: 50px;
+}
+
+/* Styling for the sign-up link */
+.login-link a {
+  color: #000;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+/* sign-up link on hover */
+.login-link a:hover {
+  text-decoration: underline;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  0% { opacity: 0; transform: scale(0.96); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes slideIn {
+  from { transform: translateY(-20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* Responsive styling for smaller screens */
+@media (max-width: 1000px) {
+  
+  .login-container {
+      flex-direction: column;
+      height: auto;
+  }
+
+  
+  .branding {
+      clip-path: none;
+      border-radius: 30px 30px 0 0;
+  }
 
 
-  <div class="wrapper">
-    <main class="main-content">
-      <header>
-        <div class="welcome-container">
-          <div class="welcome-text">Welcome to NeuroAid, {{ user_name }}</div>
-          <div class="quote-text"></div>
-        </div>
-        <div class="profile-dropdown">
-          <div class="profile">
-            <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile" />
-            <span>{{ session.get('user_email', 'User').split('@')[0] }}</span>
-            <i class="ri-arrow-down-s-line"></i>
-          </div>
-        <div class="dropdown-content">
-          <div class="user-info">
-            <p><i class="ri-user-line"></i> {{ user_name }}</p>
-            <p><i class="ri-mail-line"></i> {{ user_email }}</p>
-            <p><i class="ri-calendar-line"></i> Joined: {{ joined_date }}</p>
-          </div>
-          <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
-          <a href="{{ url_for('settings') }}"><i class="ri-settings-3-line"></i> Settings</a>
-          <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
-        </div>
-        </div>
-      </header>
+  .login-box {
+      padding: 60px 30px;
+  }
+}
 
-      <section class="home-section">
-        <div class="welcome-message">
-          <h2><i class="ri-home-5-line"></i> Welcome to NeuroAid</h2>
-          <p>Your companion for mental health and self-reflection.</p>
-        </div>
+```
 
-        <div class="suggestions-card">
-          <h3><i class="ri-lightbulb-line"></i> Today's Suggestions</h3>
-          {% if suggestions is defined and suggestions %}
-            <ul>
-              {% for suggestion in suggestions %}
-                <li>{{ suggestion }}</li>
-              {% endfor %}
-            </ul>
-          {% else %}
-            <p>No suggestions available. Write a journal entry to get started!</p>
-          {% endif %}
-        </div>
+# File: static/css/verify_2fa.css
+```css
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
 
-        <div class="recent-reflections">
-          <h3><i class="ri-booklet-line"></i> Recent Reflections</h3>
-          {% if recent_entries is defined and recent_entries %}
-            {% for entry in recent_entries %}
-              <div class="entry-preview">
-                <div class="entry-meta">{{ entry.created_at }}</div>
-                <div class="entry-snippet">{{ entry.content_snippet | safe }}</div>
-                <a href="{{ url_for('journal') }}">Read More</a>
-              </div>
-            {% endfor %}
-          {% else %}
-            <p>No recent entries. <a href="{{ url_for('journal') }}">Start journaling today!</a></p>
-          {% endif %}
-        </div>
+body {
+  font-family: 'Poppins', sans-serif;
+  background-color: #D6E0FA;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
 
-        <div class="quick-actions">
-          <a href="{{ url_for('journal') }}" class="neuroaid-btn"><i class="ri-booklet-line"></i> Write a Journal Entry</a>
-          <a href="{{ url_for('progress') }}" class="neuroaid-btn"><i class="ri-bar-chart-2-line"></i> View Progress</a>
-        </div>
-      </section>
-    </main>
+.login-container {
+  display: flex;
+  width: 100%;
+  max-width: 900px;
+  min-height: 400px;
+  background-color: #fff;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+  border-radius: 10px;
+  overflow: hidden;
+}
 
-    <footer>
-      <span>© 2025 NeuroAid. Your mental health companion.</span>
-    </footer>
-  </div>
+.branding {
+  flex: 1;
+  background-color: #f5f5f5;
+}
 
-  <script src="{{ url_for('static', filename='js/dropdown.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/welcome.js') }}"></script>
-</body>
-</html>
+.login-box {
+  flex: 1;
+  padding: 30px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  background-color: #fff;
+}
 
+.login-box h1 {
+  font-size: 32px;
+  font-weight: 600;
+  text-align: center;
+  margin-bottom: 8px;
+  color: #2D2D2D;
+}
+
+.login-box h1 span {
+  color: #3F51B5;
+}
+
+.login-box p {
+  font-size: 15px;
+  color: #666;
+  text-align: center;
+  margin-bottom: 15px;
+}
+
+.login-box h2 {
+  font-size: 22px;
+  font-weight: 500;
+  text-align: center;
+  margin-bottom: 15px;
+  color: #3F51B5;
+}
+
+.input-group {
+  position: relative;
+  margin-bottom: 20px;
+}
+
+.input-group input {
+  width: 100%;
+  padding: 12px 15px; /* Increased padding for more space */
+  font-size: 16px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  outline: none;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  text-align: center;
+}
+
+.input-group input:focus {
+  border-color: #3F51B5;
+  box-shadow: 0 0 5px rgba(63, 81, 181, 0.3);
+}
+
+.input-group label {
+  position: absolute;
+  top: 50%;
+  left: 15px;
+  transform: translateY(-50%);
+  font-size: 16px;
+  color: #999;
+  pointer-events: none;
+  transition: all 0.3s ease;
+  background-color: transparent;
+}
+
+.input-group input:focus + label,
+.input-group input:not(:placeholder-shown) + label {
+  top: -12px; /* Moved higher to avoid overlap */
+  font-size: 12px;
+  color: #3F51B5;
+  background-color: #fff;
+  padding: 2px 6px; /* Increased padding for better coverage */
+}
+
+button {
+  width: 100%;
+  padding: 10px;
+  background-color: #3F51B5;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.1s ease;
+  margin-top: 10px;
+}
+
+button:hover {
+  background-color: #2c3e50;
+  transform: translateY(-2px);
+}
+
+.error {
+  color: #b71c1c;
+  text-align: center;
+  margin-top: 10px;
+  font-size: 14px;
+  background-color: #ffebee;
+  padding: 5px 10px;
+  border-radius: 5px;
+}
+
+@media (max-width: 768px) {
+  .login-container {
+    flex-direction: column;
+    max-width: 100%;
+    min-height: auto;
+    border-radius: 0;
+  }
+
+  .branding {
+    display: none;
+  }
+
+  .login-box {
+    padding: 20px;
+    width: 100%;
+  }
+
+  .login-box h1 {
+    font-size: 28px;
+  }
+
+  .login-box h2 {
+    font-size: 20px;
+  }
+}
+```
+
+# File: static/css/vibe.css
+```css
+.music-box {
+    background: var(--card-bg, #ffffff);
+    border-radius: 12px;
+    padding: 20px;
+    margin-top: 20px;
+    text-align: center;
+    box-shadow: var(--shadow, 0 2px 5px rgba(0, 0, 0, 0.1));
+}
+
+.music-box h3 {
+    margin: 0 0 10px;
+    font-size: 2rem;
+    color: var(--text-primary, #1f2937);
+}
+
+.music-box p {
+    color: var(--text-secondary, #6b7280);
+    font-size: 1rem;
+}
+
+.selector-group {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
+    align-items: center;
+    justify-content: center;
+}
+
+.selector-group label {
+    font-weight: 500;
+    font-size: 26px;
+    color: var(--text-primary, #1f2937);
+    margin-right: 10px;
+    margin-top: 25px;
+}
+
+.selector-group select {
+    padding: 12px 18px;
+    border-radius: 8px;
+    border: 1px solid var(--glass-border, #e5e7eb);
+    background: var(--secondary, #f9faff);
+    color: var(--text-primary, #1f2937);
+    font-size: 1rem;
+    cursor: pointer;
+    margin-top:25px;
+}
+
+.selector-group select:focus {
+    outline: none;
+    border-color: var(--primary, #7c3aed);
+}
+
+.music-recommendations-section h2 {
+    font-size: 42px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-primary, #1f2937);
+}
+```
+
+# File: static/css/welcome.css
+```css
+.welcome-container {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex-grow: 1;
+}
+
+.welcome-text {
+    font-size: 25px;
+    font-weight: 600;
+    color: #2d2d2d;
+    animation: fadeIn 2.5s ease-in-out forwards;
+    animation: fadeOut 2.5s ease-in-out forwards;
+}
+
+@keyframes fadeOut {
+    0% { opacity: 1; }
+    80% { opacity: 1; }
+    100% { opacity: 0; visibility: hidden; }
+}
+
+.quote-text {
+    font-size: 24px;
+    color: #333131;
+    opacity: 0;
+    visibility: hidden;
+    animation: fadeIn 1s ease-in-out 3.5s forwards;
+}
+
+@keyframes fadeIn {
+    0% { opacity: 0; visibility: hidden; }
+    100% { opacity: 1; visibility: visible; }
+}
+
+/* Theme-specific styles */
+.theme-dark .welcome-text {
+    color: #ffffff;
+}
+
+.theme-dark .quote-text {
+    color: #cccccc;
+}
+
+.theme-calming .welcome-text {
+    color: #7c3aed;
+}
+
+.theme-calming .quote-text {
+    color: #5b2cb3;
+}
+```
+
+# File: static/css/themes/calming.css
+```css
+:root {
+  --primary: #4c68d7;
+  --secondary: #e6f3fa;
+  --accent: #a3bffa;
+  --glass-bg: rgba(240, 248, 255, 0.9);
+  --glass-border: rgba(150, 200, 255, 0.3);
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+  --header-bg: linear-gradient(90deg, #4c68d7 0%, #81a1c1 100%);
+  --text-primary: #2d3748;
+  --text-secondary: #718096;
+  --background: #e6f0fa;
+}
+```
+
+# File: static/css/themes/dark.css
+```css
+/* Dark Theme Styles for NeuroAid - Enhanced for Visibility and Appeal */
+:root {
+  --background-color: #1a202c; /* Slightly lighter slate for better depth */
+  --text-color: #e5e7eb; /* Softer white for better readability */
+  --card-background: #2d3748; /* Lighter gray for cards */
+  --card-border: #4a5568; /* Subtle border color */
+  --button-background: #7c3aed; /* Purple base */
+  --button-text: #ffffff; /* White text */
+  --button-hover: #6b21a8; /* Darker purple hover */
+  --link-color: #a78bfa; /* Lavender link */
+  --sidebar-background: #1a202c; /* Matches background for seamless integration */
+  --sidebar-text: #e5e7eb; /* Consistent with text-color */
+  --header-background: #818ea5; /* Matches card background */
+  --footer-text: #a0aec0; /* Lighter gray for footer */
+  --dropdown-background: #2d3748; /* Consistent with cards */
+  --dropdown-text: #e5e7eb; /* Readable dropdown text */
+  --entry-meta: #a0aec0; /* Lighter meta text */
+  --entry-snippet: #cbd5e0; /* Softer snippet text */
+  --input-background: #4a5568; /* Dark input background */
+  --input-text: #e5e7eb; /* Readable input text */
+  --shadow-light: 0 4px 6px rgba(0, 0, 0, 0.1); /* Subtle shadow */
+  --shadow-hover: 0 10px 15px rgba(0, 0, 0, 0.2); /* Enhanced hover shadow */
+}
+
+body {
+  background-color: var(--background-color);
+  color: var(--text-color);
+  font-family: 'Inter', sans-serif;
+  transition: background-color 0.3s, color 0.3s; /* Smooth theme transition */
+}
+
+.sidebar,
+.main-content,
+header,
+.welcome-message,
+.suggestions-card,
+.recent-reflections,
+.quick-actions {
+  background-color: var(--card-background);
+  border-radius: 8px; /* Rounded corners for modern look */
+  box-shadow: var(--shadow-light); /* Subtle elevation */
+}
+
+.welcome-message p{
+  color: #59db0e;
+}
+
+.sidebar {
+  color: var(--sidebar-text);
+  border-right: 1px solid var(--card-border);
+  transition: background-color 0.3s;
+}
+
+.sidebar .logo h1 {
+  color: var(--sidebar-text);
+  font-weight: 700;
+}
+
+.sidebar .logo span {
+  color: var(--link-color);
+  font-weight: 600;
+}
+
+.home-section h2{
+  color: #ffffff ;
+}
+
+.sidebar nav a {
+  color: var(--sidebar-text);
+  padding: 10px 15px;
+  border-radius: 4px;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.sidebar nav a:hover,
+.sidebar nav a.active {
+  background-color: #4a5568; /* Lighter hover background */
+  color: var(--link-color);
+  box-shadow: var(--shadow-hover); /* Enhanced hover effect */
+}
+
+header {
+  border-bottom: 1px solid var(--card-border);
+  padding: 10px 20px;
+  background: linear-gradient(90deg, #2d3748, #4a5568); /* Gradient for depth */
+}
+
+.welcome-text,
+.quote-text,
+.suggestions-card h3,
+.recent-reflections h3{
+  color: var(--text-color);
+  font-weight: 600;
+}
+
+.profile-dropdown .profile {
+  color: var(--text-color);
+  padding: 8px 12px;
+  border-radius: 4px;
+}
+
+.dropdown-content {
+  background-color: var(--dropdown-background);
+  color: var(--dropdown-text);
+  border: 1px solid var(--card-border);
+  border-radius: 6px;
+  box-shadow: var(--shadow-light);
+}
+
+.dropdown-content a,
+.dropdown-content .user-info p {
+  color: var(--dropdown-text);
+  padding: 8px 12px;
+  transition: background-color 0.2s;
+}
+
+.dropdown-content a:hover {
+  background-color: #4a5568;
+  color: var(--link-color);
+}
+
+.suggestions-card ul li,
+.recent-reflections .entry-snippet {
+  color: var(--entry-snippet);
+  line-height: 1.6;
+}
+
+.recent-reflections .entry-meta {
+  color: var(--entry-meta);
+  font-size: 0.875rem;
+}
+
+.neuroaid-btn {
+  background-color: var(--button-background);
+  color:#4ecca3;   
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s, box-shadow 0.2s;
+}
+
+.neuroaid-btn:hover {
+  background-color: var(--button-hover);
+  color: #4ecca3 ;
+  box-shadow: var(--shadow-hover);
+}
+
+a {
+  color: var(--link-color);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+a:hover {
+  color: var(--button-hover);
+  text-decoration: underline;
+}
+
+footer {
+  color: var(--footer-text);
+  background-color: var(--card-background);
+  padding: 10px 20px;
+  border-top: 1px solid var(--card-border);
+  border-radius: 8px 8px 0 0;
+}
+
+/* Additional Styles for Invisible Elements */
+input,
+textarea,
+select {
+  background-color: var(--input-background);
+  color: var(--input-text);
+  border: 1px solid var(--card-border);
+  border-radius: 4px;
+  padding: 8px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: var(--button-background);
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.2); /* Purple glow */
+  outline: none;
+}
+
+button:not(.neuroaid-btn) {
+  background-color: var(--card-background);
+  color: var(--text-color);
+  border: 1px solid var(--card-border);
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s;
+}
+
+button:not(.neuroaid-btn):hover {
+  background-color: #4a5568;
+  border-color: var(--button-hover);
+}
+
+.modal {
+  background-color: var(--card-background);
+  color: var(--text-color);
+  border-radius: 8px;
+  box-shadow: var(--shadow-light);
+  padding: 20px;
+}
+
+.modal-overlay {
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+/* progress page */
+
+.stats-section h2{
+  color: #fff;
+}
+
+.stats-section h3{
+  color:#59db0e;
+}
+
+.stat-box{
+  background-color:grey;
+}
+
+#streak-value, #entries-count, #mood{
+  color:#fff;
+}
+
+.chart-section h2{
+  color:#fff;
+}
+
+.chart-card {
+  background-color: #3e4041;
+  border-radius: 16px;
+  padding: 24px;
+  border: 1px solid black;
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  width: 100%; /* Ensure chart takes full width */
+  height:600px;
+}
+
+.chart-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 10px 12px 40px rgba(0, 0, 0, 0.1);
+}
+
+/* Journal page */
+
+.journal-section {
+  width: 1400px;
+  margin: 0 auto;
+  background-color: var(--entry-meta);
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.journal-header h2, .journal-header p, .entry-content {
+  color: #fff;
+}
+```
+
+# File: static/css/themes/light.css
+```css
+/* Light Theme Styles for NeuroAid */
+:root {
+  --background-color: #f3f4f6;
+  --text-color: #2d2d2d;
+  --card-background: #ffffff;
+  --card-border: #e5e7eb;
+  --button-background: #7c3aed;
+  --button-text: #ffffff;
+  --button-hover: #6d28d9;
+  --link-color: #7c3aed;
+  --sidebar-background: #ffffff;
+  --sidebar-text: #2d2d2d;
+  --header-bg: linear-gradient(90deg, #a78bfa 0%, #c084fc 100%);
+  --footer-text: #6b7280;
+  --dropdown-background: #ffffff;
+  --dropdown-text: #2d2d2d;
+  --entry-meta: #6b7280;
+  --entry-snippet: #374151;
+}
+
+body {
+  background-color: var(--background-color);
+  color: var(--text-color);
+  font-family: 'Inter', sans-serif;
+}
+
+.sidebar {
+  background-color: var(--sidebar-background);
+  color: var(--sidebar-text);
+  border-right: 1px solid var(--card-border);
+}
+
+.sidebar .logo h1 {
+  color: var(--sidebar-text);
+}
+
+.sidebar .logo span {
+  color: var(--link-color);
+}
+
+.sidebar nav a {
+  color: var(--sidebar-text);
+}
+
+.sidebar nav a:hover,
+.sidebar nav a.active {
+  background-color: #f3f4f6;
+  color: var(--link-color);
+}
+
+.main-content {
+  background-color: var(--background-color);
+}
+
+header {
+  background-color: var(--header-background);
+  border-bottom: 1px solid var(--card-border);
+}
+
+.welcome-text,
+.quote-text {
+  color: var(--text-color);
+}
+
+.profile-dropdown .profile {
+  color: var(--text-color);
+}
+
+.dropdown-content {
+  background-color: var(--dropdown-background);
+  color: var(--dropdown-text);
+  border: 1px solid var(--card-border);
+}
+
+.dropdown-content a,
+.dropdown-content .user-info p {
+  color: var(--dropdown-text);
+}
+
+.dropdown-content a:hover {
+  background-color: #f3f4f6;
+}
+
+.suggestions-card,
+.recent-reflections,
+.welcome-message {
+  background-color: var(--card-background);
+  border: 1px solid var(--card-border);
+  color: var(--text-color);
+}
+
+.suggestions-card h3,
+.recent-reflections h3,
+.welcome-message h2 {
+  color: var(--text-color);
+}
+
+.suggestions-card ul li,
+.recent-reflections .entry-snippet {
+  color: var(--entry-snippet);
+}
+
+.recent-reflections .entry-meta {
+  color: var(--entry-meta);
+}
+
+.neuroaid-btn {
+  background-color: var(--button-background);
+  color: var(--button-text);
+}
+
+.neuroaid-btn:hover {
+  background-color: var(--button-hover);
+}
+
+a {
+  color: var(--link-color);
+}
+
+a:hover {
+  color: var(--button-hover);
+}
+
+footer {
+  color: var(--footer-text);
+}
 ```
 
