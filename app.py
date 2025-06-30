@@ -13,6 +13,14 @@ from io import BytesIO
 import base64
 import os
 import random
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+import schedule
+import time
+from threading import Thread
+from dotenv import load_dotenv
+
 
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'your-secret-key')
@@ -1557,5 +1565,67 @@ def logout():
         logger.info(f"User {user_email} logged out at {logout_time}")
     return redirect(url_for('login'))
 
+# Load environment variables
+load_dotenv()
+
+def send_email(to_email, subject, body):
+    sender_email = os.getenv('EMAIL_SENDER', 'your_email@gmail.com')
+    sender_password = os.getenv('EMAIL_PASSWORD', 'your_app_password')  # Use App Password for Gmail
+
+    msg = MIMEMultipart()
+    msg['From'] = sender_email
+    msg['To'] = to_email
+    msg['Subject'] = subject
+    msg.attach(MIMEText(body, 'plain'))
+
+    try:
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server.starttls()
+        server.login(sender_email, sender_password)
+        server.sendmail(sender_email, to_email, msg.as_string())
+        server.quit()
+        logger.info(f"Email sent to {to_email} at {datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%I:%M %p IST')}")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to send email to {to_email}: {str(e)}")
+        return False
+
+def send_reminder_emails():
+    supabase = get_supabase(use_service_role=True)
+    try:
+        users = supabase.table('user_preferences')\
+            .select('user_id, reminder_time, notification_preference')\
+            .eq('notification_preference', 'email')\
+            .execute()
+        
+        for user in users.data:
+            user_id = user['user_id']
+            reminder_time = user['reminder_time']
+            user_data = supabase.table('users').select('email').eq('id', user_id).limit(1).execute()
+            if not user_data.data:
+                logger.warning(f"No email found for user_id: {user_id}")
+                continue
+            email = user_data.data[0]['email']
+            
+            # Schedule email at the reminder time (adjusted for IST)
+            schedule.every().day.at(reminder_time).do(
+                send_email,
+                to_email=email,
+                subject="NeuroAid Daily Reminder",
+                body="Hi! It's time to journal on NeuroAid. Reflect on your day and check your progress!"
+            )
+            logger.info(f"Scheduled email for {email} at {reminder_time} IST")
+    except Exception as e:
+        logger.error(f"Error scheduling emails: {str(e)}")
+
+def run_scheduler():
+    send_reminder_emails()  # Initial setup
+    while True:
+        schedule.run_pending()
+        time.sleep(60)  # Check every minute
+        
 if __name__ == '__main__':
+    scheduler_thread = Thread(target=run_scheduler)
+    scheduler_thread.daemon = True
+    scheduler_thread.start()
     app.run(debug=True, host='0.0.0.0', port=5000)
