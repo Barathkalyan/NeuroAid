@@ -600,47 +600,34 @@ def recommend_music():
 
         MOOD_PLAYLISTS = {
     'tamil': {
-        1: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWX3SoTqhs2rq',
-        2: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWVV27DiNWxkR',
-        3: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWXz6ZFxA5jKQ',
-        4: 'https://open.spotify.com/embed/playlist/2Yra1CyIYaJ2YNz49yjh4i',
-        5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWUnAwRxD2pxH'
+        1: 'https://open.spotify.com/embed/playlist/7ttDLBXnJ3X9gVTNPevjsH',
+        2: 'https://open.spotify.com/embed/playlist/1MydE04FsRKKs3dzFd3mmt',
+        3: 'https://open.spotify.com/embed/playlist/2f8Jr34CAALmHJ6LY22GoJ',
+        4: 'https://open.spotify.com/embed/playlist/5LCntABX1VKtTWtnj7TMLd',
+        5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX0nA91dV2ts4'
     },
     'english': {
-        1: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX9sIqqvKsjG8',
-        2: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX3rxVfibe1L0',
-        3: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX0BcQWzuB7ZO',
-        4: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXcBWIGoYBM5M',
-        5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWUa8ZRTfalSI'
-    },
-    'hindi': {
-        1: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWYkaDif7Ztbp',
-        2: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWUVpAXiEPK8P',
-        3: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX4dyzvuaRJ0n',
-        4: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX4SBhb3fqCJd',
-        5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX4ZrmoTDh6zJ'
+        1: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX3rxVfibe1L0', 
+        2: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX4fpCWaHOned',  
+        3: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX70RN3TfWWJh',  
+        4: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXdPec7aLTmlC',  
+        5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXaXB8fQg7xif',  
     },
     'telugu': {
-        1: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWXLeA8Omikj7',
-        2: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXapHi7gXtXo2',
-        3: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXdbXrPNafg9d',
-        4: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXaKIA8E7WcJj',
-        5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWXi7h5CniH97'
+        1: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWXLeA8Omikj7',  # Hopeful Telugu Vibes
+        2: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXapHi7gXtXo2',  # Bright & Hopeful Telugu
+        3: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXdbXrPNafg9d',  # Motivational Telugu Songs
+        4: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXaKIA8E7WcJj',  # Happy Telugu Hits
+        5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWXi7h5CniH97'   # Telugu Party Vibes
     },
     'malayalam': {
-        1: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWWhB4HOWKFQc',
-        2: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX6KYgZMe25iS',
-        3: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXbqXxdO1a3nX',
-        4: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWZz8QXaU2aX5',
-        5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWVoDnLC9PqaD'
-    },
-    'kannada': {
-        1: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWXh3XHYZ7Sx1',
-        2: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX33aWnYYWvdf',
-        3: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWVXaB8Ox0zRJ',
-        4: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXe3a8d5bfgGk',
-        5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWUTJW8w3JNz2'
+        1: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXbL0D4VxV2FY',  # Hopeful Malayalam Vibes
+        2: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX9d5Vq9NrTzR',  # Bright & Hopeful Malayalam
+        3: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX9qNs32fujYe',  # Motivational Malayalam Songs
+        4: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX1SpT6G94GFC',  # Happy Malayalam Hits
+        5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXa2PvUpywmrr'   # Malayalam Party Vibes
     }
+
 }
 
         playlist_url = MOOD_PLAYLISTS.get(language, MOOD_PLAYLISTS['tamil']).get(mood)
@@ -1619,10 +1606,12 @@ def send_reminder_emails():
         logger.error(f"Error scheduling emails: {str(e)}")
 
 def run_scheduler():
-    send_reminder_emails()  # Initial setup
-    while True:
-        schedule.run_pending()
-        time.sleep(60)  # Check every minute
+    with app.app_context():
+        send_reminder_emails()  # Initial setup
+        while True:
+            schedule.run_pending()
+            time.sleep(1)
+
         
 if __name__ == '__main__':
     scheduler_thread = Thread(target=run_scheduler)
