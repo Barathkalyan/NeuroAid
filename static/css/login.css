@@ -1,0 +1,276 @@
+ /* Spinner styles */
+    .spinner {
+      display: none;
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #3498db;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto;
+    }
+
+    
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .submitting .spinner {
+      display: inline-block;
+    }
+
+    .submitting span {
+      display: none;
+    }
+
+    /* Forgot Password link styles */
+    .forgot-password-link {
+      text-align: center;
+      margin-top: 10px;
+    }
+
+    .forgot-password-link a {
+      color: #3498db;
+      text-decoration: none;
+      font-size: 18px;
+      font-weight: 500;
+    }
+
+    .forgot-password-link a:hover {
+      text-decoration: underline;
+    }
+
+    /* Signup link styles */
+    .signup-link {
+      text-align: center;
+      margin-top: 15px;
+    }
+
+    .signup-link a {
+      color: #3498db;
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .signup-link a:hover {
+      text-decoration: underline;
+    }
+
+    /* Password toggle styles */
+    .input-group {
+      position: relative;
+    }
+
+    .toggle-password {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      cursor: pointer;
+      font-size: 14px;
+      color: #3498db;
+    }
+
+    /* Error message styles */
+    .error-message {
+      color: red;
+      font-size: 12px;
+      margin-top: 5px;
+      display: none;
+    }
+
+    .input-error {
+      border: 1px solid red;
+    }
+
+    /* Branding styles - Updated to match purple theme */
+    .branding {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100%;
+      position: relative;
+      overflow: hidden;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .branding-scene {
+      width: 95%;
+      max-width: 700px;
+      height: 100%;
+      position: relative;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      padding: 30px;
+      box-sizing: border-box;
+      animation: fadeIn 1s ease-in;
+    }
+
+    .logo {
+      width: 100%;
+      text-align: center;
+      font-family: 'Poppins', sans-serif;
+      font-size: 60px;
+      font-weight: 700;
+      margin-bottom: 20px;
+    }
+
+    .logo .neuro {
+      background: linear-gradient(45deg, #ffffff, #f0f0f0);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .logo .aid {
+      color: #ff4444;
+    }
+
+    .feature-block {
+      display: flex;
+      align-items: center;
+      margin-bottom: 40px;
+      opacity: 0;
+      transition: opacity 0.5s ease, transform 0.3s ease;
+    }
+
+    .feature-block:hover {
+      transform: scale(1.05);
+    }
+
+    .feature-icon {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 28px;
+      color: white;
+      background: linear-gradient(90deg, #764ba2, #667eea);
+      margin-right: 20px;
+      cursor: pointer;
+    }
+
+    .feature-label {
+      font-family: 'Poppins', sans-serif;
+      font-size: 24px;
+      font-weight: 500;
+      background: linear-gradient(90deg, #ffffff, #f0f0f0);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .feature-tooltip {
+      position: absolute;
+      bottom: -40px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: 'Poppins', sans-serif;
+      font-size: 16px;
+      color: white;
+      background: linear-gradient(90deg, #764ba2, #667eea);
+      padding: 10px 15px;
+      border-radius: 8px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+
+    .feature-block:hover .feature-tooltip {
+      opacity: 1;
+    }
+
+    .quote-container {
+      text-align: center;
+      font-family: 'Poppins', sans-serif;
+      font-size: 20px;
+      font-weight: 500;
+      color: #FFFFFF;
+      margin-bottom: 40px;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+      animation: fadeInBlock 0.5s ease-in forwards 0.3s;
+    }
+
+    .ripple {
+      position: absolute;
+      border-radius: 50%;
+      background: linear-gradient(90deg, rgba(118, 75, 162, 0.3), rgba(102, 126, 234, 0.3));
+      pointer-events: none;
+      transform: scale(0);
+      animation: rippleEffect 0.8s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.15); }
+      100% { transform: scale(1); }
+    }
+
+    @keyframes fadeInBlock {
+      0% { opacity: 0; transform: translateY(20px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+
+    .feature-block:nth-child(3) { animation: fadeInBlock 0.5s ease-in forwards 1s; }
+    .feature-block:nth-child(4) { animation: fadeInBlock 0.5s ease-in forwards 1.5s; }
+    .feature-block:nth-child(5) { animation: fadeInBlock 0.5s ease-in forwards 2s; }
+    .feature-block:nth-child(6) { animation: fadeInBlock 0.5s ease-in forwards 2.5s; }
+
+    @keyframes rippleEffect {
+      to { transform: scale(3); opacity: 0; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .logo, .feature-block, .quote-container, .ripple {
+        animation: none;
+      }
+      .feature-block, .quote-container { opacity: 1; transform: none; }
+      .feature-tooltip { opacity: 0; }
+    }
+
+    @media (max-width: 768px) {
+      .branding-scene {
+        width: 95%;
+        max-width: 500px;
+        padding: 15px;
+      }
+      .logo {
+        font-size: 40px;
+        margin-bottom: 30px;
+      }
+      .feature-block {
+        margin-bottom: 30px;
+      }
+      .feature-icon {
+        width: 40px;
+        height: 40px;
+        font-size: 22px;
+        margin-right: 15px;
+      }
+      .feature-label {
+        font-size: 20px;
+      }
+      .feature-tooltip {
+        font-size: 14px;
+        bottom: -30px;
+      }
+      .quote-container {
+        font-size: 16px;
+        margin-top: 30px;
+      }
+      .icon-gratitude, .icon-music { display: none; } /* Reduce to 2 blocks on mobile */
+    }
