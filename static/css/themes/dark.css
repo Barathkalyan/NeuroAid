@@ -360,3 +360,14 @@ label[for="thing3"] {
   color: var(--text-color);
 }
 
+.settings-section h2{
+  color: var(--text-color);
+}
+.profile-header h2 {
+  color: var(--text-color);
+}
+.profile-header .abx{
+  color: var(--dropdown-text);
+}
+
+
