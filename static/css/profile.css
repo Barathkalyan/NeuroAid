@@ -253,11 +253,15 @@
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
 }
 
-.checkbox-option input {
+.checkbox-option input[type="checkbox"] {
   width: 18px;
   height: 18px;
+  min-width: 18px;
+  min-height: 18px;
   accent-color: var(--primary);
-  margin: 0; /* Remove default margin for better alignment */
+  margin: 0;
+  display: inline-block;
+  vertical-align: middle;
 }
 
 .checkbox-option label {

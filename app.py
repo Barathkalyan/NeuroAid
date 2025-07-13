@@ -19,10 +19,9 @@ from email.mime.multipart import MIMEMultipart
 import schedule
 from threading import Thread
 from dotenv import load_dotenv
-from apscheduler.schedulers.background import BackgroundScheduler
-from apscheduler.triggers.cron import CronTrigger
 from storage3.utils import StorageException
 import uuid
+import secrets
 
 # Initialize logging
 logging.basicConfig(level=logging.INFO)
@@ -1741,7 +1740,7 @@ def send_reminder_emails():
         return
 
     supabase = get_supabase(use_service_role=True)
-    scheduler = BackgroundScheduler(timezone="Asia/Kolkata")
+   
     try:
         logger.info(f"Fetching users for reminder emails at {datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%I:%M %p IST')}")
         users = supabase.table('user_preferences')\
