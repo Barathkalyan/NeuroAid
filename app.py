@@ -87,14 +87,31 @@ def query_huggingface(model: str, payload: dict, retries=3, backoff_factor=1):
 def simple_keyword_analysis(text):
     text = text.lower()
     emotion_keywords = {
-        'sadness': ['sad', 'unhappy', 'down', 'depressed', 'lonely', 'gloomy'],
-        'anger': ['angry', 'mad', 'frustrated', 'annoyed', 'irritated', 'furious'],
-        'joy': ['happy', 'joyful', 'great', 'amazing', 'excited', 'delighted'],
-        'anxiety': ['anxious', 'nervous', 'worried', 'scared', 'tense', 'afraid'],
-        'gratitude': ['grateful', 'thankful', 'appreciate', 'blessed'],
-        'hope': ['hopeful', 'optimistic', 'encouraged', 'inspired']
+    'sadness': [
+        'sad', 'unhappy', 'down', 'depressed', 'lonely', 'gloomy', 'heartbroken',
+        'melancholy', 'blue', 'miserable', 'tearful', 'hopeless', 'lost', 'numb'
+    ],
+    'anger': [
+        'angry', 'mad', 'frustrated', 'annoyed', 'irritated', 'furious', 'rage',
+        'resentful', 'bitter', 'outraged', 'fuming', 'enraged', 'exasperated', 'hostile'
+    ],
+    'joy': [
+        'happy', 'joyful', 'great', 'amazing', 'excited', 'delighted', 'elated',
+        'cheerful', 'content', 'satisfied', 'blissful', 'radiant', 'thrilled', 'euphoric'
+    ],
+    'anxiety': [
+        'anxious', 'nervous', 'worried', 'scared', 'tense', 'afraid', 'panicked',
+        'restless', 'uneasy', 'apprehensive', 'on edge', 'stressed', 'overwhelmed', 'jittery'
+    ],
+    'gratitude': [
+        'grateful', 'thankful', 'appreciate', 'blessed', 'fortunate', 'content',
+        'recognize', 'acknowledge', 'indebted', 'touched', 'moved', 'honored', 'thankfulness', 'gratitude'
+    ],
+    'hope': [
+        'hopeful', 'optimistic', 'encouraged', 'inspired', 'motivated', 'uplifted',
+        'confident', 'positive', 'bright', 'reassured', 'buoyant', 'expectant', 'dreaming', 'faithful'
+    ]
     }
-
     emotions = []
     total_words = len(text.split())
     for emotion, keywords in emotion_keywords.items():
@@ -167,44 +184,123 @@ SUGGESTION_TEMPLATES = {
         "{tone} you’re feeling {emotion}. Consider a short walk to clear your mind.",
         "{tone} you’re feeling {emotion}. How about listening to some calming {language} music?",
         "{tone} you’re feeling {emotion}. Reflect on something you’re grateful for today.",
-        "{tone} you’re feeling {emotion}. Try a breathing exercise: inhale for 4, hold for 4, exhale for 4."
+        "{tone} you’re feeling {emotion}. Try a breathing exercise: inhale for 4, hold for 4, exhale for 4.",
+        "{tone} you’re feeling {emotion}. Cuddle up in a blanket and write a letter to your future self.",
+        "{tone} you’re feeling {emotion}. Watch a comforting {language} movie or series episode you love.",
+        "{tone} you’re feeling {emotion}. Look at photos that remind you of good times.",
+        "{tone} you’re feeling {emotion}. Try drawing how you feel — even if it's abstract.",
+        "{tone} you’re feeling {emotion}. Call or message someone who always listens.",
+        "{tone} you’re feeling {emotion}. Light a scented candle and reflect in silence for a few minutes.",
+        "{tone} you’re feeling {emotion}. Journal three things that make you feel safe or supported."
+
     ],
     'anger': [
         "{tone} you’re feeling {emotion}. Take a moment to jot down what’s frustrating you.",
         "{tone} you’re feeling {emotion}. Try a quick physical activity like stretching or jumping jacks.",
         "{tone} you’re feeling {emotion}. Listen to an energetic {language} playlist to channel your energy.",
         "{tone} you’re feeling {emotion}. Write a letter to yourself about letting go of this feeling.",
-        "{tone} you’re feeling {emotion}. Try counting backwards from 10 to calm your mind."
+        "{tone} you’re feeling {emotion}. Try counting backwards from 10 to calm your mind.",
+        "{tone} you’re feeling {emotion}. Squeeze a pillow tightly or punch it safely to release tension.",
+        "{tone} you’re feeling {emotion}. Take a cold shower or wash your face with cold water.",
+        "{tone} you’re feeling {emotion}. Walk outside and name 5 things you see to ground yourself.",
+        "{tone} you’re feeling {emotion}. Doodle furiously on paper — let your energy out creatively.",
+        "{tone} you’re feeling {emotion}. Try writing what happened from a third-person point of view.",
+        "{tone} you’re feeling {emotion}. Say “I feel angry because…” and finish the sentence 3 times.",
+        "{tone} you’re feeling {emotion}. Hold ice in your hand for 10 seconds and focus on your breath."
     ],
     'anxiety': [
         "{tone} you’re feeling {emotion}. List five things you can see around you to ground yourself.",
         "{tone} you’re feeling {emotion}. Try a guided meditation in {language} for a few minutes.",
         "{tone} you’re feeling {emotion}. Write about a safe place you can imagine.",
         "{tone} you’re feeling {emotion}. Focus on slow, deep breaths for a minute.",
-        "{tone} you’re feeling {emotion}. Jot down one thing you can control today."
+        "{tone} you’re feeling {emotion}. Jot down one thing you can control today.",
+        "{tone} you’re feeling {emotion}. Try the 3-3-3 rule: name 3 sights, 3 sounds, 3 things you can move.",
+        "{tone} you’re feeling {emotion}. Make a simple to-do list — just one or two tasks.",
+        "{tone} you’re feeling {emotion}. Put your hand on your chest and feel your heartbeat slow down.",
+        "{tone} you’re feeling {emotion}. Write about your worry as if it's a character — give it a name.",
+        "{tone} you’re feeling {emotion}. Repeat a calming phrase: 'I am safe. I am grounded. I am okay.'",
+        "{tone} you’re feeling {emotion}. Try holding a warm mug and focus on the feeling.",
+        "{tone} you’re feeling {emotion}. Stretch your body gently, focusing on your breath."
+
     ],
     'joy': [
         "{tone} you’re feeling {emotion}! Celebrate by doing something you love, like {activity}.",
         "{tone} you’re feeling {emotion}! Share a happy moment in your journal.",
         "{tone} you’re feeling {emotion}! Listen to an upbeat {language} playlist to keep the vibe going.",
         "{tone} you’re feeling {emotion}! Write about a goal you’re excited to pursue.",
-        "{tone} you’re feeling {emotion}! Do a quick sketch or doodle to express your happiness."
+        "{tone} you’re feeling {emotion}! Do a quick sketch or doodle to express your happiness.",
+        "{tone} you’re feeling {emotion}! Capture this moment in a photo or video to remember it later.",
+        "{tone} you’re feeling {emotion}! Send a positive message to someone — share the joy.",
+        "{tone} you’re feeling {emotion}! Reflect on how far you’ve come this week or month.",
+        "{tone} you’re feeling {emotion}! Dance like nobody’s watching to your favorite {language} song.",
+        "{tone} you’re feeling {emotion}! Write a note to your future self about today.",
+        "{tone} you’re feeling {emotion}! Try something new or spontaneous — even if it’s small.",
+        "{tone} you’re feeling {emotion}! Write a ‘joy list’ of things that always boost your mood."
+
     ],
     'neutral': [
         "{tone} you’re feeling balanced. Try exploring a new {activity} today.",
         "{tone} your mood is steady. Write about something you’re curious about.",
         "{tone} you’re feeling neutral. How about a short {language} podcast to spark inspiration?",
         "{tone} your mood is calm. Reflect on a small win from this week.",
-        "{tone} you’re feeling neutral. Set a small intention for the rest of your day."
+        "{tone} you’re feeling neutral. Set a small intention for the rest of your day.",
+        "{tone} you’re feeling neutral. Try a new recipe, song, or quote and reflect on it.",
+        "{tone} you’re feeling neutral. Take five deep breaths and observe your surroundings.",
+        "{tone} you’re feeling neutral. Journal what your ideal day would look like.",
+        "{tone} you’re feeling neutral. Watch a short educational video in {language}.",
+        "{tone} you’re feeling neutral. Declutter one small area — your desk, bag, or phone.",
+        "{tone} you’re feeling neutral. Reach out to a friend you haven’t talked to in a while.",
+        "{tone} you’re feeling neutral. Try reading a page from a book you like and note a thought."
+
     ]
 }
 
 ACTIVITY_MAPPINGS = {
-    'meditation': ['a mindfulness meditation', 'a guided breathing session', 'a calming visualization'],
-    'exercise': ['a quick workout', 'a short run', 'some yoga stretches'],
-    'writing': ['writing a short story', 'journaling your thoughts', 'penning a poem'],
-    'music': ['listening to music', 'playing an instrument', 'singing along to a song'],
-    'reading': ['reading a favorite book', 'exploring a new article', 'diving into a novel']
+    'meditation': [
+        'a mindfulness meditation',
+        'a guided breathing session',
+        'a calming visualization',
+        'a body scan meditation',
+        'a gratitude-focused meditation',
+        'a sound bath session',
+        'a five-minute silence sit'
+    ],
+    'exercise': [
+        'a quick workout',
+        'a short run',
+        'some yoga stretches',
+        'a walk in nature',
+        'a dance session in your room',
+        'a 7-minute HIIT routine',
+        'a few sets of jumping jacks or squats'
+    ],
+    'writing': [
+        'writing a short story',
+        'journaling your thoughts',
+        'penning a poem',
+        'writing a letter to your future self',
+        'brain-dumping whatever’s on your mind',
+        'composing a gratitude list',
+        'creating a bucket list or vision board entry'
+    ],
+    'music': [
+        'listening to music',
+        'playing an instrument',
+        'singing along to a song',
+        'exploring a new {language} playlist',
+        'humming a favorite melody',
+        'trying a music-making app or tool',
+        'sitting with headphones and closing your eyes'
+    ],
+    'reading': [
+        'reading a favorite book',
+        'exploring a new article',
+        'diving into a novel',
+        'reading a comic or graphic story',
+        'skimming a blog or newsletter',
+        'revisiting an inspiring quote or poem',
+        'learning something new from a how-to guide'
+    ]
 }
 
 def get_user_preferences(supabase, user_id):
