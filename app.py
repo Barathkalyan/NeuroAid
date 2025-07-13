@@ -1,7 +1,8 @@
+import os
+import logging
 from flask import Flask, render_template, request, redirect, url_for, session, g, jsonify
 from supabase import create_client, Client
 import bcrypt
-import logging
 import requests
 from datetime import datetime, timedelta
 import time
@@ -11,29 +12,50 @@ import pyotp
 import qrcode
 from io import BytesIO
 import base64
-import os
 import random
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import schedule
-import time
 from threading import Thread
 from dotenv import load_dotenv
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
+from storage3.utils import StorageException
+import uuid
 
-
-app = Flask(__name__)
-app.secret_key = os.getenv('FLASK_SECRET_KEY', 'your-secret-key')
-app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
-
+# Initialize logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Load environment variables
+load_dotenv()
+
+# Validate required environment variables
+required_env_vars = [
+    'FLASK_SECRET_KEY',
+    'SUPABASE_URL',
+    'SUPABASE_ANON_KEY',
+    'SUPABASE_SERVICE_KEY',
+    'HF_API_KEY',
+    'EMAIL_SENDER',
+    'EMAIL_PASSWORD'
+]
+
+missing_vars = [var for var in required_env_vars if not os.getenv(var)]
+if missing_vars:
+    logger.error(f"Missing required environment variables: {', '.join(missing_vars)}")
+    raise EnvironmentError(f"Missing required environment variables: {', '.join(missing_vars)}")
+
+app = Flask(__name__)
+app.secret_key = os.getenv('FLASK_SECRET_KEY')
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
+
 # Supabase configuration
-SUPABASE_URL = os.getenv('SUPABASE_URL', 'https://kkzymljvdzbydqugbwuw.supabase.co')
-SUPABASE_ANON_KEY = os.getenv('SUPABASE_ANON_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtrenltbGp2ZHpieWRxdWdid3V3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ5OTcyMzgsImV4cCI6MjA2MDU3MzIzOH0.d6Xb4PrfYlcilkLOGWbPIG2WZ2c2rocZZEKCojwWfgs')
-SUPABASE_SERVICE_KEY = os.getenv('SUPABASE_SERVICE_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtrenltbGp2ZHpieWRxdWdid3V3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0NDk5NzIzOCwiZXhwIjoyMDYwNTczMjM4fQ.yuRT1q-FigehZoeFccdP_zk4m5sgHulpbg_us1IgpRw')
-HF_API_KEY = os.getenv('HF_API_KEY', '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')
+SUPABASE_URL = os.getenv('SUPABASE_URL')
+SUPABASE_ANON_KEY = os.getenv('SUPABASE_ANON_KEY')
+SUPABASE_SERVICE_KEY = os.getenv('SUPABASE_SERVICE_KEY')
+HF_API_KEY = os.getenv('HF_API_KEY')
 
 # Initialize Supabase clients
 supabase_anon: Client = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
@@ -139,10 +161,6 @@ def get_journaling_frequency(supabase, user_id, days=7):
     except Exception as e:
         logger.error(f"Error calculating journaling frequency: {str(e)}")
         return 0
-
-import random
-from datetime import datetime
-from zoneinfo import ZoneInfo
 
 SUGGESTION_TEMPLATES = {
     'sadness': [
@@ -345,7 +363,7 @@ def get_user_dropdown_data(supabase, user_id):
     except Exception as e:
         logger.error(f"Error fetching dropdown data for user {user_id}: {str(e)}")
         return {
-            'user_name': None,  # Return None to let template handle "Unknown"
+            'user_name': None,
             'user_email': 'Not found',
             'joined_date': 'January 01, 2025'
         }
@@ -599,36 +617,35 @@ def recommend_music():
         language = preferences.data[0]['language'] if preferences.data else 'tamil'
 
         MOOD_PLAYLISTS = {
-    'tamil': {
-        1: 'https://open.spotify.com/embed/playlist/7ttDLBXnJ3X9gVTNPevjsH',
-        2: 'https://open.spotify.com/embed/playlist/1MydE04FsRKKs3dzFd3mmt',
-        3: 'https://open.spotify.com/embed/playlist/2f8Jr34CAALmHJ6LY22GoJ',
-        4: 'https://open.spotify.com/embed/playlist/5LCntABX1VKtTWtnj7TMLd',
-        5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX0nA91dV2ts4'
-    },
-    'english': {
-        1: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX3rxVfibe1L0', 
-        2: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX4fpCWaHOned',  
-        3: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX70RN3TfWWJh',  
-        4: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXdPec7aLTmlC',  
-        5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXaXB8fQg7xif',  
-    },
-    'telugu': {
-        1: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWXLeA8Omikj7',  # Hopeful Telugu Vibes
-        2: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXapHi7gXtXo2',  # Bright & Hopeful Telugu
-        3: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXdbXrPNafg9d',  # Motivational Telugu Songs
-        4: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXaKIA8E7WcJj',  # Happy Telugu Hits
-        5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWXi7h5CniH97'   # Telugu Party Vibes
-    },
-    'malayalam': {
-        1: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXbL0D4VxV2FY',  # Hopeful Malayalam Vibes
-        2: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX9d5Vq9NrTzR',  # Bright & Hopeful Malayalam
-        3: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX9qNs32fujYe',  # Motivational Malayalam Songs
-        4: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX1SpT6G94GFC',  # Happy Malayalam Hits
-        5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXa2PvUpywmrr'   # Malayalam Party Vibes
-    }
-
-}
+            'tamil': {
+                1: 'https://open.spotify.com/embed/playlist/7ttDLBXnJ3X9gVTNPevjsH',
+                2: 'https://open.spotify.com/embed/playlist/1MydE04FsRKKs3dzFd3mmt',
+                3: 'https://open.spotify.com/embed/playlist/2f8Jr34CAALmHJ6LY22GoJ',
+                4: 'https://open.spotify.com/embed/playlist/5LCntABX1VKtTWtnj7TMLd',
+                5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX0nA91dV2ts4'
+            },
+            'english': {
+                1: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX3rxVfibe1L0', 
+                2: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX4fpCWaHOned',  
+                3: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX70RN3TfWWJh',  
+                4: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXdPec7aLTmlC',  
+                5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXaXB8fQg7xif',  
+            },
+            'telugu': {
+                1: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWXLeA8Omikj7',
+                2: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXapHi7gXtXo2',
+                3: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXdbXrPNafg9d',
+                4: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXaKIA8E7WcJj',
+                5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWXi7h5CniH97'
+            },
+            'malayalam': {
+                1: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXbL0D4VxV2FY',
+                2: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX9d5Vq9NrTzR',
+                3: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX9qNs32fujYe',
+                4: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX1SpT6G94GFC',
+                5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXa2PvUpywmrr'
+            }
+        }
 
         playlist_url = MOOD_PLAYLISTS.get(language, MOOD_PLAYLISTS['tamil']).get(mood)
         
@@ -1117,8 +1134,8 @@ def gratitude():
             logger.info(f"No profile found for user_id: {user_id}, creating a new profile")
             supabase.table('profiles').insert({
                 'user_id': user_id,
-                'name': None,  # Set name to None instead of email's first word
-                'username': f"@{session.get('user_email', 'user').split('@')[0]}"  # Username can still use email's first word
+                'name': None,
+                'username': f"@{session.get('user_email', 'user').split('@')[0]}"
             }).execute()
 
     except Exception as e:
@@ -1252,6 +1269,54 @@ def profile():
                               completion_dasharray=0,
                               **get_user_dropdown_data(supabase, user_id))
 
+@app.route('/upload_profile_pic', methods=['POST'])
+def upload_profile_pic():
+    if 'user' not in session:
+        logger.warning("Unauthorized access attempt to /upload_profile_pic")
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    supabase = get_supabase(use_service_role=True)  # Use service role for storage operations
+    user_id = session['user']
+    file = request.files.get('profile-pic')
+
+    if not file:
+        logger.info(f"No file uploaded for user_id: {user_id}")
+        return jsonify({'error': 'No file uploaded'}), 400
+
+    allowed_types = ['image/jpeg', 'image/png']
+    max_size = 5 * 1024 * 1024  # 5MB
+    if file.mimetype not in allowed_types:
+        logger.info(f"Invalid file type {file.mimetype} for user_id: {user_id}")
+        return jsonify({'error': 'Invalid file type. Only JPEG and PNG are allowed'}), 400
+
+    file_content = file.read()
+    if len(file_content) > max_size:
+        logger.info(f"File size {len(file_content)} exceeds limit for user_id: {user_id}")
+        return jsonify({'error': 'File too large. Maximum size is 5MB'}), 400
+
+    # Determine file extension based on MIME type
+    file_extension = 'jpg' if file.mimetype == 'image/jpeg' else 'png'
+    file_path = f"profiles/{user_id}/{uuid.uuid4()}.{file_extension}"
+
+    try:
+        # Upload to Supabase storage
+        supabase.storage.from_('profile-pics').upload(file_path, file_content)
+
+        # Construct public URL using SUPABASE_URL
+        file_url = f"{os.getenv('SUPABASE_URL')}/storage/v1/object/public/profile-pics/{file_path}"
+        supabase.table('profiles').update({'profile_pic_url': file_url}).eq('user_id', user_id).execute()
+
+        logger.info(f"Profile picture uploaded successfully for user_id: {user_id}, url: {file_url}")
+        return jsonify({'success': True, 'url': file_url}), 200
+    except StorageException as e:
+        logger.error(f"Storage error uploading profile picture for user_id: {user_id}: {str(e)}")
+        if 'Bucket not found' in str(e):
+            return jsonify({'error': 'Storage bucket not found. Contact support.'}), 500
+        return jsonify({'error': 'Failed to upload profile picture due to storage error'}), 500
+    except Exception as e:
+        logger.error(f"Unexpected error uploading profile picture for user_id: {user_id}: {str(e)}")
+        return jsonify({'error': 'An unexpected error occurred'}), 500
+
 @app.route('/update_profile_field', methods=['POST'])
 def update_profile_field():
     if 'user' not in session:
@@ -1287,25 +1352,6 @@ def update_profile_field():
     except Exception as e:
         logger.error(f"Error updating profile field {field}: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/upload_profile_pic', methods=['POST'])
-def upload_profile_pic():
-    if 'user' not in session:
-        return jsonify({'error': 'Unauthorized'}), 401
-    supabase = get_supabase()
-    user_id = session['user']
-    file = request.files.get('profile-pic')
-    if not file:
-        return jsonify({'error': 'No file uploaded'}), 400
-    try:
-        file_path = f"profiles/{user_id}/{uuid.uuid4()}.jpg"
-        supabase.storage.from_('profile-pics').upload(file_path, file.read())
-        url = supabase.storage.from_('profile-pics').get_public_url(file_path)
-        supabase.table('profiles').update({'profile_pic_url': url}).eq('user_id', user_id).execute()
-        return jsonify({'success': True, 'url': url}), 200
-    except Exception as e:
-        logger.error(f"Error uploading profile picture: {str(e)}")
-        return jsonify({'error': 'Upload failed'}), 500
 
 @app.route('/update_personal_details', methods=['POST'])
 def update_personal_details():
@@ -1366,14 +1412,12 @@ def settings():
     }
 
     try:
-        # Fetch user data
         user_data = supabase.table('users').select('email').eq('id', user_id).limit(1).execute()
         if not user_data.data:
             logger.error(f"No user found for user_id: {user_id} at {datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%I:%M %p IST')}")
             return jsonify({'success': False, 'error': 'User not found'}), 404
         email = user_data.data[0]['email']
 
-        # Fetch profile data
         profile_data = supabase.table('profiles').select('name, profile_pic_url').eq('user_id', user_id).limit(1).execute()
         if profile_data.data:
             profile_info['profile_pic_url'] = profile_data.data[0].get('profile_pic_url')
@@ -1385,7 +1429,6 @@ def settings():
                 'username': f"@{default_name}"
             }).execute()
 
-        # Fetch preferences
         preferences_data = supabase.table('user_preferences').select('two_factor_enabled, theme, reminder_time, notification_preference').eq('user_id', user_id).limit(1).execute()
         if preferences_data.data:
             profile_info.update(preferences_data.data[0])
@@ -1410,7 +1453,6 @@ def settings():
                 reminder_time = request.form.get('reminder_time', profile_info['reminder_time'])
                 notification_preference = request.form.get('notification_preference', profile_info['notification_preference'])
 
-                # Validate inputs
                 if not new_email:
                     return jsonify({'success': False, 'error': 'Email is required'}), 400
 
@@ -1421,13 +1463,11 @@ def settings():
                 if password and password != confirm_password:
                     return jsonify({'success': False, 'error': 'Passwords do not match'}), 400
 
-                # Update users table
                 update_user_data = {'email': new_email}
                 if password:
                     update_user_data['password'] = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
                 supabase.table('users').update(update_user_data).eq('id', user_id).execute()
 
-                # Update preferences
                 update_preferences_data = {
                     'two_factor_enabled': two_factor_enabled,
                     'theme': theme,
@@ -1436,7 +1476,6 @@ def settings():
                 }
                 supabase.table('user_preferences').update(update_preferences_data).eq('user_id', user_id).execute()
 
-                # Update session
                 session['user_email'] = new_email
                 session['theme'] = theme
                 session['two_factor_enabled'] = two_factor_enabled
@@ -1448,7 +1487,6 @@ def settings():
                 logger.error(f"Error updating settings for user_id: {user_id} at {current_time_ist}: {str(e)}")
                 return jsonify({'success': False, 'error': str(e)}), 500
 
-        # GET request: Render template
         dropdown_data = get_user_dropdown_data(supabase, user_id)
         return render_template('settings.html',
                               email=email,
@@ -1477,7 +1515,6 @@ def settings():
                               current_time=datetime.now(ZoneInfo("Asia/Kolkata")).strftime('%I:%M %p IST'),
                               **dropdown_data)
 
-# Updated /export_data route to include user_preferences
 @app.route('/export_data', methods=['GET'])
 def export_data():
     if 'user' not in session:
@@ -1512,7 +1549,6 @@ def export_data():
         logger.error(f"Error exporting data for user_id: {user_id} at {datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%I:%M %p IST')}: {str(e)}")
         return jsonify({'success': False, 'error': 'Failed to export data'}), 500
 
-# Updated /delete_account route to also delete user_preferences
 @app.route('/delete_account', methods=['POST'])
 def delete_account():
     if 'user' not in session:
@@ -1523,7 +1559,6 @@ def delete_account():
     user_id = session['user']
 
     try:
-        # Delete all related data
         supabase.table('journal_entries').delete().eq('user_id', user_id).execute()
         supabase.table('gratitude_entries').delete().eq('user_id', user_id).execute()
         supabase.table('user_preferences').delete().eq('user_id', user_id).execute()
@@ -1537,6 +1572,9 @@ def delete_account():
     except Exception as e:
         logger.error(f"Error deleting account for user_id: {user_id} at {datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%I:%M %p IST')}: {str(e)}")
         return jsonify({'success': False, 'error': 'Failed to delete account'}), 500
+    
+
+scheduler= None
 
 @app.route('/logout')
 def logout():
@@ -1552,12 +1590,13 @@ def logout():
         logger.info(f"User {user_email} logged out at {logout_time}")
     return redirect(url_for('login'))
 
-# Load environment variables
-load_dotenv()
-
 def send_email(to_email, subject, body):
-    sender_email = os.getenv('EMAIL_SENDER', 'your_email@gmail.com')
-    sender_password = os.getenv('EMAIL_PASSWORD', 'your_app_password')  # Use App Password for Gmail
+    sender_email = os.getenv('EMAIL_SENDER')
+    sender_password = os.getenv('EMAIL_PASSWORD')
+
+    if not sender_email or not sender_password:
+        logger.error(f"Email configuration missing: sender_email={sender_email}, sender_password={'set' if sender_password else 'not set'}")
+        raise ValueError("Email sender or password not configured in environment variables")
 
     msg = MIMEMultipart()
     msg['From'] = sender_email
@@ -1573,46 +1612,92 @@ def send_email(to_email, subject, body):
         server.quit()
         logger.info(f"Email sent to {to_email} at {datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%I:%M %p IST')}")
         return True
+    except smtplib.SMTPAuthenticationError as e:
+        logger.error(f"SMTP authentication error sending email to {to_email}: {str(e)}")
+        return False
+    except smtplib.SMTPException as e:
+        logger.error(f"SMTP error sending email to {to_email}: {str(e)}")
+        return False
     except Exception as e:
-        logger.error(f"Failed to send email to {to_email}: {str(e)}")
+        logger.error(f"Unexpected error sending email to {to_email}: {str(e)}")
         return False
 
 def send_reminder_emails():
+    global scheduler
+    if scheduler and scheduler.running:
+        logger.info("Scheduler already running, skipping initialization")
+        return
+
     supabase = get_supabase(use_service_role=True)
+    scheduler = BackgroundScheduler(timezone="Asia/Kolkata")
     try:
         users = supabase.table('user_preferences')\
             .select('user_id, reminder_time, notification_preference')\
             .eq('notification_preference', 'email')\
             .execute()
         
+        if not users.data:
+            logger.info("No users with email notification preference found")
+            return
+
         for user in users.data:
             user_id = user['user_id']
             reminder_time = user['reminder_time']
+            try:
+                # Validate reminder_time format (HH:MM)
+                hour, minute = map(int, reminder_time.split(':'))
+                if not (0 <= hour <= 23 and 0 <= minute <= 59):
+                    logger.warning(f"Invalid reminder_time {reminder_time} for user_id: {user_id}")
+                    continue
+            except ValueError:
+                logger.warning(f"Invalid reminder_time format {reminder_time} for user_id: {user_id}")
+                continue
+
             user_data = supabase.table('users').select('email').eq('id', user_id).limit(1).execute()
             if not user_data.data:
                 logger.warning(f"No email found for user_id: {user_id}")
                 continue
             email = user_data.data[0]['email']
-            
-            # Schedule email at the reminder time (adjusted for IST)
-            schedule.every().day.at(reminder_time).do(
-                send_email,
-                to_email=email,
-                subject="NeuroAid Daily Reminder",
-                body="Hi! It's time to journal on NeuroAid. Reflect on your day and check your progress!"
+
+            # Schedule email with retry logic
+            def send_with_retry(to_email, subject, body, max_retries=3):
+                for attempt in range(max_retries):
+                    if send_email(to_email, subject, body):
+                        return
+                    logger.warning(f"Retry {attempt + 1}/{max_retries} for email to {to_email}")
+                    time.sleep(2 ** attempt)  # Exponential backoff
+                logger.error(f"Failed to send email to {to_email} after {max_retries} retries")
+
+            scheduler.add_job(
+                send_with_retry,
+                trigger=CronTrigger(hour=hour, minute=minute, timezone="Asia/Kolkata"),
+                args=[email, "NeuroAid Daily Reminder", "Hi! It's time to journal on NeuroAid. Reflect on your day and check your progress!"],
+                id=f"reminder_{user_id}",
+                replace_existing=True
             )
             logger.info(f"Scheduled email for {email} at {reminder_time} IST")
+
+        scheduler.start()
+        logger.info("Reminder email scheduler started")
+    except StorageException as e:
+        logger.error(f"Supabase storage error in send_reminder_emails: {str(e)}")
     except Exception as e:
-        logger.error(f"Error scheduling emails: {str(e)}")
+        logger.error(f"Unexpected error in send_reminder_emails: {str(e)}")
+    finally:
+        # Ensure scheduler shuts down gracefully on application exit
+        import atexit
+        atexit.register(lambda: scheduler.shutdown() if scheduler else None)
 
 def run_scheduler():
     with app.app_context():
-        send_reminder_emails()  # Initial setup
-        while True:
-            schedule.run_pending()
-            time.sleep(1)
+        try:
+            send_reminder_emails()  # Initial setup
+            while True:
+                schedule.run_pending()
+                time.sleep(1)
+        except Exception as e:
+            logger.error(f"Error in scheduler loop: {str(e)}")
 
-        
 if __name__ == '__main__':
     scheduler_thread = Thread(target=run_scheduler)
     scheduler_thread.daemon = True
