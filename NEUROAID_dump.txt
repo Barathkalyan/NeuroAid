@@ -1558,8 +1558,8 @@ def logout():
 load_dotenv()
 
 def send_email(to_email, subject, body):
-    sender_email = os.getenv('EMAIL_SENDER', 'your_email@gmail.com')
-    sender_password = os.getenv('EMAIL_PASSWORD', 'your_app_password')  # Use App Password for Gmail
+    sender_email = os.getenv('EMAIL_SENDER', 'neuroaid07@gmail.com')
+    sender_password = os.getenv('EMAIL_PASSWORD', 'jjsixizhqojhvgtx')  # Use App Password for Gmail
 
     msg = MIMEMultipart()
     msg['From'] = sender_email
@@ -1622,235 +1622,65 @@ if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
 ```
 
-# File: templates/profile.html
+# File: templates/login.html
 ```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>NeuroAid - Profile</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/profile.css') }}" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/dropdown.css') }}" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/welcome.css') }}" />
-  <link id="theme-stylesheet" rel="stylesheet" href="{{ url_for('static', filename='css/themes/' + theme + '.css') }}">
-  <style>
-    .input-container input.editable {
-      border: 2px solid #7c3aed;
-      background-color: #f9f9f9;
-    }
-    .input-container input:disabled {
-      background-color: #e9ecef;
-    }
-  </style>
-  <script src="{{ url_for('static', filename='js/utils.js') }}" defer></script>
-  <script src="{{ url_for('static', filename='js/profile.js') }}" defer></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NeuroAid - Login</title>
+
+  <!-- Link to CSS file -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/signup.css') }}" />
+
+  <!-- Google Fonts link to use the 'Poppins' font family -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
 </head>
 <body>
-  <div class="sidebar">
-    <div class="logo">
-      <i class="ri-brain-line"></i>
-      <h1>Neuro<span>Aid</span></h1>
+  
+  <!-- Main container for the login page -->
+  <div class="login-container">
+    <!-- Branding section left side -->
+    <div class="branding">
+      <!-- Branding content to be added (img) -->
     </div>
-    <nav>
-      <a href="{{ url_for('index') }}"><i class="ri-home-5-line"></i> Home</a>
-      <a href="{{ url_for('journal') }}"><i class="ri-booklet-line"></i> Journal</a>
-      <a href="{{ url_for('progress') }}"><i class="ri-bar-chart-2-line"></i> Progress</a>
-      <a href="{{ url_for('vibe') }}"><i class="ri-music-2-line"></i> Vibe</a>
-      <a href="{{ url_for('gratitude') }}"><i class="ri-heart-line"></i> Gratitude</a>
-      <a href="{{ url_for('settings') }}"><i class="ri-settings-3-line"></i> Settings</a>
-      <a href="{{ url_for('profile') }}" class="active"><i class="ri-user-line"></i> Profile</a>
-      <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
-    </nav>
+
+    <!-- Login box containing the form right side -->
+    <div class="login-box">
+      <h1>Neuro<span>Aid</span></h1>
+      <p>"Your personal mental health companion"</p>
+      <h2>Login</h2>
+
+      <!-- Display error message if login fails -->
+      {% if error %}
+        <p style="color: red; text-align: center;">{{ error }}</p>
+      {% endif %}
+
+      <!-- Login form -->
+      <form id="login-form" method="POST" action="{{ url_for('login') }}">
+        <!-- Input field for the username -->
+        <div class="input-group">
+          <input type="text" name="email" id="email" required placeholder=" " />
+          <label for="email">Email</label>
+        </div>
+
+        <!-- Input field for the password -->
+        <div class="input-group">
+          <input type="password" name="password" id="password" required placeholder=" " />
+          <label for="password">Password</label>
+        </div>
+
+        <!-- Login button -->
+        <button type="submit">Login</button>
+      </form>
+
+      <!-- Link to sign up page -->
+      <div class="signup-link">
+        Don't have an account? <a href="/signup">Sign up!</a>
+      </div>
+    </div>
   </div>
-
-  <div class="wrapper">
-    <main class="main-content">
-      <header>
-        <div class="welcome-container">
-          <div class="welcome-text">Welcome to NeuroAid, {{ name }}</div>
-          <div class="quote-text"></div>
-        </div>
-        <div class="profile-dropdown">
-          <div class="profile">
-            <img src="{{ profile_data.profile_pic_url if profile_data.get('profile_pic_url') else 'https://randomuser.me/api/portraits/men/32.jpg' }}" alt="Profile" id="header-profile-pic" />
-            <span>{{ name }}</span>
-            <i class="ri-arrow-down-s-line"></i>
-          </div>
-          <div class="dropdown-content">
-            <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
-            <a href="{{ url_for('settings') }}"><i class="ri-settings-3-line"></i> Settings</a>
-            <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
-          </div>
-        </div>
-      </header>
-
-      <section class="profile-section">
-        <div class="profile-header">
-          <h2>Your Profile</h2>
-          <p>Complete your profile to personalize your NeuroAid experience and get the most out of your mental health journey.</p>
-          <div class="progress-container">
-            <div class="progress-circle">
-              <svg class="progress-ring" width="100" height="100">
-                <circle class="progress-ring__circle" stroke="#7c3aed" stroke-width="8" fill="transparent" r="44" cx="50" cy="50" style="stroke-dasharray: {{ 276.46 * (completion_percentage / 100) }} 276.46;" />
-              </svg>
-              <span class="progress-text">{{ completion_percentage }}% Complete</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="card profile-overview">
-          <div class="card-header">
-            <h3>Profile Overview</h3>
-            <p class="status-indicator {{ 'complete' if name != 'Unknown' and email != 'Not found' and username != '@unknown' else 'incomplete' }}">Basic Info: {{ 'Complete' if name != 'Unknown' and email != 'Not found' and username != '@unknown' else 'Incomplete' }}</p>
-          </div>
-          <div class="profile-content">
-            <div class="profile-picture">
-              <img src="{{ profile_data.profile_pic_url if profile_data.get('profile_pic_url') else 'https://randomuser.me/api/portraits/men/32.jpg' }}" alt="Profile Picture" id="profile-pic" />
-              <button class="edit-button" id="edit-picture-btn">Upload Photo</button>
-              <input type="file" id="profile-pic-input" accept="image/*" style="display: none;" />
-            </div>
-            <div class="form-container">
-              <div class="form-field">
-                <label for="name-input">Name</label>
-                <div class="input-container">
-                  <input type="text" id="name-input" value="{{ name }}" disabled aria-label="Name" />
-                  <button class="edit-field-btn" data-field="name">Edit</button>
-                </div>
-              </div>
-              <div class="form-field">
-                <label for="email-input">Email</label>
-                <div class="input-container">
-                  <input type="email" id="email-input" value="{{ email }}" disabled aria-label="Email" />
-                  <button class="edit-field-btn" data-field="email">Edit</button>
-                </div>
-              </div>
-              <div class="form-field">
-                <label for="username-input">Username</label>
-                <div class="input-container">
-                  <input type="text" id="username-input" value="{{ username }}" disabled aria-label="Username" />
-                  <button class="edit-field-btn" data-field="username">Edit</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="card personal-details">
-          <div class="card-header">
-            <h3>Personal Details</h3>
-            <p class="status-indicator {{ 'complete' if profile_data.age or profile_data.gender or profile_data.location or profile_data.preferred_language else 'incomplete' }}">Personal Details: {{ 'Complete' if profile_data.age or profile_data.gender or profile_data.location or profile_data.preferred_language else 'Not Started' }}</p>
-          </div>
-          <div class="form-container">
-            <div class="form-field">
-              <label for="age-input">Age (Optional)</label>
-              <div class="input-container">
-                <input type="number" id="age-input" value="{{ profile_data.age if profile_data.age else '' }}" placeholder="Enter your age" aria-label="Age" />
-              </div>
-            </div>
-            <div class="form-field">
-              <label for="gender-input">Gender</label>
-              <div class="input-container">
-                <select id="gender-input" aria-label="Gender">
-                  <option value="" {{ 'selected' if not profile_data.gender }}>Select Gender</option>
-                  <option value="male" {{ 'selected' if profile_data.gender == 'male' }}>Male</option>
-                  <option value="female" {{ 'selected' if profile_data.gender == 'female' }}>Female</option>
-                  <option value="non-binary" {{ 'selected' if profile_data.gender == 'non-binary' }}>Non-binary</option>
-                  <option value="prefer-not-to-say" {{ 'selected' if profile_data.gender == 'prefer-not-to-say' }}>Prefer not to say</option>
-                </select>
-              </div>
-            </div>
-            <div class="form-field">
-              <label for="location-input">Location (Optional)</label>
-              <div class="input-container">
-                <input type="text" id="location-input" value="{{ profile_data.location if profile_data.location else '' }}" placeholder="Enter your city/country" aria-label="Location" />
-              </div>
-            </div>
-            <div class="form-field">
-              <label for="language-input">Preferred Language</label>
-              <div class="input-container">
-                <select id="language-input" aria-label="Preferred Language">
-                  <option value="" {{ 'selected' if not profile_data.preferred_language }}>Select Language</option>
-                  <option value="english" {{ 'selected' if profile_data.preferred_language == 'english' }}>English</option>
-                  <option value="spanish" {{ 'selected' if profile_data.preferred_language == 'spanish' }}>Spanish</option>
-                  <option value="french" {{ 'selected' if profile_data.preferred_language == 'french' }}>French</option>
-                </select>
-              </div>
-            </div>
-            <div class="form-actions">
-              <button class="save-btn" id="save-personal-details">Save</button>
-            </div>
-          </div>
-        </div>
-
-        <div class="card mental-health-goals">
-          <div class="card-header">
-            <h3>Your Mental Health Goals</h3>
-            <p class="status-indicator {{ 'complete' if profile_data.primary_goal or profile_data.engagement_frequency or profile_data.preferred_activities else 'incomplete' }}">Goals: {{ 'Complete' if profile_data.primary_goal or profile_data.engagement_frequency or profile_data.preferred_activities else 'Not Started' }}</p>
-          </div>
-          <div class="form-container">
-            <div class="form-field">
-              <label for="primary-goal">Primary Goal</label>
-              <div class="input-container">
-                <select id="primary-goal" aria-label="Primary Goal">
-                  <option value="" {{ 'selected' if not profile_data.primary_goal }}>Select Goal</option>
-                  <option value="reduce-stress" {{ 'selected' if profile_data.primary_goal == 'reduce-stress' }}>Reduce Stress</option>
-                  <option value="improve-sleep" {{ 'selected' if profile_data.primary_goal == 'improve-sleep' }}>Improve Sleep</option>
-                  <option value="manage-anxiety" {{ 'selected' if profile_data.primary_goal == 'manage-anxiety' }}>Manage Anxiety</option>
-                  <option value="build-mindfulness" {{ 'selected' if profile_data.primary_goal == 'build-mindfulness' }}>Build Mindfulness</option>
-                </select>
-              </div>
-            </div>
-            <div class="form-field">
-              <label for="frequency">Engagement Frequency</label>
-              <div class="input-container">
-                <select id="frequency" aria-label="Engagement Frequency">
-                  <option value="" {{ 'selected' if not profile_data.engagement_frequency }}>Select Frequency</option>
-                  <option value="daily" {{ 'selected' if profile_data.engagement_frequency == 'daily' }}>Daily</option>
-                  <option value="weekly" {{ 'selected' if profile_data.engagement_frequency == 'weekly' }}>Weekly</option>
-                  <option value="biweekly" {{ 'selected' if profile_data.engagement_frequency == 'biweekly' }}>Bi-weekly</option>
-                </select>
-              </div>
-            </div>
-            <div class="form-field">
-              <label>Preferred Activities</label>
-              <div class="checkbox-container">
-                <div class="checkbox-option">
-                  <input type="checkbox" id="journaling" name="activities" value="journaling" {{ 'checked' if 'journaling' in profile_data.preferred_activities }} aria-label="Journaling" />
-                  <label for="journaling">Journaling</label>
-                </div>
-                <div class="checkbox-option">
-                  <input type="checkbox" id="mood-speech" name="activities" value="mood-speech" {{ 'checked' if 'mood-speech' in profile_data.preferred_activities }} aria-label="Mood Speech" />
-                  <label for="mood-speech">Mood Speech</label>
-                </div>
-                <div class="checkbox-option">
-                  <input type="checkbox" id="mindfulness" name="activities" value="mindfulness" {{ 'checked' if 'mindfulness' in profile_data.preferred_activities }} aria-label="Mindfulness Exercises" />
-                  <label for="mindfulness">Mindfulness Exercises</label>
-                </div>
-              </div>
-            </div>
-            <div class="form-actions">
-              <button class="save-btn" id="save-goals">Save</button>
-            </div>
-          </div>
-        </div>
-        <div class="cta-message">
-          <p>Complete your profile to unlock personalized features! Add your mental health goals to continue.</p>
-        </div>
-      </section>
-    </main>   
-
-    <footer>
-      <span>© 2025 NeuroAid.</span>
-    </footer>
-  </div>
-  <script src="{{ url_for('static', filename='js/profile.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/dropdown.js') }}"></script>
-  <script src="{{ url_for('static', filename='js/welcome.js') }}"></script>
 </body>
 </html>
 ```

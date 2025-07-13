@@ -20,7 +20,7 @@ import schedule
 import time
 from threading import Thread
 from dotenv import load_dotenv
-
+import secrets
 
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'your-secret-key')
@@ -1552,12 +1552,121 @@ def logout():
         logger.info(f"User {user_email} logged out at {logout_time}")
     return redirect(url_for('login'))
 
+@app.route('/forgot_password', methods=['GET', 'POST'])
+def forgot_password():
+    error = None
+    success = None
+    if request.method == 'POST':
+        email = request.form.get('email')
+        if not email:
+            error = 'Email is required.'
+            return render_template('forgot_password.html', error=error, success=success), 400
+
+        email = email.strip().lower()
+        logger.info(f"Password reset requested for email: {email}")
+
+        supabase = get_supabase(use_service_role=True)
+        try:
+            user_response = supabase.table('users').select('id, email').eq('email', email).execute()
+            if not user_response.data:
+                error = 'Email not found.'
+                return render_template('forgot_password.html', error=error, success=success), 404
+
+            user = user_response.data[0]
+            reset_token = secrets.token_urlsafe(32)
+            expires_at = (datetime.now(ZoneInfo("UTC")) + timedelta(hours=1)).isoformat()
+
+            supabase.table('password_resets').insert({
+                'user_id': user['id'],
+                'token': reset_token,
+                'expires_at': expires_at
+            }).execute()
+
+            reset_link = f"{request.url_root}reset_password?token={reset_token}"
+            email_body = f"""
+            Hi,
+            
+            You requested a password reset for your NeuroAid account. Click the link below to reset your password:
+            {reset_link}
+            
+            This link will expire in 1 hour. If you didn't request this, please ignore this email.
+            
+            Best,
+            The NeuroAid Team
+            """
+            send_email(email, "NeuroAid Password Reset", email_body)
+            success = 'Password reset link sent to your email.'
+            logger.info(f"Password reset email sent to {email}")
+            return render_template('forgot_password.html', error=error, success=success), 200
+
+        except Exception as e:
+            logger.error(f"Error processing password reset for {email}: {str(e)}")
+            error = 'Unable to process request. Please try again later.'
+            return render_template('forgot_password.html', error=error, success=success), 500
+
+    return render_template('forgot_password.html', error=error, success=success)
+
+@app.route('/reset_password', methods=['GET', 'POST'])
+def reset_password():
+    error = None
+    success = None
+    token = request.args.get('token')
+
+    if not token:
+        error = 'Invalid or missing reset token.'
+        return render_template('reset_password.html', error=error, success=success, token=token), 400
+
+    supabase = get_supabase(use_service_role=True)
+    try:
+        reset_request = supabase.table('password_resets').select('user_id, expires_at').eq('token', token).execute()
+        if not reset_request.data:
+            error = 'Invalid or expired reset token.'
+            return render_template('reset_password.html', error=error, success=success, token=token), 404
+
+        reset_data = reset_request.data[0]
+        expires_at = reset_data['expires_at']
+        if '.' in expires_at:
+            expires_at = expires_at.split('.')[0] + '+00:00'
+        else:
+            expires_at = expires_at.replace('Z', '+00:00')
+        expiry_date = datetime.fromisoformat(expires_at).replace(tzinfo=ZoneInfo("UTC"))
+        if datetime.now(ZoneInfo("UTC")) > expiry_date:
+            error = 'Reset token has expired.'
+            return render_template('reset_password.html', error=error, success=success, token=token), 400
+
+        if request.method == 'POST':
+            password = request.form.get('password')
+            confirm_password = request.form.get('confirm_password')
+
+            if not password or not confirm_password:
+                error = 'Password and confirm password are required.'
+                return render_template('reset_password.html', error=error, success=success, token=token), 400
+
+            if password != confirm_password:
+                error = 'Passwords do not match.'
+                return render_template('reset_password.html', error=error, success=success, token=token), 400
+
+            hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+            supabase.table('users').update({'password': hashed_password}).eq('id', reset_data['user_id']).execute()
+            supabase.table('password_resets').delete().eq('token', token).execute()
+
+            success = 'Password reset successfully. Please log in.'
+            logger.info(f"Password reset for user_id: {reset_data['user_id']}")
+            return render_template('reset_password.html', error=error, success=success, token=token), 200
+
+        return render_template('reset_password.html', error=error, success=success, token=token)
+
+    except Exception as e:
+        logger.error(f"Error processing password reset with token {token}: {str(e)}")
+        error = 'Unable to process request. Please try again later.'
+        return render_template('reset_password.html', error=error, success=success, token=token), 500
+
 # Load environment variables
 load_dotenv()
 
 def send_email(to_email, subject, body):
-    sender_email = os.getenv('EMAIL_SENDER', 'your_email@gmail.com')
-    sender_password = os.getenv('EMAIL_PASSWORD', 'your_app_password')  # Use App Password for Gmail
+    sender_email = os.getenv('EMAIL_SENDER', 'neuroaid07@gmail.com')
+    sender_password = os.getenv('EMAIL_PASSWORD', 'jjsixizhqojhvgtx')  # Use App Password for Gmail
 
     msg = MIMEMultipart()
     msg['From'] = sender_email
