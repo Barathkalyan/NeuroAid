@@ -1,9 +1,10 @@
 # File: app.py
 ```py
+import os
+import logging
 from flask import Flask, render_template, request, redirect, url_for, session, g, jsonify
 from supabase import create_client, Client
 import bcrypt
-import logging
 import requests
 from datetime import datetime, timedelta
 import time
@@ -13,29 +14,49 @@ import pyotp
 import qrcode
 from io import BytesIO
 import base64
-import os
 import random
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import schedule
-import time
 from threading import Thread
 from dotenv import load_dotenv
+from storage3.utils import StorageException
+import uuid
+import secrets
 
-
-app = Flask(__name__)
-app.secret_key = os.getenv('FLASK_SECRET_KEY', 'your-secret-key')
-app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
-
+# Initialize logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Load environment variables
+load_dotenv()
+
+# Validate required environment variables
+required_env_vars = [
+    'FLASK_SECRET_KEY',
+    'SUPABASE_URL',
+    'SUPABASE_ANON_KEY',
+    'SUPABASE_SERVICE_KEY',
+    'HF_API_KEY',
+    'EMAIL_SENDER',
+    'EMAIL_PASSWORD'
+]
+
+missing_vars = [var for var in required_env_vars if not os.getenv(var)]
+if missing_vars:
+    logger.error(f"Missing required environment variables: {', '.join(missing_vars)}")
+    raise EnvironmentError(f"Missing required environment variables: {', '.join(missing_vars)}")
+
+app = Flask(__name__)
+app.secret_key = os.getenv('FLASK_SECRET_KEY')
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
+
 # Supabase configuration
-SUPABASE_URL = os.getenv('SUPABASE_URL', 'https://kkzymljvdzbydqugbwuw.supabase.co')
-SUPABASE_ANON_KEY = os.getenv('SUPABASE_ANON_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtrenltbGp2ZHpieWRxdWdid3V3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ5OTcyMzgsImV4cCI6MjA2MDU3MzIzOH0.d6Xb4PrfYlcilkLOGWbPIG2WZ2c2rocZZEKCojwWfgs')
-SUPABASE_SERVICE_KEY = os.getenv('SUPABASE_SERVICE_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtrenltbGp2ZHpieWRxdWdid3V3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0NDk5NzIzOCwiZXhwIjoyMDYwNTczMjM4fQ.yuRT1q-FigehZoeFccdP_zk4m5sgHulpbg_us1IgpRw')
-HF_API_KEY = os.getenv('HF_API_KEY', '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')
+SUPABASE_URL = os.getenv('SUPABASE_URL')
+SUPABASE_ANON_KEY = os.getenv('SUPABASE_ANON_KEY')
+SUPABASE_SERVICE_KEY = os.getenv('SUPABASE_SERVICE_KEY')
+HF_API_KEY = os.getenv('HF_API_KEY')
 
 # Initialize Supabase clients
 supabase_anon: Client = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
@@ -141,10 +162,6 @@ def get_journaling_frequency(supabase, user_id, days=7):
     except Exception as e:
         logger.error(f"Error calculating journaling frequency: {str(e)}")
         return 0
-
-import random
-from datetime import datetime
-from zoneinfo import ZoneInfo
 
 SUGGESTION_TEMPLATES = {
     'sadness': [
@@ -347,7 +364,7 @@ def get_user_dropdown_data(supabase, user_id):
     except Exception as e:
         logger.error(f"Error fetching dropdown data for user {user_id}: {str(e)}")
         return {
-            'user_name': None,  # Return None to let template handle "Unknown"
+            'user_name': None,
             'user_email': 'Not found',
             'joined_date': 'January 01, 2025'
         }
@@ -601,36 +618,35 @@ def recommend_music():
         language = preferences.data[0]['language'] if preferences.data else 'tamil'
 
         MOOD_PLAYLISTS = {
-    'tamil': {
-        1: 'https://open.spotify.com/embed/playlist/7ttDLBXnJ3X9gVTNPevjsH',
-        2: 'https://open.spotify.com/embed/playlist/1MydE04FsRKKs3dzFd3mmt',
-        3: 'https://open.spotify.com/embed/playlist/2f8Jr34CAALmHJ6LY22GoJ',
-        4: 'https://open.spotify.com/embed/playlist/5LCntABX1VKtTWtnj7TMLd',
-        5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX0nA91dV2ts4'
-    },
-    'english': {
-        1: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX3rxVfibe1L0', 
-        2: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX4fpCWaHOned',  
-        3: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX70RN3TfWWJh',  
-        4: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXdPec7aLTmlC',  
-        5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXaXB8fQg7xif',  
-    },
-    'telugu': {
-        1: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWXLeA8Omikj7',  # Hopeful Telugu Vibes
-        2: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXapHi7gXtXo2',  # Bright & Hopeful Telugu
-        3: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXdbXrPNafg9d',  # Motivational Telugu Songs
-        4: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXaKIA8E7WcJj',  # Happy Telugu Hits
-        5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWXi7h5CniH97'   # Telugu Party Vibes
-    },
-    'malayalam': {
-        1: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXbL0D4VxV2FY',  # Hopeful Malayalam Vibes
-        2: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX9d5Vq9NrTzR',  # Bright & Hopeful Malayalam
-        3: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX9qNs32fujYe',  # Motivational Malayalam Songs
-        4: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX1SpT6G94GFC',  # Happy Malayalam Hits
-        5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXa2PvUpywmrr'   # Malayalam Party Vibes
-    }
-
-}
+            'tamil': {
+                1: 'https://open.spotify.com/embed/playlist/7ttDLBXnJ3X9gVTNPevjsH',
+                2: 'https://open.spotify.com/embed/playlist/1MydE04FsRKKs3dzFd3mmt',
+                3: 'https://open.spotify.com/embed/playlist/2f8Jr34CAALmHJ6LY22GoJ',
+                4: 'https://open.spotify.com/embed/playlist/5LCntABX1VKtTWtnj7TMLd',
+                5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX0nA91dV2ts4'
+            },
+            'english': {
+                1: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX3rxVfibe1L0', 
+                2: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX4fpCWaHOned',  
+                3: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX70RN3TfWWJh',  
+                4: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXdPec7aLTmlC',  
+                5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXaXB8fQg7xif',  
+            },
+            'telugu': {
+                1: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWXLeA8Omikj7',
+                2: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXapHi7gXtXo2',
+                3: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXdbXrPNafg9d',
+                4: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXaKIA8E7WcJj',
+                5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DWXi7h5CniH97'
+            },
+            'malayalam': {
+                1: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXbL0D4VxV2FY',
+                2: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX9d5Vq9NrTzR',
+                3: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX9qNs32fujYe',
+                4: 'https://open.spotify.com/embed/playlist/37i9dQZF1DX1SpT6G94GFC',
+                5: 'https://open.spotify.com/embed/playlist/37i9dQZF1DXa2PvUpywmrr'
+            }
+        }
 
         playlist_url = MOOD_PLAYLISTS.get(language, MOOD_PLAYLISTS['tamil']).get(mood)
         
@@ -1119,8 +1135,8 @@ def gratitude():
             logger.info(f"No profile found for user_id: {user_id}, creating a new profile")
             supabase.table('profiles').insert({
                 'user_id': user_id,
-                'name': None,  # Set name to None instead of email's first word
-                'username': f"@{session.get('user_email', 'user').split('@')[0]}"  # Username can still use email's first word
+                'name': None,
+                'username': f"@{session.get('user_email', 'user').split('@')[0]}"
             }).execute()
 
     except Exception as e:
@@ -1254,6 +1270,54 @@ def profile():
                               completion_dasharray=0,
                               **get_user_dropdown_data(supabase, user_id))
 
+@app.route('/upload_profile_pic', methods=['POST'])
+def upload_profile_pic():
+    if 'user' not in session:
+        logger.warning("Unauthorized access attempt to /upload_profile_pic")
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    supabase = get_supabase(use_service_role=True)  # Use service role for storage operations
+    user_id = session['user']
+    file = request.files.get('profile-pics')
+
+    if not file:
+        logger.info(f"No file uploaded for user_id: {user_id}")
+        return jsonify({'error': 'No file uploaded'}), 400
+
+    allowed_types = ['image/jpeg', 'image/png']
+    max_size = 5 * 1024 * 1024  # 5MB
+    if file.mimetype not in allowed_types:
+        logger.info(f"Invalid file type {file.mimetype} for user_id: {user_id}")
+        return jsonify({'error': 'Invalid file type. Only JPEG and PNG are allowed'}), 400
+
+    file_content = file.read()
+    if len(file_content) > max_size:
+        logger.info(f"File size {len(file_content)} exceeds limit for user_id: {user_id}")
+        return jsonify({'error': 'File too large. Maximum size is 5MB'}), 400
+
+    # Determine file extension based on MIME type
+    file_extension = 'jpg' if file.mimetype == 'image/jpeg' else 'png'
+    file_path = f"profiles/{user_id}/{uuid.uuid4()}.{file_extension}"
+
+    try:
+        # Upload to Supabase storage
+        supabase.storage.from_('profile-pics').upload(file_path, file_content)
+
+        # Construct public URL using SUPABASE_URL
+        file_url = f"{os.getenv('SUPABASE_URL')}/storage/v1/object/public/profile-pics/{file_path}"
+        supabase.table('profiles').update({'profile_pic_url': file_url}).eq('user_id', user_id).execute()
+
+        logger.info(f"Profile picture uploaded successfully for user_id: {user_id}, url: {file_url}")
+        return jsonify({'success': True, 'url': file_url}), 200
+    except StorageException as e:
+        logger.error(f"Storage error uploading profile picture for user_id: {user_id}: {str(e)}")
+        if 'Bucket not found' in str(e):
+            return jsonify({'error': 'Storage bucket not found. Contact support.'}), 500
+        return jsonify({'error': 'Failed to upload profile picture due to storage error'}), 500
+    except Exception as e:
+        logger.error(f"Unexpected error uploading profile picture for user_id: {user_id}: {str(e)}")
+        return jsonify({'error': 'An unexpected error occurred'}), 500
+
 @app.route('/update_profile_field', methods=['POST'])
 def update_profile_field():
     if 'user' not in session:
@@ -1289,25 +1353,6 @@ def update_profile_field():
     except Exception as e:
         logger.error(f"Error updating profile field {field}: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/upload_profile_pic', methods=['POST'])
-def upload_profile_pic():
-    if 'user' not in session:
-        return jsonify({'error': 'Unauthorized'}), 401
-    supabase = get_supabase()
-    user_id = session['user']
-    file = request.files.get('profile-pic')
-    if not file:
-        return jsonify({'error': 'No file uploaded'}), 400
-    try:
-        file_path = f"profiles/{user_id}/{uuid.uuid4()}.jpg"
-        supabase.storage.from_('profile-pics').upload(file_path, file.read())
-        url = supabase.storage.from_('profile-pics').get_public_url(file_path)
-        supabase.table('profiles').update({'profile_pic_url': url}).eq('user_id', user_id).execute()
-        return jsonify({'success': True, 'url': url}), 200
-    except Exception as e:
-        logger.error(f"Error uploading profile picture: {str(e)}")
-        return jsonify({'error': 'Upload failed'}), 500
 
 @app.route('/update_personal_details', methods=['POST'])
 def update_personal_details():
@@ -1368,14 +1413,12 @@ def settings():
     }
 
     try:
-        # Fetch user data
         user_data = supabase.table('users').select('email').eq('id', user_id).limit(1).execute()
         if not user_data.data:
             logger.error(f"No user found for user_id: {user_id} at {datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%I:%M %p IST')}")
             return jsonify({'success': False, 'error': 'User not found'}), 404
         email = user_data.data[0]['email']
 
-        # Fetch profile data
         profile_data = supabase.table('profiles').select('name, profile_pic_url').eq('user_id', user_id).limit(1).execute()
         if profile_data.data:
             profile_info['profile_pic_url'] = profile_data.data[0].get('profile_pic_url')
@@ -1387,7 +1430,6 @@ def settings():
                 'username': f"@{default_name}"
             }).execute()
 
-        # Fetch preferences
         preferences_data = supabase.table('user_preferences').select('two_factor_enabled, theme, reminder_time, notification_preference').eq('user_id', user_id).limit(1).execute()
         if preferences_data.data:
             profile_info.update(preferences_data.data[0])
@@ -1412,7 +1454,6 @@ def settings():
                 reminder_time = request.form.get('reminder_time', profile_info['reminder_time'])
                 notification_preference = request.form.get('notification_preference', profile_info['notification_preference'])
 
-                # Validate inputs
                 if not new_email:
                     return jsonify({'success': False, 'error': 'Email is required'}), 400
 
@@ -1423,13 +1464,11 @@ def settings():
                 if password and password != confirm_password:
                     return jsonify({'success': False, 'error': 'Passwords do not match'}), 400
 
-                # Update users table
                 update_user_data = {'email': new_email}
                 if password:
                     update_user_data['password'] = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
                 supabase.table('users').update(update_user_data).eq('id', user_id).execute()
 
-                # Update preferences
                 update_preferences_data = {
                     'two_factor_enabled': two_factor_enabled,
                     'theme': theme,
@@ -1438,7 +1477,6 @@ def settings():
                 }
                 supabase.table('user_preferences').update(update_preferences_data).eq('user_id', user_id).execute()
 
-                # Update session
                 session['user_email'] = new_email
                 session['theme'] = theme
                 session['two_factor_enabled'] = two_factor_enabled
@@ -1450,7 +1488,6 @@ def settings():
                 logger.error(f"Error updating settings for user_id: {user_id} at {current_time_ist}: {str(e)}")
                 return jsonify({'success': False, 'error': str(e)}), 500
 
-        # GET request: Render template
         dropdown_data = get_user_dropdown_data(supabase, user_id)
         return render_template('settings.html',
                               email=email,
@@ -1479,7 +1516,6 @@ def settings():
                               current_time=datetime.now(ZoneInfo("Asia/Kolkata")).strftime('%I:%M %p IST'),
                               **dropdown_data)
 
-# Updated /export_data route to include user_preferences
 @app.route('/export_data', methods=['GET'])
 def export_data():
     if 'user' not in session:
@@ -1514,7 +1550,6 @@ def export_data():
         logger.error(f"Error exporting data for user_id: {user_id} at {datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%I:%M %p IST')}: {str(e)}")
         return jsonify({'success': False, 'error': 'Failed to export data'}), 500
 
-# Updated /delete_account route to also delete user_preferences
 @app.route('/delete_account', methods=['POST'])
 def delete_account():
     if 'user' not in session:
@@ -1525,7 +1560,6 @@ def delete_account():
     user_id = session['user']
 
     try:
-        # Delete all related data
         supabase.table('journal_entries').delete().eq('user_id', user_id).execute()
         supabase.table('gratitude_entries').delete().eq('user_id', user_id).execute()
         supabase.table('user_preferences').delete().eq('user_id', user_id).execute()
@@ -1539,6 +1573,9 @@ def delete_account():
     except Exception as e:
         logger.error(f"Error deleting account for user_id: {user_id} at {datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%I:%M %p IST')}: {str(e)}")
         return jsonify({'success': False, 'error': 'Failed to delete account'}), 500
+    
+
+scheduler= None
 
 @app.route('/logout')
 def logout():
@@ -1554,12 +1591,125 @@ def logout():
         logger.info(f"User {user_email} logged out at {logout_time}")
     return redirect(url_for('login'))
 
+@app.route('/forgot_password', methods=['GET', 'POST'])
+def forgot_password():
+    error = None
+    success = None
+    if request.method == 'POST':
+        email = request.form.get('email')
+        if not email:
+            error = 'Email is required.'
+            return render_template('forgot_password.html', error=error, success=success), 400
+
+        email = email.strip().lower()
+        logger.info(f"Password reset requested for email: {email}")
+
+        supabase = get_supabase(use_service_role=True)
+        try:
+            user_response = supabase.table('users').select('id, email').eq('email', email).execute()
+            if not user_response.data:
+                error = 'Email not found.'
+                return render_template('forgot_password.html', error=error, success=success), 404
+
+            user = user_response.data[0]
+            reset_token = secrets.token_urlsafe(32)
+            expires_at = (datetime.now(ZoneInfo("UTC")) + timedelta(hours=1)).isoformat()
+
+            supabase.table('password_resets').insert({
+                'user_id': user['id'],
+                'token': reset_token,
+                'expires_at': expires_at
+            }).execute()
+
+            reset_link = f"{request.url_root}reset_password?token={reset_token}"
+            email_body = f"""
+            Hi,
+            
+            You requested a password reset for your NeuroAid account. Click the link below to reset your password:
+            {reset_link}
+            
+            This link will expire in 1 hour. If you didn't request this, please ignore this email.
+            
+            Best,
+            The NeuroAid Team
+            """
+            send_email(email, "NeuroAid Password Reset", email_body)
+            success = 'Password reset link sent to your email.'
+            logger.info(f"Password reset email sent to {email}")
+            return render_template('forgot_password.html', error=error, success=success), 200
+
+        except Exception as e:
+            logger.error(f"Error processing password reset for {email}: {str(e)}")
+            error = 'Unable to process request. Please try again later.'
+            return render_template('forgot_password.html', error=error, success=success), 500
+
+    return render_template('forgot_password.html', error=error, success=success)
+
+@app.route('/reset_password', methods=['GET', 'POST'])
+def reset_password():
+    error = None
+    success = None
+    token = request.args.get('token')
+
+    if not token:
+        error = 'Invalid or missing reset token.'
+        return render_template('reset_password.html', error=error, success=success, token=token), 400
+
+    supabase = get_supabase(use_service_role=True)
+    try:
+        reset_request = supabase.table('password_resets').select('user_id, expires_at').eq('token', token).execute()
+        if not reset_request.data:
+            error = 'Invalid or expired reset token.'
+            return render_template('reset_password.html', error=error, success=success, token=token), 404
+
+        reset_data = reset_request.data[0]
+        expires_at = reset_data['expires_at']
+        if '.' in expires_at:
+            expires_at = expires_at.split('.')[0] + '+00:00'
+        else:
+            expires_at = expires_at.replace('Z', '+00:00')
+        expiry_date = datetime.fromisoformat(expires_at).replace(tzinfo=ZoneInfo("UTC"))
+        if datetime.now(ZoneInfo("UTC")) > expiry_date:
+            error = 'Reset token has expired.'
+            return render_template('reset_password.html', error=error, success=success, token=token), 400
+
+        if request.method == 'POST':
+            password = request.form.get('password')
+            confirm_password = request.form.get('confirm_password')
+
+            if not password or not confirm_password:
+                error = 'Password and confirm password are required.'
+                return render_template('reset_password.html', error=error, success=success, token=token), 400
+
+            if password != confirm_password:
+                error = 'Passwords do not match.'
+                return render_template('reset_password.html', error=error, success=success, token=token), 400
+
+            hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+            supabase.table('users').update({'password': hashed_password}).eq('id', reset_data['user_id']).execute()
+            supabase.table('password_resets').delete().eq('token', token).execute()
+
+            success = 'Password reset successfully. Please log in.'
+            logger.info(f"Password reset for user_id: {reset_data['user_id']}")
+            return render_template('reset_password.html', error=error, success=success, token=token), 200
+
+        return render_template('reset_password.html', error=error, success=success, token=token)
+
+    except Exception as e:
+        logger.error(f"Error processing password reset with token {token}: {str(e)}")
+        error = 'Unable to process request. Please try again later.'
+        return render_template('reset_password.html', error=error, success=success, token=token), 500
+
 # Load environment variables
 load_dotenv()
 
 def send_email(to_email, subject, body):
-    sender_email = os.getenv('EMAIL_SENDER', 'neuroaid07@gmail.com')
-    sender_password = os.getenv('EMAIL_PASSWORD', 'jjsixizhqojhvgtx')  # Use App Password for Gmail
+    sender_email = os.getenv('EMAIL_SENDER')
+    sender_password = os.getenv('EMAIL_PASSWORD')
+
+    if not sender_email or not sender_password:
+        logger.error(f"Email configuration missing: sender_email={sender_email}, sender_password={'set' if sender_password else 'not set'}")
+        raise ValueError("Email sender or password not configured in environment variables")
 
     msg = MIMEMultipart()
     msg['From'] = sender_email
@@ -1575,13 +1725,26 @@ def send_email(to_email, subject, body):
         server.quit()
         logger.info(f"Email sent to {to_email} at {datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%I:%M %p IST')}")
         return True
+    except smtplib.SMTPAuthenticationError as e:
+        logger.error(f"SMTP authentication error sending email to {to_email}: {str(e)}")
+        return False
+    except smtplib.SMTPException as e:
+        logger.error(f"SMTP error sending email to {to_email}: {str(e)}")
+        return False
     except Exception as e:
-        logger.error(f"Failed to send email to {to_email}: {str(e)}")
+        logger.error(f"Unexpected error sending email to {to_email}: {str(e)}")
         return False
 
 def send_reminder_emails():
+    global scheduler
+    if scheduler and scheduler.running:
+        logger.info("Scheduler already running, skipping initialization")
+        return
+
     supabase = get_supabase(use_service_role=True)
+   
     try:
+        logger.info(f"Fetching users for reminder emails at {datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%I:%M %p IST')}")
         users = supabase.table('user_preferences')\
             .select('user_id, reminder_time, notification_preference')\
             .eq('notification_preference', 'email')\
@@ -1620,6 +1783,7 @@ if __name__ == '__main__':
     scheduler_thread.daemon = True
     scheduler_thread.start()
     app.run(debug=True, host='0.0.0.0', port=5000)
+
 ```
 
 # File: templates/login.html
@@ -1628,37 +1792,15 @@ if __name__ == '__main__':
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>NeuroAid - Profile</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/profile.css') }}" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/dropdown.css') }}" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/welcome.css') }}" />
-  <link id="theme-stylesheet" rel="stylesheet" href="{{ url_for('static', filename='css/themes/' + theme + '.css') }}">
-  <script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
-  <script type="text/javascript">
-    function googleTranslateElementInit() {
-      new google.translate.TranslateElement({
-        pageLanguage: 'en', // Default language is English
-        includedLanguages: 'en,es,fr', // Supported languages: English, Spanish, French
-        layout: google.translate.TranslateElement.InlineLayout.SIMPLE
-      }, 'google_translate_element');
-    }
-  </script>
-  <style>
-    .input-container input.editable {
-      border: 2px solid #7c3aed;
-      background-color: #f9f9f9;
-    }
-    .input-container input:disabled {
-      background-color: #e9ecef;
-    }
-  </style>
-  <script src="{{ url_for('static', filename='js/utils.js') }}" defer></script>
-  <script src="{{ url_for('static', filename='js/profile.js') }}" defer></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NeuroAid - Login</title>
+
+  <!-- Link to CSS file -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/signup.css') }}" />
+
+  <!-- Google Fonts link to use the 'Poppins' font family -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+
 </head>
 <body>
   
@@ -1700,7 +1842,7 @@ if __name__ == '__main__':
 
       <!-- Link to sign up page -->
       <div class="signup-link">
-        Don't have an account? <a href="/signup">Sign up!</a>
+        Don't have an account? <a href="/signup">Sign up!</a> | <a href="/forgot_password">Forgot Password?</a>
       </div>
     </div>
   </div>
