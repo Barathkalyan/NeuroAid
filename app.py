@@ -1552,6 +1552,20 @@ def logout():
         logger.info(f"User {user_email} logged out at {logout_time}")
     return redirect(url_for('login'))
 
+@app.route('/test_email')
+def test_email():
+    email = request.args.get('email', 'drkrishnav06@gmail.com')
+    success = send_email(
+        to_email=email,
+        subject="NeuroAid Test Reminder",
+        body="This is a test reminder from NeuroAid."
+    )
+    if success:
+        logger.info(f"Test email sent successfully to {email}")
+        return jsonify({'success': True, 'message': 'Test email sent'})
+    else:
+        return jsonify({'success': False, 'error': 'Failed to send test email'}), 500
+
 @app.route('/forgot_password', methods=['GET', 'POST'])
 def forgot_password():
     error = None
@@ -1689,37 +1703,52 @@ def send_email(to_email, subject, body):
 def send_reminder_emails():
     supabase = get_supabase(use_service_role=True)
     try:
+        logger.info(f"Fetching users for reminder emails at {datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%I:%M %p IST')}")
         users = supabase.table('user_preferences')\
             .select('user_id, reminder_time, notification_preference')\
             .eq('notification_preference', 'email')\
             .execute()
         
+        logger.info(f"Found {len(users.data)} users with email notification preference")
+        
         for user in users.data:
             user_id = user['user_id']
             reminder_time = user['reminder_time']
+            notification_preference = user['notification_preference']
+            
             user_data = supabase.table('users').select('email').eq('id', user_id).limit(1).execute()
             if not user_data.data:
                 logger.warning(f"No email found for user_id: {user_id}")
                 continue
             email = user_data.data[0]['email']
             
-            # Schedule email at the reminder time (adjusted for IST)
-            schedule.every().day.at(reminder_time).do(
-                send_email,
-                to_email=email,
-                subject="NeuroAid Daily Reminder",
-                body="Hi! It's time to journal on NeuroAid. Reflect on your day and check your progress!"
-            )
-            logger.info(f"Scheduled email for {email} at {reminder_time} IST")
+            try:
+                # Validate reminder_time format
+                datetime.strptime(reminder_time, '%H:%M')
+                schedule.every().day.at(reminder_time).do(
+                    send_email,
+                    to_email=email,
+                    subject="NeuroAid Daily Reminder",
+                    body="Hi! It's time to journal on NeuroAid. Reflect on your day and check your progress!"
+                )
+                logger.info(f"Scheduled email for {email} at {reminder_time} IST")
+            except ValueError as ve:
+                logger.error(f"Invalid reminder_time format for user_id {user_id}: {reminder_time}, Error: {str(ve)}")
     except Exception as e:
-        logger.error(f"Error scheduling emails: {str(e)}")
+        logger.error(f"Error scheduling emails: {str(e)}, Type: {type(e).__name__}")
 
 def run_scheduler():
     with app.app_context():
+        logger.info(f"Starting scheduler at {datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%I:%M %p IST')}")
         send_reminder_emails()  # Initial setup
         while True:
-            schedule.run_pending()
-            time.sleep(1)
+            try:
+                schedule.run_pending()
+                logger.debug(f"Checked pending tasks at {datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%I:%M %p IST')}")
+                time.sleep(60)  # Check every minute to reduce CPU usage
+            except Exception as e:
+                logger.error(f"Scheduler error: {str(e)}, Type: {type(e).__name__}")
+                time.sleep(60)  # Prevent rapid error looping
 
         
 if __name__ == '__main__':
