@@ -1,32 +1,34 @@
 /* Dark Theme Styles for NeuroAid - Enhanced for Visibility and Appeal */
 :root {
-  --background-color: #1a202c; /* Slightly lighter slate for better depth */
-  --text-color: #e5e7eb; /* Softer white for better readability */
-  --card-background: #2d3748; /* Lighter gray for cards */
-  --card-border: #4a5568; /* Subtle border color */
-  --button-background: #7c3aed; /* Purple base */
-  --button-text: #ffffff; /* White text */
-  --button-hover: #6b21a8; /* Darker purple hover */
-  --link-color: #a78bfa; /* Lavender link */
-  --sidebar-background: #1a202c; /* Matches background for seamless integration */
-  --sidebar-text: #e5e7eb; /* Consistent with text-color */
-  --header-background: #818ea5; /* Matches card background */
-  --footer-text: #a0aec0; /* Lighter gray for footer */
-  --dropdown-background: #2d3748; /* Consistent with cards */
-  --dropdown-text: #e5e7eb; /* Readable dropdown text */
-  --entry-meta: #a0aec0; /* Lighter meta text */
-  --entry-snippet: #cbd5e0; /* Softer snippet text */
-  --input-background: #4a5568; /* Dark input background */
-  --input-text: #e5e7eb; /* Readable input text */
-  --shadow-light: 0 4px 6px rgba(0, 0, 0, 0.1); /* Subtle shadow */
-  --shadow-hover: 0 10px 15px rgba(0, 0, 0, 0.2); /* Enhanced hover shadow */
+  --background-color: #1a202c;
+  --text-color: #e5e7eb;
+  --card-background: #2d3748;
+  --card-border: #4a5568;
+  --button-background: #7c3aed;
+  --button-text: #ffffff;
+  --button-hover: #6b21a8;
+  --link-color: #a78bfa;
+  --sidebar-background: #1a202c;
+  --sidebar-text: #e5e7eb;
+  --header-background: #818ea5;
+  --footer-text: #a0aec0;
+  --dropdown-background: #2d3748;
+  --dropdown-text: #e5e7eb;
+  --entry-meta: #a0aec0;
+  --entry-snippet: #e7ecf1;
+  --input-background: #4a5568;
+  --input-text: #e5e7eb;
+  --shadow-light: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --shadow-hover: 0 10px 15px rgba(0, 0, 0, 0.2);
+
 }
+
 
 body {
   background-color: var(--background-color);
   color: var(--text-color);
   font-family: 'Inter', sans-serif;
-  transition: background-color 0.3s, color 0.3s; /* Smooth theme transition */
+  transition: background-color 0.3s, color 0.3s;
 }
 
 .sidebar,
@@ -37,11 +39,11 @@ header,
 .recent-reflections,
 .quick-actions {
   background-color: var(--card-background);
-  border-radius: 8px; /* Rounded corners for modern look */
-  box-shadow: var(--shadow-light); /* Subtle elevation */
+  border-radius: 8px;
+  box-shadow: var(--shadow-light);
 }
 
-.welcome-message p{
+.welcome-message p {
   color: #59db0e;
 }
 
@@ -61,8 +63,8 @@ header,
   font-weight: 600;
 }
 
-.home-section h2{
-  color: #ffffff ;
+.home-section h2 {
+  color: #ffffff;
 }
 
 .sidebar nav a {
@@ -74,21 +76,21 @@ header,
 
 .sidebar nav a:hover,
 .sidebar nav a.active {
-  background-color: #4a5568; /* Lighter hover background */
+  background-color: #4a5568;
   color: var(--link-color);
-  box-shadow: var(--shadow-hover); /* Enhanced hover effect */
+  box-shadow: var(--shadow-hover);
 }
 
 header {
   border-bottom: 1px solid var(--card-border);
   padding: 10px 20px;
-  background: linear-gradient(90deg, #2d3748, #4a5568); /* Gradient for depth */
+  background: linear-gradient(90deg, #2d3748, #4a5568);
 }
 
 .welcome-text,
 .quote-text,
 .suggestions-card h3,
-.recent-reflections h3{
+.recent-reflections h3 {
   color: var(--text-color);
   font-weight: 600;
 }
@@ -125,14 +127,9 @@ header {
   line-height: 1.6;
 }
 
-.recent-reflections .entry-meta {
-  color: var(--entry-meta);
-  font-size: 0.875rem;
-}
-
 .neuroaid-btn {
   background-color: var(--button-background);
-  color:#4ecca3;   
+  color: #4ecca3;
   padding: 8px 16px;
   border-radius: 6px;
   border: none;
@@ -142,7 +139,7 @@ header {
 
 .neuroaid-btn:hover {
   background-color: var(--button-hover);
-  color: #4ecca3 ;
+  color: #4ecca3;
   box-shadow: var(--shadow-hover);
 }
 
@@ -165,7 +162,6 @@ footer {
   border-radius: 8px 8px 0 0;
 }
 
-/* Additional Styles for Invisible Elements */
 input,
 textarea,
 select {
@@ -181,7 +177,7 @@ input:focus,
 textarea:focus,
 select:focus {
   border-color: var(--button-background);
-  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.2); /* Purple glow */
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.2);
   outline: none;
 }
 
@@ -213,25 +209,26 @@ button:not(.neuroaid-btn):hover {
 }
 
 /* progress page */
-
-.stats-section h2{
+.stats-section h2 {
   color: #fff;
 }
 
-.stats-section h3{
-  color:#59db0e;
+.stats-section h3 {
+  color: #59db0e;
 }
 
-.stat-box{
-  background-color:grey;
+.stat-box {
+  background-color: grey;
 }
 
-#streak-value, #entries-count, #mood{
-  color:#fff;
+#streak-value,
+#entries-count,
+#mood {
+  color: #fff;
 }
 
-.chart-section h2{
-  color:#fff;
+.chart-section h2 {
+  color: #fff;
 }
 
 .chart-card {
@@ -242,8 +239,8 @@ button:not(.neuroaid-btn):hover {
   backdrop-filter: blur(12px);
   box-shadow: var(--shadow);
   transition: transform 0.3s ease, box-shadow 0.3s ease;
-  width: 100%; /* Ensure chart takes full width */
-  height:600px;
+  width: 100%;
+  height: 600px;
 }
 
 .chart-card:hover {
@@ -252,7 +249,6 @@ button:not(.neuroaid-btn):hover {
 }
 
 /* Journal page */
-
 .journal-section {
   width: 1400px;
   margin: 0 auto;
@@ -262,6 +258,105 @@ button:not(.neuroaid-btn):hover {
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
 
-.journal-header h2, .journal-header p, .entry-content {
+.journal-header h2,
+.journal-header p,
+.entry-content {
   color: #fff;
 }
+
+/* Enhancements for Recent Reflections Section */
+.recent-reflections {
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 30px;
+  transition: box-shadow 0.3s ease;
+}
+
+.recent-reflections:hover {
+  box-shadow: var(--shadow-hover);
+}
+
+.recent-reflections h3 {
+  color: var(--text-color);
+  font-weight: 600;
+  font-size: 1.5rem;
+  margin-bottom: 15px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid var(--card-border);
+  padding-bottom: 8px;
+}
+
+.recent-reflections .entry-preview {
+  background-color: var(--card-background);
+  border: 1px solid var(--card-border);
+  color: #fff;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 15px;
+  box-shadow: var(--shadow-light);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.recent-reflections .entry-preview:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-hover);
+}
+
+.recent-reflections .entry-meta {
+  color: var(--entry-meta);
+  font-size: 20px;
+  margin-bottom: 6px;
+}
+
+.recent-reflections .entry-snippet {
+    background-color: var(--card-background);
+    color: var(--entry-snippet);  /* Uses the correct dark mode variable */
+    line-height: 1.6;
+    margin-bottom: 10px;
+}
+.entry-snippet p{
+  color:#fff;
+}
+
+.recent-reflections .entry-preview a {
+  color: var(--link-color);
+  font-size: 1.1rem;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+
+.recent-reflections .entry-preview a:hover {
+  color: var(--button-hover);
+  text-decoration: underline;
+}
+
+.music-recommendations-section h2{
+  color: var(--text-color);
+}
+
+.selector-group label{
+  color:var(--text-color);
+}
+
+.gratitude-section h2{
+  color: var(--text-color);
+}
+label[for="thing1"],
+label[for="thing2"],
+label[for="thing3"] {
+  color: black;       /* Ensures high contrast and readability in dark mode */
+  font-weight: 500;               /* Medium boldness for clarity */
+  font-size: 1.2rem;                /* Comfortable size */
+  margin-top: 12px;
+  display: block;
+}
+
+.timeline h3{
+  background-color: var(--card-background);
+  color: var(--text-color);
+}
+

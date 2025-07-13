@@ -1,12 +1,44 @@
 :root {
+  /* Base Colors */
   --primary: #4c68d7;
   --secondary: #e6f3fa;
   --accent: #a3bffa;
-  --glass-bg: rgba(240, 248, 255, 0.9);
-  --glass-border: rgba(150, 200, 255, 0.3);
-  --shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
-  --header-bg: linear-gradient(90deg, #4c68d7 0%, #81a1c1 100%);
-  --text-primary: #2d3748;
-  --text-secondary: #718096;
-  --background: #e6f0fa;
+
+  /* Backgrounds and Cards */
+  --background-color: #e6f0fa;       /* Overall page background */
+  --card-background: rgba(240, 248, 255, 0.9); /* Glass-like card background */
+  --card-border: rgba(150, 200, 255, 0.3);     /* Subtle card border */
+
+  /* Text Colors */
+  --text-color: #2d3748;        /* Primary body text */
+  --text-primary: #2d3748;      /* For headings or strong emphasis */
+  --text-secondary: #718096;    /* Subtle or metadata */
+
+  /* Entry Styles */
+  --entry-meta: #718096;
+  --entry-snippet: #4a5568;
+
+  /* Buttons and Links */
+  --button-background: #4c68d7;
+  --button-text: #ffffff;
+  --button-hover: #3a50a0;
+  --link-color: #4c68d7;
+
+  /* Shadow and Border */
+  --shadow-light: 0 4px 12px rgba(0, 0, 0, 0.06);
+  --shadow-hover: 0 8px 20px rgba(0, 0, 0, 0.1);
+
+  /* Header and Sidebar */
+  --header-background: linear-gradient(90deg, #4c68d7 0%, #81a1c1 100%);
+  --sidebar-background: #ffffff;
+  --sidebar-text: #2d3748;
+
+  /* Dropdowns & Inputs */
+  --dropdown-background: #ffffff;
+  --dropdown-text: #2d3748;
+  --input-background: #ffffff;
+  --input-text: #2d3748;
+
+  /* Footer */
+  --footer-text: #718096;
 }
