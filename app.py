@@ -1277,7 +1277,7 @@ def upload_profile_pic():
 
     supabase = get_supabase(use_service_role=True)  # Use service role for storage operations
     user_id = session['user']
-    file = request.files.get('profile-pic')
+    file = request.files.get('profile-pics')
 
     if not file:
         logger.info(f"No file uploaded for user_id: {user_id}")
