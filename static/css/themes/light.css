@@ -106,11 +106,12 @@ header {
 
 .neuroaid-btn {
   background-color: var(--button-background);
-  color: var(--button-text);
+  color: #fff;
 }
 
 .neuroaid-btn:hover {
   background-color: var(--button-hover);
+  color: #fff;
 }
 
 a {
@@ -123,4 +124,8 @@ a:hover {
 
 footer {
   color: var(--footer-text);
+}
+
+footer span{
+  color: var(--button-text);
 }
