@@ -23,4 +23,4 @@ with open(output_file, "w", encoding="utf-8") as out:
                 out.write(f"# File: {rel_path}\n")
                 out.write(f"```{ext}\n{content}\n```\n\n")
 
-print(f"✅ Combined content saved to: {output_file}")
+print(f" Combined content saved to: {output_file}")
