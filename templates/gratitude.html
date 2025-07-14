@@ -41,7 +41,11 @@
           </div>
           <div class="profile-dropdown">
             <div class="profile">
-              <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile" />
+              {% if profile_data.get('profile_pic_url') %}
+                <img src="{{ profile_data.profile_pic_url }}" alt="Profile" />
+              {% else %}
+                <i class="ri-user-line profile-icon"></i>
+              {% endif %}
               <span>{{ user_name | default('Unknown') }}</span>
               <i class="ri-arrow-down-s-line"></i>
             </div>
