@@ -16,8 +16,8 @@
   <script type="text/javascript">
     function googleTranslateElementInit() {
       new google.translate.TranslateElement({
-        pageLanguage: 'en', // Default language is English
-        includedLanguages: 'en,es,fr', // Supported languages: English, Spanish, French
+        pageLanguage: 'en',
+        includedLanguages: 'en,es,fr',
         layout: google.translate.TranslateElement.InlineLayout.SIMPLE
       }, 'google_translate_element');
     }
@@ -109,8 +109,7 @@
               <div class="form-field">
                 <label for="email-input">Email</label>
                 <div class="input-container">
-                  <input type="email" id="email-input" value="{{ email }}" disabled aria-label="Email" />
-                  <button class="edit-field-btn" data-field="email">Edit</button>
+                  <input type="email" id="email-input" value="{{ email }}" disabled aria-label="Email" aria-readonly="true" />
                 </div>
               </div>
               <div class="form-field">
@@ -232,7 +231,6 @@
       <span>© 2025 NeuroAid. Your Mental Health Companion</span>
     </footer>
   </div>
-  <script src="{{ url_for('static', filename='js/profile.js') }}"></script>
   <script src="{{ url_for('static', filename='js/dropdown.js') }}"></script>
   <script src="{{ url_for('static', filename='js/welcome.js') }}"></script>
 </body>
