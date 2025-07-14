@@ -4,36 +4,69 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NeuroAid - Verify Two-Factor Authentication</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/settings.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/themes/' + theme + '.css') }}" id="theme-stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/verify_2fa.css') }}">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap">
 </head>
 <body>
-    <div class="wrapper">
-        <main class="main-content">
-            <section class="settings-section">
-                <h2><i class="ri-shield-check-line"></i> Verify Two-Factor Authentication</h2>
-                <div class="settings-card">
-                    {% if error %}
-                        <div class="error-message">{{ error }}</div>
-                    {% endif %}
-                    {% if success %}
-                        <div class="success-message">{{ success }}</div>
-                    {% endif %}
-                    <form method="POST" action="{{ url_for('verify_2fa') }}">
-                        <div class="form-group">
-                            <label for="totp_code">Enter TOTP Code</label>
-                            <input type="text" id="totp_code" name="totp_code" placeholder="Enter 6-digit code" required>
-                        </div>
-                        <button type="submit" class="neuroaid-btn"><i class="ri-check-line"></i> Verify</button>
-                    </form>
+    <div class="login-container">
+        <div class="branding">
+            <div class="branding-scene">
+                <div class="logo">
+                    <span class="neuro">Neuro</span><span class="aid">Aid</span>
                 </div>
-            </section>
-        </main>
-        <footer>
-            <span>© 2025 NeuroAid. Your mental health companion.</span>
-        </footer>
+                <div class="quote-container">
+                    Take a moment to breathe deeply.
+                </div>
+                <div class="feature-block">
+                    <div class="feature-icon">📝</div>
+                    <div class="feature-label">Journal</div>
+                    <div class="feature-tooltip">Write your thoughts</div>
+                </div>
+                <div class="feature-block">
+                    <div class="feature-icon">😊</div>
+                    <div class="feature-label">Mood</div>
+                    <div class="feature-tooltip">Track your emotions</div>
+                </div>
+                <div class="feature-block">
+                    <div class="feature-icon">🙏</div>
+                    <div class="feature-label">Gratitude</div>
+                    <div class="feature-tooltip">Practice gratitude</div>
+                </div>
+                <div class="feature-block">
+                    <div class="feature-icon">🎵</div>
+                    <div class="feature-label">Music</div>
+                    <div class="feature-tooltip">Personalized recommendations</div>
+                </div>
+            </div>
+        </div>
+        <div class="login-box">
+            <div class="welcome-section">
+                <div class="welcome-icon">🧠</div>
+                <h1>Verify Your Identity</h1>
+                <p>Enter your two-factor authentication code to continue</p>
+            </div>
+            <h2>Two-Factor Authentication</h2>
+            {% if error %}
+                <div class="error-message" id="general-error">{{ error }}</div>
+            {% endif %}
+            {% if success %}
+                <div class="success-message">{{ success }}</div>
+            {% endif %}
+            <form method="POST" action="{{ url_for('verify_2fa') }}">
+                <div class="input-group">
+                    <input type="text" id="totp_code" name="totp_code" placeholder="Enter 6-digit code" required>
+                    <label for="totp_code">TOTP Code</label>
+                </div>
+                <button type="submit" class="submit-btn">
+                    <span>Verify</span>
+                    <div class="spinner"></div>
+                </button>
+            </form>
+            <div class="forgot-password-link">
+                <a href="{{ url_for('forgot_password') }}">Need help with 2FA?</a>
+            </div>
+        </div>
     </div>
 </body>
 </html>
