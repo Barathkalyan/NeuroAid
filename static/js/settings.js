@@ -140,3 +140,21 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
+document.addEventListener('DOMContentLoaded', function () {
+  const toggle2FA = document.getElementById('two_factor_enabled');
+  const codeGroup = document.getElementById('disable-2fa-code-group');
+
+  if (toggle2FA && codeGroup) {
+    toggle2FA.addEventListener('change', function () {
+      if (!this.checked) {
+        codeGroup.style.display = 'block'; // Show input when disabling
+      } else {
+        codeGroup.style.display = 'none';
+      }
+    });
+
+    // Trigger on page load in case already unchecked
+    toggle2FA.dispatchEvent(new Event('change'));
+  }
+});

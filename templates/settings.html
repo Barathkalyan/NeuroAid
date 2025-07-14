@@ -63,17 +63,16 @@
       <section class="settings-section">
         <h2><i class="ri-settings-3-line"></i> Settings</h2>
 
-        <!-- Success/Error Messages -->
-        {% if error %}
-          <div class="error-message">
-            {{ error }}
-          </div>
-        {% endif %}
-        {% if success %}
-          <div class="success-message">
-            {{ success }}
-          </div>
-        {% endif %}
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <div class="flash-messages">
+              {% for category, message in messages %}
+                <div class="flash-message {{ category }}">{{ message }}</div>
+              {% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
 
 
         <!-- Settings Form -->
@@ -107,6 +106,11 @@
                 </label>
               </div>
             </div>
+            <div class="form-group" id="disable-2fa-code-group" style="display: none;">
+              <label for="disable_2fa_code">Enter TOTP Code to Disable 2FA</label>
+              <input type="text" id="disable_2fa_code" name="disable_2fa_code" placeholder="Enter your 2FA code" />
+            </div>
+
 
             <!-- Appearance Settings -->
             <div class="settings-group">

@@ -191,3 +191,13 @@
     font-size: 14px;
   }
 }
+
+.flash-message {
+  padding: 12px;
+  margin-bottom: 10px;
+  border-radius: 6px;
+  font-weight: 500;
+}
+.flash-message.success { background-color: #d4edda; color: #155724; }
+.flash-message.error { background-color: #f8d7da; color: #721c24; }
+.flash-message.info { background-color: #cce5ff; color: #004085; }

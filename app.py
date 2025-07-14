@@ -22,6 +22,7 @@ from dotenv import load_dotenv
 from storage3.utils import StorageException
 import uuid
 import secrets
+from flask import flash, redirect, render_template
 
 # Initialize logging
 logging.basicConfig(level=logging.INFO)
@@ -876,15 +877,25 @@ def verify_2fa():
             totp = pyotp.TOTP(two_factor_secret)
             if totp.verify(totp_code):
                 session['2fa_verified'] = True
-                session['two_factor_enabled'] = True
-                session.pop('wants_2fa', None)
+                logger.info(f"2FA verified for user_id: {user_id}")
 
-                logger.info(f"2FA verified for user_id: {user_id} at {datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%I:%M %p IST')}")
+                # Check if user is disabling 2FA
+                if session.pop('wants_to_disable_2fa', False):
+                    supabase.table('user_preferences').update({
+                        'two_factor_enabled': False,
+                        'two_factor_secret': None
+                    }).eq('user_id', user_id).execute()
+                    session['two_factor_enabled'] = False
+                    flash('Two-Factor Authentication has been disabled.', 'success')
+                    return redirect(url_for('settings'))
+
                 return redirect(url_for('index'))
+
             else:
                 return render_template('verify_2fa.html', error='Invalid TOTP code.', theme=theme)
 
         return render_template('verify_2fa.html', error=None, success=None, theme=theme)
+    
 
     except Exception as e:
         logger.error(f"Error in verify_2fa for user_id: {user_id} at {datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%I:%M %p IST')}: {str(e)}")
@@ -929,6 +940,13 @@ def login():
                     session['two_factor_enabled'] = two_factor_enabled
                     if two_factor_enabled and two_factor_secret:
                         return redirect(url_for('verify_2fa'))
+                    # Handle 2FA disabling
+                    if not two_factor_enabled and session.get['two_factor_enabled']:
+                        # User wants to disable 2FA
+                        session['wants_to_disable_2fa'] = True
+                        flash('Please enter your TOTP code to disable Two-Factor Authentication.', 'info')
+                        return redirect(url_for('verify_2fa'))
+
                     logger.info(f"User {email} logged in successfully, user_id: {user['id']}, theme: {session['theme']}")
                     return redirect(url_for('index'))
                 except Exception as e:
@@ -1493,14 +1511,9 @@ def settings():
         logger.info(f"User not logged in, redirecting to login at {datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%I:%M %p IST')}")
         return jsonify({'success': False, 'error': 'User not logged in'}), 401
 
-    # Allow access if user is just now enabling 2FA
-    is_post_enabling_2fa = request.method == 'POST' and request.form.get('two_factor_enabled') == 'on'
-
     if session.get('two_factor_enabled') and not session.get('2fa_verified'):
         if request.endpoint not in ['setup_2fa', 'verify_2fa', 'static']:
             return redirect(url_for('verify_2fa'))
-
-
 
     supabase = get_supabase(use_service_role=True)
     user_id = session['user']
@@ -1515,7 +1528,7 @@ def settings():
     try:
         user_data = supabase.table('users').select('email').eq('id', user_id).limit(1).execute()
         if not user_data.data:
-            logger.error(f"No user found for user_id: {user_id} at {datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%I:%M %p IST')}")
+            logger.error(f"No user found for user_id: {user_id}")
             return jsonify({'success': False, 'error': 'User not found'}), 404
         email = user_data.data[0]['email']
 
@@ -1530,7 +1543,9 @@ def settings():
                 'username': f"@{default_name}"
             }).execute()
 
-        preferences_data = supabase.table('user_preferences').select('two_factor_enabled, theme, reminder_time, notification_preference').eq('user_id', user_id).limit(1).execute()
+        preferences_data = supabase.table('user_preferences')\
+            .select('two_factor_enabled, two_factor_secret, theme, reminder_time, notification_preference')\
+            .eq('user_id', user_id).limit(1).execute()
         if preferences_data.data:
             profile_info.update(preferences_data.data[0])
         else:
@@ -1544,6 +1559,7 @@ def settings():
             }).execute()
 
         current_time_ist = datetime.now(ZoneInfo("Asia/Kolkata")).strftime('%I:%M %p IST')
+
         if request.method == 'POST':
             try:
                 new_email = request.form.get('email', email).strip().lower()
@@ -1553,6 +1569,8 @@ def settings():
                 theme = request.form.get('theme', profile_info['theme'])
                 reminder_time = request.form.get('reminder_time', profile_info['reminder_time'])
                 notification_preference = request.form.get('notification_preference', profile_info['notification_preference'])
+
+                disable_2fa_requested = not two_factor_enabled and profile_info['two_factor_enabled']
 
                 if not new_email:
                     return jsonify({'success': False, 'error': 'Email is required'}), 400
@@ -1575,24 +1593,40 @@ def settings():
                     'notification_preference': notification_preference
                 }
 
-                # Instead of enabling 2FA here, redirect to setup
-                if two_factor_enabled:
+                # Enable 2FA
+                if two_factor_enabled and not profile_info['two_factor_enabled']:
                     session['wants_2fa'] = True
+                    session['user_email'] = new_email
+                    session['theme'] = theme
+                    session['two_factor_enabled'] = True
                     return redirect(url_for('setup_2fa'))
 
+                # Disable 2FA (with verification)
+                if disable_2fa_requested:
+                    submitted_totp = request.form.get('disable_2fa_code', '').strip()
+                    secret_check = preferences_data.data[0].get('two_factor_secret')
+
+                    if not submitted_totp:
+                        return jsonify({'success': False, 'error': 'TOTP code is required to disable 2FA'}), 400
+                    if not secret_check:
+                        return jsonify({'success': False, 'error': '2FA secret not found'}), 400
+
+                    totp = pyotp.TOTP(secret_check)
+                    if not totp.verify(submitted_totp):
+                        return jsonify({'success': False, 'error': 'Invalid TOTP code'}), 400
+
+                    update_preferences_data['two_factor_enabled'] = False
+                    update_preferences_data['two_factor_secret'] = None
+                    session.pop('2fa_verified', None)
+                    session['two_factor_enabled'] = False
+                    flash('Two-factor authentication disabled successfully.', 'info')
 
                 supabase.table('user_preferences').update(update_preferences_data).eq('user_id', user_id).execute()
 
                 session['user_email'] = new_email
                 session['theme'] = theme
-                session['two_factor_enabled'] = two_factor_enabled
 
                 logger.info(f"Settings updated for user_id: {user_id} at {current_time_ist}")
-                
-                # Redirect to /setup_2fa if 2FA is enabled
-                if two_factor_enabled:
-                    return redirect(url_for('setup_2fa'))
-
                 return jsonify({'success': True, 'message': 'Settings updated successfully'})
 
             except Exception as e:
@@ -1613,7 +1647,7 @@ def settings():
                               **dropdown_data)
 
     except Exception as e:
-        logger.error(f"Error in settings for user_id: {user_id} at {datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%I:%M %p IST')}: {str(e)}")
+        logger.error(f"Error in settings route: {str(e)}")
         dropdown_data = get_user_dropdown_data(supabase, user_id)
         return render_template('settings.html',
                               email='Not found',
@@ -1626,6 +1660,7 @@ def settings():
                               success=None,
                               current_time=datetime.now(ZoneInfo("Asia/Kolkata")).strftime('%I:%M %p IST'),
                               **dropdown_data)
+
 
 @app.route('/export_data', methods=['GET'])
 def export_data():
