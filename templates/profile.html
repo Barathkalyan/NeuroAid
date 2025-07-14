@@ -30,6 +30,23 @@
     .input-container input:disabled {
       background-color: #e9ecef;
     }
+    .profile-icon {
+      font-size: 24px;
+      color: #7c3aed;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background-color: #f9f9f9;
+      border: 1px solid #e9ecef;
+    }
+    .profile-picture .profile-icon {
+      font-size: 48px;
+      width: 100px;
+      height: 100px;
+    }
   </style>
   <script src="{{ url_for('static', filename='js/utils.js') }}" defer></script>
   <script src="{{ url_for('static', filename='js/profile.js') }}" defer></script>
@@ -61,7 +78,11 @@
         </div>
         <div class="profile-dropdown">
           <div class="profile">
-            <img src="{{ profile_data.profile_pic_url if profile_data.get('profile_pic_url') else 'https://randomuser.me/api/portraits/men/32.jpg' }}" alt="Profile" id="header-profile-pic" />
+            {% if profile_data.get('profile_pic_url') %}
+              <img src="{{ profile_data.profile_pic_url }}" alt="Profile" id="header-profile-pic" />
+            {% else %}
+              <i class="ri-user-line profile-icon"></i>
+            {% endif %}
             <span>{{ name }}</span>
             <i class="ri-arrow-down-s-line"></i>
           </div>
@@ -94,7 +115,11 @@
           </div>
           <div class="profile-content">
             <div class="profile-picture">
-              <img src="{{ profile_data.profile_pic_url if profile_data.get('profile_pic_url') else 'https://randomuser.me/api/portraits/men/32.jpg' }}" alt="Profile Picture" id="profile-pic" />
+              {% if profile_data.get('profile_pic_url') %}
+                <img src="{{ profile_data.profile_pic_url }}" alt="Profile Picture" id="profile-pic" />
+              {% else %}
+                <i class="ri-user-line profile-icon"></i>
+              {% endif %}
               <button class="edit-button" id="edit-picture-btn">Upload Photo</button>
               <input type="file" id="profile-pic-input" accept="image/*" style="display: none;" />
             </div>
