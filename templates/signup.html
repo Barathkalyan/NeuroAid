@@ -5,39 +5,64 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>NeuroAid - Sign Up</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/signup.css') }}" />
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-  <!-- Main container for the login page -->
   <div class="login-container">
-    <div class="branding">
+    <div class="branding" aria-label="NeuroAid feature pillar with dynamic quote">
+      <div class="branding-scene">
+        <div class="logo"><span class="neuro">Neuro</span><span class="aid">Aid</span></div>
+        <div class="quote-container" id="quote">Take a moment to breathe deeply.</div>
+        <div class="feature-block">
+          <div class="feature-icon icon-journal">📝</div>
+          <p class="feature-label">Journal</p>
+          <p class="feature-tooltip">Write your thoughts</p>
+        </div>
+        <div class="feature-block">
+          <div class="feature-icon icon-mood">😊</div>
+          <p class="feature-label">Mood</p>
+          <p class="feature-tooltip">Track your emotions</p>
+        </div>
+        <div class="feature-block">
+          <div class="feature-icon icon-gratitude">🙏</div>
+          <p class="feature-label">Gratitude</p>
+          <p class="feature-tooltip">Practice gratitude</p>
+        </div>
+        <div class="feature-block">
+          <div class="feature-icon icon-music">🎵</div>
+          <p class="feature-label">Music</p>
+          <p class="feature-tooltip">Personalized recommendations</p>
+        </div>
+      </div>
     </div>
     <div class="login-box">
-      <h1>Neuro<span>Aid</span></h1>
-      <p>"Your personal mental health companion"</p>
+      <div class="welcome-section">
+        <div class="welcome-icon">🧠</div>
+        <h1>Begin Your Journey</h1>
+        <p>Start your path to mental wellness today</p>
+      </div>
       <h2>Signup</h2>
-
-      <!-- Display error message if signup fails -->
       {% if error %}
-        <p style="color: red; text-align: center;">{{ error }}</p>
+        <p id="general-error">{{ error }}</p>
       {% endif %}
-
-      <!-- Signup form -->
       <form id="signup-form" method="POST" action="{{ url_for('signup') }}">
         <div class="input-group">
           <input type="text" name="email" id="email" required placeholder=" " />
           <label for="email">Email</label>
         </div>
-        <!-- Input field for the password -->
         <div class="input-group">
-          <input type="password" name="password" id="password" required placeholder=" " />
+          <input type="password" name="password" id="password" required placeholder=" " aria-describedby="password-error" />
           <label for="password">Password</label>
+          <span class="toggle-password">Show</span>
+          <p class="error-message" id="password-error"></p>
         </div>
         <div class="input-group">
-          <input type="password" name="confirm_password" id="confirm-password" required placeholder=" " />
+          <input type="password" name="confirm_password" id="confirm-password" required placeholder=" " aria-describedby="confirm-password-error" />
           <label for="confirm-password">Confirm Password</label>
+          <span class="toggle-password">Show</span>
+          <p class="error-message" id="confirm-password-error"></p>
         </div>
-
         <button type="submit">Signup</button>
       </form>
       <div class="login-link">
@@ -45,5 +70,6 @@
       </div>
     </div>
   </div>
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>
