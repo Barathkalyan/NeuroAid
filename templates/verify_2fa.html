@@ -3,27 +3,65 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="csrf-token" content="{{ csrf_token() }}">
   <title>NeuroAid - Verify 2FA</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/signup.css') }}" />
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}" />
 </head>
 <body>
   <div class="login-container">
-    <div class="branding"></div>
+    <div class="branding">
+      <div class="branding-scene">
+        <div class="logo">
+          <span class="neuro">Neuro</span><span class="aid">Aid</span>
+        </div>
+        <div class="feature-block">
+          <div class="feature-icon ri-home-5-line"></div>
+          <div class="feature-label">Home</div>
+          <div class="feature-tooltip">Track your mental health journey</div>
+        </div>
+        <div class="feature-block">
+          <div class="feature-icon ri-booklet-line"></div>
+          <div class="feature-label">Journal</div>
+          <div class="feature-tooltip">Log your thoughts and feelings</div>
+        </div>
+        <div class="feature-block">
+          <div class="feature-icon ri-bar-chart-2-line"></div>
+          <div class="feature-label">Progress</div>
+          <div class="feature-tooltip">Monitor your progress</div>
+        </div>
+        <div class="feature-block">
+          <div class="feature-icon ri-music-2-line icon-music"></div>
+          <div class="feature-label">Vibe</div>
+          <div class="feature-tooltip">Explore mood-based activities</div>
+        </div>
+        <div class="quote-container">"Your personal mental health companion"</div>
+      </div>
+    </div>
     <div class="login-box">
-      <h1>Neuro<span>Aid</span></h1>
-      <h2>Verify Two-Factor Authentication</h2>
+      <div class="welcome-section">
+        <div class="welcome-icon ri-shield-check-line"></div>
+        <h1>Verify Two-Factor Authentication</h1>
+        <p>Enter the code from your authenticator app</p>
+      </div>
       {% if error %}
-        <p style="color: red; text-align: center;">{{ error }}</p>
+        <p class="error-message">{{ error }}</p>
       {% endif %}
-      <form method="POST" action="{{ url_for('verify_2fa') }}">
+      {% if success %}
+        <p class="success-message">{{ success }}</p>
+      {% endif %}
+      <form id="verify-2fa-form" method="POST" action="{{ url_for('verify_2fa') }}">
         <div class="input-group">
           <input type="text" name="code" id="code" required placeholder=" " />
           <label for="code">Enter 2FA Code</label>
         </div>
-        <button type="submit">Verify</button>
+        <button type="submit"><span>Verify</span><span class="spinner"></span></button>
       </form>
+      <div class="login-link">
+        Return to <a href="{{ url_for('login') }}">Log in</a>
+      </div>
     </div>
   </div>
+  <script src="{{ url_for('static', filename='js/verify_2fa.js') }}"></script>
 </body>
 </html>

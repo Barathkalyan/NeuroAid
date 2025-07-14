@@ -300,6 +300,13 @@ button:disabled {
   text-align: center;
 }
 
+.success-message {
+  color: green;
+  font-size: 12px;
+  margin-top: 5px;
+  text-align: center;
+}
+
 .error-message {
   display: none;
 }
@@ -322,6 +329,50 @@ button:disabled {
 }
 
 .forgot-password-link a:hover, .signup-link a:hover, .login-link a:hover {
+  text-decoration: underline;
+}
+
+.qr-container {
+  display: flex;
+  justify-content: center;
+  margin: 20px 0;
+  padding: 20px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.qr-container img {
+  max-width: 300px;
+  height: auto;
+}
+
+.secret-code {
+  font-family: 'Poppins', monospace;
+  background: var(--gradient);
+  color: #fff;
+  padding: 12px;
+  border-radius: 12px;
+  text-align: center;
+  margin: 20px 0;
+  font-size: 16px;
+  word-break: break-all;
+}
+
+.instruction {
+  font-size: 16px;
+  color: #666;
+  text-align: center;
+  margin: 15px 0;
+}
+
+.instruction a {
+  color: var(--blue);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.instruction a:hover {
   text-decoration: underline;
 }
 
@@ -398,6 +449,15 @@ button:disabled {
   .login-box h2 {
     font-size: 28px;
     margin-bottom: 30px;
+  }
+  .qr-container img {
+    max-width: 200px;
+  }
+  .secret-code {
+    font-size: 14px;
+  }
+  .instruction {
+    font-size: 14px;
   }
   .icon-gratitude, .icon-music {
     display: none;

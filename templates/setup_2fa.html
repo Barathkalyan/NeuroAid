@@ -3,35 +3,72 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="csrf-token" content="{{ csrf_token() }}">
   <title>NeuroAid - Setup 2FA</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/setup_2fa.css') }}" />
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}" />
 </head>
 <body>
   <div class="login-container">
     <div class="branding">
-      <h1>Neuro<span>Aid</span></h1>
+      <div class="branding-scene">
+        <div class="logo">
+          <span class="neuro">Neuro</span><span class="aid">Aid</span>
+        </div>
+        <div class="feature-block">
+          <div class="feature-icon ri-home-5-line"></div>
+          <div class="feature-label">Home</div>
+          <div class="feature-tooltip">Track your mental health journey</div>
+        </div>
+        <div class="feature-block">
+          <div class="feature-icon ri-booklet-line"></div>
+          <div class="feature-label">Journal</div>
+          <div class="feature-tooltip">Log your thoughts and feelings</div>
+        </div>
+        <div class="feature-block">
+          <div class="feature-icon ri-bar-chart-2-line"></div>
+          <div class="feature-label">Progress</div>
+          <div class="feature-tooltip">Monitor your progress</div>
+        </div>
+        <div class="feature-block">
+          <div class="feature-icon ri-music-2-line icon-music"></div>
+          <div class="feature-label">Vibe</div>
+          <div class="feature-tooltip">Explore mood-based activities</div>
+        </div>
+        <div class="quote-container">"Your personal mental health companion"</div>
+      </div>
     </div>
     <div class="login-box">
-      <h2>Setup Two-Factor Authentication</h2>
+      <div class="welcome-section">
+        <div class="welcome-icon ri-shield-keyhole-line"></div>
+        <h1>Setup Two-Factor Authentication</h1>
+        <p>Secure your NeuroAid account with 2FA</p>
+      </div>
       {% if error %}
-        <p class="error">{{ error }}</p>
+        <p class="error-message">{{ error }}</p>
+      {% endif %}
+      {% if success %}
+        <p class="success-message">{{ success }}</p>
       {% endif %}
       {% if qr_code %}
-        <p>Scan this QR code with your authenticator app (e.g., Google Authenticator):</p>
+        <p class="instruction">Scan this QR code with your authenticator app (e.g., Google Authenticator):</p>
         <div class="qr-container">
           <img src="data:image/png;base64,{{ qr_code }}" alt="2FA QR Code" />
         </div>
-        <p>Or enter this secret key manually:</p>
+        <p class="instruction">Or enter this secret key manually:</p>
         <div class="secret-code">{{ secret }}</div>
-        <p>Once set up, return to the <a href="{{ url_for('verify_2fa') }}">verification page</a>.</p>
+        <p class="instruction">Once set up, return to the <a href="{{ url_for('verify_2fa') }}">verification page</a>.</p>
       {% else %}
-        <form method="POST" action="{{ url_for('setup_2fa') }}">
-          <p class="abc">Click below to generate a QR code for your authenticator app.</p>
-          <button type="submit">Generate QR Code</button>
+        <form id="setup-2fa-form" method="POST" action="{{ url_for('setup_2fa') }}">
+          <p class="instruction">Click below to generate a QR code for your authenticator app.</p>
+          <button type="submit"><span>Generate QR Code</span><span class="spinner"></span></button>
         </form>
       {% endif %}
+      <div class="login-link">
+        Return to <a href="{{ url_for('login') }}">Log in</a>
+      </div>
     </div>
   </div>
+  <script src="{{ url_for('static', filename='js/setup_2fa.js') }}"></script>
 </body>
 </html>
