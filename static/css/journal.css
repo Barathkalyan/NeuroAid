@@ -65,6 +65,7 @@ body {
 .ql-editor {
   background-color: #f4f0fa;
   color: #2d2d2d;
+  font-size: 20px; /* Increased for larger, more readable text input */
 }
 
 .journal-actions {
