@@ -78,6 +78,8 @@
         <!-- Settings Form -->
         <div class="settings-card">
           <form id="settings-form" method="POST" action="{{ url_for('settings') }}">
+          <input type="hidden" id="current_two_factor_status" value="{{ 'true' if two_factor_enabled else 'false' }}">
+
             <!-- Account Settings -->
             <div class="settings-group">
               <h3><i class="ri-user-settings-line"></i> Account Settings</h3>
@@ -165,5 +167,24 @@
   <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
   <script src="{{ url_for('static', filename='js/dropdown.js') }}"></script>
   <script src="{{ url_for('static', filename='js/welcome.js') }}"></script>
+  <script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const checkbox = document.getElementById('two_factor_enabled');
+    const totpField = document.getElementById('disable-2fa-code-group');
+    const was2FAEnabled = document.getElementById('current_two_factor_status').value === 'true';
+
+    function toggleTotpField() {
+      if (!checkbox.checked && was2FAEnabled) {
+        totpField.style.display = 'block';
+      } else {
+        totpField.style.display = 'none';
+      }
+    }
+
+    checkbox.addEventListener('change', toggleTotpField);
+    toggleTotpField(); // Initial run
+  });
+</script>
+
 </body>
 </html>
