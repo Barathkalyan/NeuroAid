@@ -29,6 +29,16 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('email').focus();
+});
+
+document.getElementById('login-form').addEventListener('submit', (e) => {
+  const button = document.getElementById('login-button');
+  button.disabled = true;
+  button.querySelector('.spinner').style.display = 'block';
+});
+
   // Handle form submission and error display for login
   const loginForm = document.getElementById('login-form');
   if (loginForm) {

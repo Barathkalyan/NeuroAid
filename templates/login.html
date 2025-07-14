@@ -55,7 +55,7 @@
         <div class="input-group">
           <input type="password" name="password" id="password" required placeholder=" " aria-describedby="password-error" />
           <label for="password">Password</label>
-          <span class="toggle-password">Show</span>
+          <span class="toggle-password" role="button" tabindex="0" aria-label="Toggle password visibility">Show</span>
           <p class="error-message" id="password-error"></p>
         </div>
         <div class="forgot-password-link">
@@ -71,6 +71,6 @@
       </div>
     </div>
   </div>
-  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  <script defer src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>

@@ -1890,290 +1890,16 @@ if __name__ == '__main__':
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>NeuroAid - Login</title>
-
-  <!-- Link to CSS file -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/signup.css') }}" />
-
-  <!-- Google Fonts link to use the 'Poppins' font family -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css')}}" />
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-
-  <style>
-    /* Spinner styles */
-    .spinner {
-      display: none;
-      border: 3px solid #f3f3f3;
-      border-top: 3px solid #3498db;
-      border-radius: 50%;
-      width: 20px;
-      height: 20px;
-      animation: spin 1s linear infinite;
-      margin: 0 auto;
-    }
-
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-
-    button:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-
-    .submitting .spinner {
-      display: inline-block;
-    }
-
-    .submitting span {
-      display: none;
-    }
-
-    /* Forgot Password link styles */
-    .forgot-password-link {
-      text-align: center;
-      margin-top: 10px;
-    }
-
-    .forgot-password-link a {
-      color: #3498db;
-      text-decoration: none;
-      font-size: 14px;
-      font-weight: 500;
-    }
-
-    .forgot-password-link a:hover {
-      text-decoration: underline;
-    }
-
-    /* Signup link styles */
-    .signup-link {
-      text-align: center;
-      margin-top: 15px;
-    }
-
-    .signup-link a {
-      color: #3498db;
-      text-decoration: none;
-      font-weight: 500;
-    }
-
-    .signup-link a:hover {
-      text-decoration: underline;
-    }
-
-    /* Password toggle styles */
-    .input-group {
-      position: relative;
-    }
-
-    .toggle-password {
-      position: absolute;
-      right: 10px;
-      top: 50%;
-      transform: translateY(-50%);
-      cursor: pointer;
-      font-size: 14px;
-      color: #3498db;
-    }
-
-    /* Error message styles */
-    .error-message {
-      color: red;
-      font-size: 12px;
-      margin-top: 5px;
-      display: none;
-    }
-
-    .input-error {
-      border: 1px solid red;
-    }
-
-    /* Branding styles */
-    .branding {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100%;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .branding-scene {
-      width: 95%;
-      max-width: 700px;
-      height: 100%;
-      position: relative;
-      background: radial-gradient(circle, #4B7286, #A2D2C2);
-      padding: 30px;
-      box-sizing: border-box;
-      animation: fadeIn 1s ease-in;
-    }
-
-    .logo {
-      width: 100%;
-      text-align: center;
-      font-family: 'Poppins', sans-serif;
-      font-size: 60px;
-      font-weight: 700;
-      background: linear-gradient(45deg, #E6E0FA, #A2D2C2);
-      -webkit-background-clip: text;
-      background-clip: text;
-      color: transparent;
-      margin-bottom: 40px;
-      animation: pulse 3s ease-in-out infinite;
-    }
-
-    .feature-block {
-      display: flex;
-      align-items: center;
-      margin-bottom: 40px;
-      opacity: 0;
-      transition: opacity 0.5s ease, transform 0.3s ease;
-    }
-
-    .feature-block:hover {
-      transform: scale(1.05);
-    }
-
-    .feature-icon {
-      width: 50px;
-      height: 50px;
-      border-radius: 50%;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      font-size: 28px;
-      color: white;
-      background: linear-gradient(90deg, #4B7286, #F4A261);
-      margin-right: 20px;
-      cursor: pointer;
-    }
-
-    .feature-label {
-      font-family: 'Poppins', sans-serif;
-      font-size: 24px;
-      font-weight: 500;
-      background: linear-gradient(90deg, #FFFFFF, #A2D2C2);
-      -webkit-background-clip: text;
-      background-clip: text;
-      color: transparent;
-    }
-
-    .feature-tooltip {
-      position: absolute;
-      bottom: -40px;
-      left: 50%;
-      transform: translateX(-50%);
-      font-family: 'Poppins', sans-serif;
-      font-size: 16px;
-      color: white;
-      background: linear-gradient(90deg, #4B7286, #F4A261);
-      padding: 10px 15px;
-      border-radius: 8px;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.3s ease;
-    }
-
-    .feature-block:hover .feature-tooltip {
-      opacity: 1;
-    }
-
-    .quote-container {
-      text-align: center;
-      font-family: 'Poppins', sans-serif;
-      font-size: 20px;
-      font-weight: 500;
-      color: #FFFFFF;
-      margin-top: 40px;
-      opacity: 0;
-      transition: opacity 0.5s ease;
-    }
-
-    .ripple {
-      position: absolute;
-      border-radius: 50%;
-      background: linear-gradient(90deg, rgba(75, 114, 134, 0.3), rgba(244, 162, 97, 0.3));
-      pointer-events: none;
-      transform: scale(0);
-      animation: rippleEffect 0.8s ease-out;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
-
-    @keyframes pulse {
-      0% { transform: scale(1); }
-      50% { transform: scale(1.15); }
-      100% { transform: scale(1); }
-    }
-
-    @keyframes fadeInBlock {
-      0% { opacity: 0; transform: translateY(20px); }
-      100% { opacity: 1; transform: translateY(0); }
-    }
-
-    .feature-block:nth-child(1) { animation: fadeInBlock 0.5s ease-in forwards 0.5s; }
-    .feature-block:nth-child(2) { animation: fadeInBlock 0.5s ease-in forwards 1s; }
-    .feature-block:nth-child(3) { animation: fadeInBlock 0.5s ease-in forwards 1.5s; }
-    .feature-block:nth-child(4) { animation: fadeInBlock 0.5s ease-in forwards 2s; }
-    .feature-block:nth-child(5) { animation: fadeInBlock 0.5s ease-in forwards 2.5s; }
-
-    @keyframes rippleEffect {
-      to { transform: scale(3); opacity: 0; }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      .logo, .feature-block, .quote-container, .ripple {
-        animation: none;
-      }
-      .feature-block, .quote-container { opacity: 1; transform: none; }
-      .feature-tooltip { opacity: 0; }
-    }
-
-    @media (max-width: 768px) {
-      .branding-scene {
-        width: 95%;
-        max-width: 500px;
-        padding: 15px;
-      }
-      .logo {
-        font-size: 40px;
-        margin-bottom: 30px;
-      }
-      .feature-block {
-        margin-bottom: 30px;
-      }
-      .feature-icon {
-        width: 40px;
-        height: 40px;
-        font-size: 22px;
-        margin-right: 15px;
-      }
-      .feature-label {
-        font-size: 20px;
-      }
-      .feature-tooltip {
-        font-size: 14px;
-        bottom: -30px;
-      }
-      .quote-container {
-        font-size: 16px;
-        margin-top: 30px;
-      }
-      .icon-community, .icon-breathe { display: none; } /* Reduce to 3 blocks on mobile */
-    }
-  </style>
 </head>
 <body>
-  <!-- Main container for the login page -->
   <div class="login-container">
-    <!-- Branding section left side -->
     <div class="branding" aria-label="NeuroAid feature pillar with dynamic quote">
       <div class="branding-scene">
-        <div class="logo">NeuroAid</div>
+        <div class="logo"><span class="neuro">Neuro</span><span class="aid">Aid</span></div>
+        <div class="quote-container" id="quote">Take a moment to breathe deeply.</div>
         <div class="feature-block">
           <div class="feature-icon icon-journal">📝</div>
           <p class="feature-label">Journal</p>
@@ -2185,71 +1911,52 @@ if __name__ == '__main__':
           <p class="feature-tooltip">Track your emotions</p>
         </div>
         <div class="feature-block">
-          <div class="feature-icon icon-meditation">🧘</div>
-          <p class="feature-label">Meditate</p>
-          <p class="feature-tooltip">Guided relaxation</p>
+          <div class="feature-icon icon-gratitude">🙏</div>
+          <p class="feature-label">Gratitude</p>
+          <p class="feature-tooltip">Practice gratitude</p>
         </div>
         <div class="feature-block">
-          <div class="feature-icon icon-community">👥</div>
-          <p class="feature-label">Community</p>
-          <p class="feature-tooltip">Connect with others</p>
+          <div class="feature-icon icon-music">🎵</div>
+          <p class="feature-label">Music</p>
+          <p class="feature-tooltip">Personalized recommendations</p>
         </div>
-        <div class="feature-block">
-          <div class="feature-icon icon-breathe">🌬️</div>
-          <p class="feature-label">Breathe</p>
-          <p class="feature-tooltip">Practice breathing</p>
-        </div>
-        <div class="quote-container" id="quote">Take a moment to breathe deeply.</div>
       </div>
     </div>
-
-    <!-- Login box containing the form right side -->
     <div class="login-box">
-      <h1>Neuro<span>Aid</span></h1>
-      <p>"Your personal mental health companion"</p>
+      <div class="welcome-section">
+        <div class="welcome-icon">🧠</div>
+        <h1>Welcome Back</h1>
+        <p>Continue your mental wellness journey</p>
+      </div>
       <h2>Login</h2>
-
-      <!-- Display general error message if login fails -->
       {% if error %}
-        <p style="color: red; text-align: center;" id="general-error">{{ error }}</p>
+        <p id="general-error">{{ error }}</p>
       {% endif %}
-
-      <!-- Login form -->
       <form id="login-form" method="POST" action="{{ url_for('login') }}">
-        <!-- Input field for the username -->
         <div class="input-group">
           <input type="text" name="email" id="email" required placeholder=" " aria-describedby="email-error" />
           <label for="email">Email</label>
           <p class="error-message" id="email-error"></p>
         </div>
-
-        <!-- Input field for the password -->
         <div class="input-group">
           <input type="password" name="password" id="password" required placeholder=" " aria-describedby="password-error" />
           <label for="password">Password</label>
           <span class="toggle-password">Show</span>
           <p class="error-message" id="password-error"></p>
         </div>
-
-        <!-- Forgot Password link -->
         <div class="forgot-password-link">
           <a href="/forgot_password">Forgot Password?</a>
         </div>
-
-        <!-- Login button with spinner -->
         <button type="submit" id="login-button">
           <span>Login</span>
           <div class="spinner"></div>
         </button>
       </form>
-
-      <!-- Link to sign up page -->
       <div class="signup-link">
         Don't have an account? <a href="/signup">Sign up!</a>
       </div>
     </div>
   </div>
-
   <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>
