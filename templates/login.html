@@ -4,18 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>NeuroAid - Login</title>
-
-  <!-- Link to CSS file -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/signup.css') }}" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css')}}"/>
-
-  <!-- Google Fonts link to use the 'Poppins' font family -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css')}}" />
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-  <!-- Main container for the login page -->
   <div class="login-container">
-    <!-- Branding section left side -->
     <div class="branding" aria-label="NeuroAid feature pillar with dynamic quote">
       <div class="branding-scene">
         <div class="logo"><span class="neuro">Neuro</span><span class="aid">Aid</span></div>
@@ -42,61 +36,41 @@
         </div>
       </div>
     </div>
-
-    <!-- Login box containing the form right side -->
     <div class="login-box">
-      <!-- Welcome section -->
-      <div style="text-align: center; margin-bottom: 35px;">
-        <div style="width: 60px; height: 60px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); margin-top:50px;border-radius: 50%; margin: 0 auto 15px; display: flex; align-items: center; justify-content: center; font-size: 28px; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);">
-          🧠
-        </div>
-        <h1 style="font-size: 42px; font-weight: 700; color: #333; margin: 0 0 8px 0; margin-top:25px; font-family: 'Poppins', sans-serif;">Welcome Back</h1>
-        <p style="font-size: 21px; color: #666; margin: 0; margin-top:80px; font-weight: 400; font-family: 'Poppins', sans-serif;">Continue your mental wellness journey</p>
+      <div class="welcome-section">
+        <div class="welcome-icon">🧠</div>
+        <h1>Welcome Back</h1>
+        <p>Continue your mental wellness journey</p>
       </div>
-      
-      <h2 style="margin-bottom: 35px; text-align: center; color: #333; font-size: 38px; font-weight: 600; font-family: 'Poppins', sans-serif;">Login</h2>
-
-      <!-- Display general error message if login fails -->
+      <h2>Login</h2>
       {% if error %}
-        <p style="color: red; text-align: center;" id="general-error">{{ error }}</p>
+        <p id="general-error">{{ error }}</p>
       {% endif %}
-
-      <!-- Login form -->
       <form id="login-form" method="POST" action="{{ url_for('login') }}">
-        <!-- Input field for the username -->
         <div class="input-group">
           <input type="text" name="email" id="email" required placeholder=" " aria-describedby="email-error" />
           <label for="email">Email</label>
           <p class="error-message" id="email-error"></p>
         </div>
-
-        <!-- Input field for the password -->
         <div class="input-group">
           <input type="password" name="password" id="password" required placeholder=" " aria-describedby="password-error" />
           <label for="password">Password</label>
           <span class="toggle-password">Show</span>
           <p class="error-message" id="password-error"></p>
         </div>
-
-        <!-- Forgot Password link -->
         <div class="forgot-password-link">
           <a href="/forgot_password">Forgot Password?</a>
         </div>
-
-        <!-- Login button with spinner -->
         <button type="submit" id="login-button">
           <span>Login</span>
           <div class="spinner"></div>
         </button>
       </form>
-
-      <!-- Link to sign up page -->
       <div class="signup-link">
         Don't have an account? <a href="/signup">Sign up!</a>
       </div>
     </div>
   </div>
-
   <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>
