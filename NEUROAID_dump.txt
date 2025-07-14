@@ -1890,7 +1890,7 @@ if __name__ == '__main__':
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>NeuroAid - Login</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/signup.css') }}" />
+
   <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css')}}" />
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
@@ -1941,7 +1941,7 @@ if __name__ == '__main__':
         <div class="input-group">
           <input type="password" name="password" id="password" required placeholder=" " aria-describedby="password-error" />
           <label for="password">Password</label>
-          <span class="toggle-password">Show</span>
+          <span class="toggle-password" role="button" tabindex="0" aria-label="Toggle password visibility">Show</span>
           <p class="error-message" id="password-error"></p>
         </div>
         <div class="forgot-password-link">
@@ -1957,7 +1957,7 @@ if __name__ == '__main__':
       </div>
     </div>
   </div>
-  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  <script defer src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>
 ```

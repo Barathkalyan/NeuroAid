@@ -18,13 +18,20 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         const data = await response.json();
         if (data.success) {
-          const successMessage = document.querySelector('.success-message') || document.createElement('p');
-          successMessage.className = 'success-message';
-          successMessage.textContent = data.message || 'QR code generated successfully!';
-          successMessage.style.display = 'block';
-          form.parentElement.insertBefore(successMessage, form);
-          window.location.reload(); // Reload to show QR code
-        } else {
+          const qrImage = document.getElementById('qr-image');
+          const qrSecret = document.getElementById('qr-secret');
+          const qrSection = document.getElementById('qr-section');
+
+          qrImage.src = 'data:image/png;base64,' + data.qr_code;
+          qrSecret.textContent = data.secret;
+          qrSection.style.display = 'block';
+
+          // Hide form after generating
+          form.style.display = 'none';
+        }
+
+
+        else {
           const errorMessage = document.querySelector('.error-message') || document.createElement('p');
           errorMessage.className = 'error-message';
           errorMessage.textContent = data.error || 'Failed to generate QR code';

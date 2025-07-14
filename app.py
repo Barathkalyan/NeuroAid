@@ -791,104 +791,104 @@ def update_language():
 
 @app.route('/setup_2fa', methods=['GET', 'POST'])
 def setup_2fa():
-    if 'user' not in session:
-        return redirect(url_for('login'))
-    
+    if 'user' not in session or not session.get('wants_2fa'):
+        return redirect(url_for('settings'))
+
     supabase = get_supabase()
     user_id = session['user']
-    
-    if request.method == 'POST':
-        try:
+
+    try:
+        if request.method == 'POST':
+            # Check if already exists
+            preferences = supabase.table('user_preferences')\
+                .select('two_factor_secret')\
+                .eq('user_id', user_id)\
+                .limit(1).execute()
+
+            if preferences.data and preferences.data[0].get('two_factor_secret'):
+                return jsonify({'success': False, 'error': '2FA already setup'})
+
+            # Generate and save secret
             totp = pyotp.TOTP(pyotp.random_base32())
             secret = totp.secret
             supabase.table('user_preferences').update({
                 'two_factor_secret': secret,
                 'two_factor_enabled': True
             }).eq('user_id', user_id).execute()
-            
+
+            session['two_factor_enabled'] = True
+
             provisioning_uri = totp.provisioning_uri(
                 name=session['user_email'],
                 issuer_name='NeuroAid'
             )
-            
             img = qrcode.make(provisioning_uri)
             buffered = BytesIO()
             img.save(buffered)
             qr_code = base64.b64encode(buffered.getvalue()).decode('utf-8')
-            
-            return render_template('setup_2fa.html', qr_code=qr_code, secret=secret)
-        except Exception as e:
-            logger.error(f"Error setting up 2FA: {str(e)}")
-            supabase.table('user_preferences').update({
-                'two_factor_enabled': False,
-                'two_factor_secret': None
-            }).eq('user_id', user_id).execute()
-            session['two_factor_enabled'] = False
-            return render_template('setup_2fa.html', error="Failed to set up 2FA. Please try again.")
-    
-    try:
+
+            return jsonify({'success': True, 'message': '2FA setup successfully', 'qr_code': qr_code, 'secret': secret})
+
+        # GET request fallback
         preferences = supabase.table('user_preferences')\
             .select('two_factor_secret')\
             .eq('user_id', user_id)\
-            .execute()
-        
+            .limit(1).execute()
+
         if preferences.data and preferences.data[0].get('two_factor_secret'):
             return redirect(url_for('verify_2fa'))
-        
+
         return render_template('setup_2fa.html')
+
     except Exception as e:
-        logger.error(f"Error checking 2FA setup: {str(e)}")
-        return render_template('setup_2fa.html', error="Error checking 2FA status.")
+        logger.error(f"Error setting up 2FA: {str(e)}")
+        if request.method == 'POST':
+            return jsonify({'success': False, 'error': 'Failed to generate QR code'})
+        return render_template('setup_2fa.html', error="Error checking 2FA setup.")
+
+
 
 @app.route('/verify_2fa', methods=['GET', 'POST'])
 def verify_2fa():
     if 'user' not in session:
+        logger.info(f"User not logged in, redirecting to login at {datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%I:%M %p IST')}")
         return redirect(url_for('login'))
-    
-    supabase = get_supabase()
+
+    supabase = get_supabase(use_service_role=True)
     user_id = session['user']
-    
-    if request.method == 'POST':
-        try:
-            code = request.form.get('code')
-            preferences = supabase.table('user_preferences')\
-                .select('two_factor_secret')\
-                .eq('user_id', user_id)\
-                .execute()
-            
-            if not preferences.data or not preferences.data[0].get('two_factor_secret'):
-                return render_template('verify_2fa.html', error="2FA not set up.")
-            
-            secret = preferences.data[0]['two_factor_secret']
-            totp = pyotp.TOTP(secret)
-            
-            if totp.verify(code):
+
+    try:
+        preferences_data = supabase.table('user_preferences').select('two_factor_enabled, two_factor_secret, theme').eq('user_id', user_id).limit(1).execute()
+        if not preferences_data.data or not preferences_data.data[0]['two_factor_enabled']:
+            return redirect(url_for('index'))
+
+        two_factor_secret = preferences_data.data[0]['two_factor_secret']
+        theme = preferences_data.data[0].get('theme', session.get('theme', 'light'))  # Fallback to session or default 'light'
+
+        if not two_factor_secret:
+            return redirect(url_for('setup_2fa'))
+
+        if request.method == 'POST':
+            totp_code = request.form.get('totp_code')
+            if not totp_code:
+                return render_template('verify_2fa.html', error='Please enter a TOTP code.', theme=theme)
+
+            totp = pyotp.TOTP(two_factor_secret)
+            if totp.verify(totp_code):
                 session['2fa_verified'] = True
+                session['two_factor_enabled'] = True
+                session.pop('wants_2fa', None)
+
+                logger.info(f"2FA verified for user_id: {user_id} at {datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%I:%M %p IST')}")
                 return redirect(url_for('index'))
             else:
-                return render_template('verify_2fa.html', error="Invalid 2FA code.")
-        except Exception as e:
-            logger.error(f"Error verifying 2FA: {str(e)}")
-            return render_template('verify_2fa.html', error="Error verifying 2FA code.")
-    
-    try:
-        preferences = supabase.table('user_preferences')\
-            .select('two_factor_enabled, two_factor_secret')\
-            .eq('user_id', user_id)\
-            .execute()
-        
-        if not preferences.data or not preferences.data[0].get('two_factor_enabled') or not preferences.data[0].get('two_factor_secret'):
-            supabase.table('user_preferences').update({
-                'two_factor_enabled': False,
-                'two_factor_secret': None
-            }).eq('user_id', user_id).execute()
-            session['two_factor_enabled'] = False
-            return redirect(url_for('index'))
-        
-        return render_template('verify_2fa.html')
+                return render_template('verify_2fa.html', error='Invalid TOTP code.', theme=theme)
+
+        return render_template('verify_2fa.html', error=None, success=None, theme=theme)
+
     except Exception as e:
-        logger.error(f"Error checking 2FA status on verify: {str(e)}")
-        return render_template('verify_2fa.html', error="Error checking 2FA status.")
+        logger.error(f"Error in verify_2fa for user_id: {user_id} at {datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%I:%M %p IST')}: {str(e)}")
+        return render_template('verify_2fa.html', error='Error checking 2FA status.', theme=session.get('theme', 'light'))
 
 @app.route('/', methods=['GET', 'POST'])
 def login():
@@ -1493,8 +1493,14 @@ def settings():
         logger.info(f"User not logged in, redirecting to login at {datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%I:%M %p IST')}")
         return jsonify({'success': False, 'error': 'User not logged in'}), 401
 
+    # Allow access if user is just now enabling 2FA
+    is_post_enabling_2fa = request.method == 'POST' and request.form.get('two_factor_enabled') == 'on'
+
     if session.get('two_factor_enabled') and not session.get('2fa_verified'):
-        return jsonify({'success': False, 'error': '2FA verification required'}), 401
+        if request.endpoint not in ['setup_2fa', 'verify_2fa', 'static']:
+            return redirect(url_for('verify_2fa'))
+
+
 
     supabase = get_supabase(use_service_role=True)
     user_id = session['user']
@@ -1564,11 +1570,17 @@ def settings():
                 supabase.table('users').update(update_user_data).eq('id', user_id).execute()
 
                 update_preferences_data = {
-                    'two_factor_enabled': two_factor_enabled,
                     'theme': theme,
                     'reminder_time': reminder_time,
                     'notification_preference': notification_preference
                 }
+
+                # Instead of enabling 2FA here, redirect to setup
+                if two_factor_enabled:
+                    session['wants_2fa'] = True
+                    return redirect(url_for('setup_2fa'))
+
+
                 supabase.table('user_preferences').update(update_preferences_data).eq('user_id', user_id).execute()
 
                 session['user_email'] = new_email
@@ -1576,6 +1588,11 @@ def settings():
                 session['two_factor_enabled'] = two_factor_enabled
 
                 logger.info(f"Settings updated for user_id: {user_id} at {current_time_ist}")
+                
+                # Redirect to /setup_2fa if 2FA is enabled
+                if two_factor_enabled:
+                    return redirect(url_for('setup_2fa'))
+
                 return jsonify({'success': True, 'message': 'Settings updated successfully'})
 
             except Exception as e:

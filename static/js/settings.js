@@ -43,6 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         const password = document.getElementById('password').value;
         const confirmPassword = document.getElementById('confirm_password').value;
+        const twoFactorEnabled = document.getElementById('two_factor_enabled').checked;
 
         // Client-side password validation
         if (password && password !== confirmPassword) {
@@ -57,6 +58,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 method: 'POST',
                 body: formData // Send FormData instead of JSON
             });
+
+            // Check if the response is a redirect
+            if (response.redirected) {
+                window.location.href = response.url;
+                return;
+            }
+
             const result = await response.json();
 
             if (result.success) {
@@ -68,6 +76,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 // Update theme stylesheet if changed
                 themeStylesheet.href = `/static/css/themes/${formData.get('theme')}.css`;
+                // Redirect to /setup_2fa if 2FA is enabled
+                if (twoFactorEnabled) {
+                    window.location.href = '/setup_2fa';
+                }
             } else {
                 showMessage('error', result.error || 'Failed to update settings.');
             }

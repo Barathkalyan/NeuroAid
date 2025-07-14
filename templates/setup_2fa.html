@@ -3,7 +3,6 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="csrf-token" content="{{ csrf_token() }}">
   <title>NeuroAid - Setup 2FA</title>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}" />
@@ -44,26 +43,31 @@
         <h1>Setup Two-Factor Authentication</h1>
         <p>Secure your NeuroAid account with 2FA</p>
       </div>
+
       {% if error %}
         <p class="error-message">{{ error }}</p>
       {% endif %}
       {% if success %}
         <p class="success-message">{{ success }}</p>
       {% endif %}
-      {% if qr_code %}
+
+      <!-- Setup QR Form -->
+      <form id="setup-2fa-form" method="POST" action="{{ url_for('setup_2fa') }}">
+        <p class="instruction">Click below to generate a QR code for your authenticator app.</p>
+        <button type="submit"><span>Generate QR Code</span><span class="spinner"></span></button>
+      </form>
+
+      <!-- QR Code display section -->
+      <div id="qr-section" style="display: none;">
         <p class="instruction">Scan this QR code with your authenticator app (e.g., Google Authenticator):</p>
         <div class="qr-container">
-          <img src="data:image/png;base64,{{ qr_code }}" alt="2FA QR Code" />
+          <img id="qr-image" src="" alt="2FA QR Code" />
         </div>
         <p class="instruction">Or enter this secret key manually:</p>
-        <div class="secret-code">{{ secret }}</div>
+        <div id="qr-secret" class="secret-code"></div>
         <p class="instruction">Once set up, return to the <a href="{{ url_for('verify_2fa') }}">verification page</a>.</p>
-      {% else %}
-        <form id="setup-2fa-form" method="POST" action="{{ url_for('setup_2fa') }}">
-          <p class="instruction">Click below to generate a QR code for your authenticator app.</p>
-          <button type="submit"><span>Generate QR Code</span><span class="spinner"></span></button>
-        </form>
-      {% endif %}
+      </div>
+
       <div class="login-link">
         Return to <a href="{{ url_for('login') }}">Log in</a>
       </div>
