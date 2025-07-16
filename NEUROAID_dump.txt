@@ -24,6 +24,9 @@ from dotenv import load_dotenv
 from storage3.utils import StorageException
 import uuid
 import secrets
+from flask import flash, redirect, render_template
+from dotenv import load_dotenv
+load_dotenv()
 
 # Initialize logging
 logging.basicConfig(level=logging.INFO)
@@ -38,7 +41,6 @@ required_env_vars = [
     'SUPABASE_URL',
     'SUPABASE_ANON_KEY',
     'SUPABASE_SERVICE_KEY',
-    'HF_API_KEY',
     'EMAIL_SENDER',
     'EMAIL_PASSWORD'
 ]
@@ -56,35 +58,12 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
 SUPABASE_URL = os.getenv('SUPABASE_URL')
 SUPABASE_ANON_KEY = os.getenv('SUPABASE_ANON_KEY')
 SUPABASE_SERVICE_KEY = os.getenv('SUPABASE_SERVICE_KEY')
-HF_API_KEY = os.getenv('HF_API_KEY')
 
 # Initialize Supabase clients
 supabase_anon: Client = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
 supabase_service: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
 logger.info("Supabase clients initialized: anon_key and service_key")
-
-def query_huggingface(model: str, payload: dict, retries=3, backoff_factor=1):
-    headers = {"Authorization": f"Bearer {HF_API_KEY}"}
-    url = f"https://api-inference.huggingface.co/models/{model}"
-    for attempt in range(retries):
-        try:
-            response = requests.post(url, headers=headers, json=payload)
-            response.raise_for_status()
-            return response.json()
-        except requests.exceptions.HTTPError as e:
-            if response.status_code == 429:
-                wait_time = backoff_factor * (2 ** attempt)
-                logger.warning(f"Rate limit hit, retrying in {wait_time}s (attempt {attempt+1}/{retries})")
-                time.sleep(wait_time)
-                continue
-            logger.error(f"HTTPError calling model '{model}': {e}, Response: {response.text}")
-            return None
-        except Exception as e:
-            logger.error(f"Unexpected error calling model '{model}': {e}")
-            return None
-    logger.error(f"Failed to query model '{model}' after {retries} retries")
-    return None
 
 def simple_keyword_analysis(text):
     text = text.lower()
@@ -335,7 +314,6 @@ def generate_suggestion(emotions, mood, supabase, user_id):
     time_context = 'morning' if 5 <= current_hour < 12 else 'afternoon' if 12 <= current_hour < 17 else 'evening'
 
     journaling_freq = get_journaling_frequency(supabase, user_id)
-    recent_emotions = get_recent_emotions(supabase, user_id)
 
     top_emotions = sorted(emotions, key=lambda x: x['score'], reverse=True)[:2]
     primary_emotion = top_emotions[0]['label']
@@ -377,37 +355,13 @@ def generate_suggestion(emotions, mood, supabase, user_id):
         if freq_suggestion not in suggestions:
             suggestions.append(freq_suggestion)
 
-    try:
-        prompt = f"Generate a short, supportive suggestion for someone feeling {primary_emotion.lower()} with a goal of {primary_goal or 'well-being'}."
-        generative_result = query_huggingface("distilgpt2", {"inputs": prompt, "max_length": 50})
-        if generative_result and isinstance(generative_result, list) and 'generated_text' in generative_result[0]:
-            gen_suggestion = generative_result[0]['generated_text'].strip()
-            if gen_suggestion and len(gen_suggestion) < 100 and gen_suggestion not in suggestions:
-                suggestions.append(gen_suggestion)
-    except Exception as e:
-        logger.warning(f"Generative AI suggestion failed: {str(e)}")
-
     random.shuffle(suggestions)
     return suggestions[:3]
 
 def analyze_journal_entry(text, supabase, user_id):
-    emotion_result = query_huggingface("SamLowe/roberta-base-go_emotions", {"inputs": text})
-
-    emotions = []
-    if emotion_result:
-        if isinstance(emotion_result, list) and len(emotion_result) > 0:
-            first = emotion_result[0]
-            if isinstance(first, list):
-                emotions = [{"label": e['label'], "score": e['score']} for e in first if isinstance(e, dict)]
-            elif isinstance(first, dict):
-                emotions = [{"label": first['label'], "score": first['score']}]
-    else:
-        logger.warning("Hugging Face API failed, using keyword analysis")
-        emotions = simple_keyword_analysis(text)
-
+    emotions = simple_keyword_analysis(text)
     mood_score, confidence = derive_mood_from_emotions(emotions)
     suggestions = generate_suggestion(emotions, mood_score, supabase, user_id)
-
     return {
         "mood": mood_score,
         "emotions": emotions,
@@ -793,104 +747,114 @@ def update_language():
 
 @app.route('/setup_2fa', methods=['GET', 'POST'])
 def setup_2fa():
-    if 'user' not in session:
-        return redirect(url_for('login'))
-    
+    if 'user' not in session or not session.get('wants_2fa'):
+        return redirect(url_for('settings'))
+
     supabase = get_supabase()
     user_id = session['user']
-    
-    if request.method == 'POST':
-        try:
+
+    try:
+        if request.method == 'POST':
+            # Check if already exists
+            preferences = supabase.table('user_preferences')\
+                .select('two_factor_secret')\
+                .eq('user_id', user_id)\
+                .limit(1).execute()
+
+            if preferences.data and preferences.data[0].get('two_factor_secret'):
+                return jsonify({'success': False, 'error': '2FA already setup'})
+
+            # Generate and save secret
             totp = pyotp.TOTP(pyotp.random_base32())
             secret = totp.secret
             supabase.table('user_preferences').update({
                 'two_factor_secret': secret,
                 'two_factor_enabled': True
             }).eq('user_id', user_id).execute()
-            
+
+            session['two_factor_enabled'] = True
+
             provisioning_uri = totp.provisioning_uri(
                 name=session['user_email'],
                 issuer_name='NeuroAid'
             )
-            
             img = qrcode.make(provisioning_uri)
             buffered = BytesIO()
             img.save(buffered)
             qr_code = base64.b64encode(buffered.getvalue()).decode('utf-8')
-            
-            return render_template('setup_2fa.html', qr_code=qr_code, secret=secret)
-        except Exception as e:
-            logger.error(f"Error setting up 2FA: {str(e)}")
-            supabase.table('user_preferences').update({
-                'two_factor_enabled': False,
-                'two_factor_secret': None
-            }).eq('user_id', user_id).execute()
-            session['two_factor_enabled'] = False
-            return render_template('setup_2fa.html', error="Failed to set up 2FA. Please try again.")
-    
-    try:
+
+            return jsonify({'success': True, 'message': '2FA setup successfully', 'qr_code': qr_code, 'secret': secret})
+
+        # GET request fallback
         preferences = supabase.table('user_preferences')\
             .select('two_factor_secret')\
             .eq('user_id', user_id)\
-            .execute()
-        
+            .limit(1).execute()
+
         if preferences.data and preferences.data[0].get('two_factor_secret'):
             return redirect(url_for('verify_2fa'))
-        
+
         return render_template('setup_2fa.html')
+
     except Exception as e:
-        logger.error(f"Error checking 2FA setup: {str(e)}")
-        return render_template('setup_2fa.html', error="Error checking 2FA status.")
+        logger.error(f"Error setting up 2FA: {str(e)}")
+        if request.method == 'POST':
+            return jsonify({'success': False, 'error': 'Failed to generate QR code'})
+        return render_template('setup_2fa.html', error="Error checking 2FA setup.")
+
+
 
 @app.route('/verify_2fa', methods=['GET', 'POST'])
 def verify_2fa():
     if 'user' not in session:
+        logger.info(f"User not logged in, redirecting to login at {datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%I:%M %p IST')}")
         return redirect(url_for('login'))
-    
-    supabase = get_supabase()
+
+    supabase = get_supabase(use_service_role=True)
     user_id = session['user']
-    
-    if request.method == 'POST':
-        try:
-            code = request.form.get('code')
-            preferences = supabase.table('user_preferences')\
-                .select('two_factor_secret')\
-                .eq('user_id', user_id)\
-                .execute()
-            
-            if not preferences.data or not preferences.data[0].get('two_factor_secret'):
-                return render_template('verify_2fa.html', error="2FA not set up.")
-            
-            secret = preferences.data[0]['two_factor_secret']
-            totp = pyotp.TOTP(secret)
-            
-            if totp.verify(code):
-                session['2fa_verified'] = True
-                return redirect(url_for('index'))
-            else:
-                return render_template('verify_2fa.html', error="Invalid 2FA code.")
-        except Exception as e:
-            logger.error(f"Error verifying 2FA: {str(e)}")
-            return render_template('verify_2fa.html', error="Error verifying 2FA code.")
-    
+
     try:
-        preferences = supabase.table('user_preferences')\
-            .select('two_factor_enabled, two_factor_secret')\
-            .eq('user_id', user_id)\
-            .execute()
-        
-        if not preferences.data or not preferences.data[0].get('two_factor_enabled') or not preferences.data[0].get('two_factor_secret'):
-            supabase.table('user_preferences').update({
-                'two_factor_enabled': False,
-                'two_factor_secret': None
-            }).eq('user_id', user_id).execute()
-            session['two_factor_enabled'] = False
+        preferences_data = supabase.table('user_preferences').select('two_factor_enabled, two_factor_secret, theme').eq('user_id', user_id).limit(1).execute()
+        if not preferences_data.data or not preferences_data.data[0]['two_factor_enabled']:
             return redirect(url_for('index'))
-        
-        return render_template('verify_2fa.html')
+
+        two_factor_secret = preferences_data.data[0]['two_factor_secret']
+        theme = preferences_data.data[0].get('theme', session.get('theme', 'light'))  # Fallback to session or default 'light'
+
+        if not two_factor_secret:
+            return redirect(url_for('setup_2fa'))
+
+        if request.method == 'POST':
+            totp_code = request.form.get('totp_code')
+            if not totp_code:
+                return render_template('verify_2fa.html', error='Please enter a TOTP code.', theme=theme)
+
+            totp = pyotp.TOTP(two_factor_secret)
+            if totp.verify(totp_code):
+                session['2fa_verified'] = True
+                logger.info(f"2FA verified for user_id: {user_id}")
+
+                # Check if user is disabling 2FA
+                if session.pop('wants_to_disable_2fa', False):
+                    supabase.table('user_preferences').update({
+                        'two_factor_enabled': False,
+                        'two_factor_secret': None
+                    }).eq('user_id', user_id).execute()
+                    session['two_factor_enabled'] = False
+                    flash('Two-Factor Authentication has been disabled.', 'success')
+                    return redirect(url_for('settings'))
+
+                return redirect(url_for('index'))
+
+            else:
+                return render_template('verify_2fa.html', error='Invalid TOTP code.', theme=theme)
+
+        return render_template('verify_2fa.html', error=None, success=None, theme=theme)
+    
+
     except Exception as e:
-        logger.error(f"Error checking 2FA status on verify: {str(e)}")
-        return render_template('verify_2fa.html', error="Error checking 2FA status.")
+        logger.error(f"Error in verify_2fa for user_id: {user_id} at {datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%I:%M %p IST')}: {str(e)}")
+        return render_template('verify_2fa.html', error='Error checking 2FA status.', theme=session.get('theme', 'light'))
 
 @app.route('/', methods=['GET', 'POST'])
 def login():
@@ -931,6 +895,7 @@ def login():
                     session['two_factor_enabled'] = two_factor_enabled
                     if two_factor_enabled and two_factor_secret:
                         return redirect(url_for('verify_2fa'))
+
                     logger.info(f"User {email} logged in successfully, user_id: {user['id']}, theme: {session['theme']}")
                     return redirect(url_for('index'))
                 except Exception as e:
@@ -1496,7 +1461,8 @@ def settings():
         return jsonify({'success': False, 'error': 'User not logged in'}), 401
 
     if session.get('two_factor_enabled') and not session.get('2fa_verified'):
-        return jsonify({'success': False, 'error': '2FA verification required'}), 401
+        if request.endpoint not in ['setup_2fa', 'verify_2fa', 'static']:
+            return redirect(url_for('verify_2fa'))
 
     supabase = get_supabase(use_service_role=True)
     user_id = session['user']
@@ -1511,7 +1477,7 @@ def settings():
     try:
         user_data = supabase.table('users').select('email').eq('id', user_id).limit(1).execute()
         if not user_data.data:
-            logger.error(f"No user found for user_id: {user_id} at {datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%I:%M %p IST')}")
+            logger.error(f"No user found for user_id: {user_id}")
             return jsonify({'success': False, 'error': 'User not found'}), 404
         email = user_data.data[0]['email']
 
@@ -1526,7 +1492,9 @@ def settings():
                 'username': f"@{default_name}"
             }).execute()
 
-        preferences_data = supabase.table('user_preferences').select('two_factor_enabled, theme, reminder_time, notification_preference').eq('user_id', user_id).limit(1).execute()
+        preferences_data = supabase.table('user_preferences')\
+            .select('two_factor_enabled, two_factor_secret, theme, reminder_time, notification_preference')\
+            .eq('user_id', user_id).limit(1).execute()
         if preferences_data.data:
             profile_info.update(preferences_data.data[0])
         else:
@@ -1540,6 +1508,7 @@ def settings():
             }).execute()
 
         current_time_ist = datetime.now(ZoneInfo("Asia/Kolkata")).strftime('%I:%M %p IST')
+
         if request.method == 'POST':
             try:
                 new_email = request.form.get('email', email).strip().lower()
@@ -1549,6 +1518,8 @@ def settings():
                 theme = request.form.get('theme', profile_info['theme'])
                 reminder_time = request.form.get('reminder_time', profile_info['reminder_time'])
                 notification_preference = request.form.get('notification_preference', profile_info['notification_preference'])
+
+                disable_2fa_requested = not two_factor_enabled and profile_info['two_factor_enabled']
 
                 if not new_email:
                     return jsonify({'success': False, 'error': 'Email is required'}), 400
@@ -1566,16 +1537,43 @@ def settings():
                 supabase.table('users').update(update_user_data).eq('id', user_id).execute()
 
                 update_preferences_data = {
-                    'two_factor_enabled': two_factor_enabled,
                     'theme': theme,
                     'reminder_time': reminder_time,
                     'notification_preference': notification_preference
                 }
+
+                # Enable 2FA
+                if two_factor_enabled and not profile_info['two_factor_enabled']:
+                    session['wants_2fa'] = True
+                    session['user_email'] = new_email
+                    session['theme'] = theme
+                    session['two_factor_enabled'] = True
+                    return redirect(url_for('setup_2fa'))
+
+                # Disable 2FA (with verification)
+                if disable_2fa_requested:
+                    submitted_totp = request.form.get('disable_2fa_code', '').strip()
+                    secret_check = preferences_data.data[0].get('two_factor_secret')
+
+                    if not submitted_totp:
+                        return jsonify({'success': False, 'error': 'TOTP code is required to disable 2FA'}), 400
+                    if not secret_check:
+                        return jsonify({'success': False, 'error': '2FA secret not found'}), 400
+
+                    totp = pyotp.TOTP(secret_check)
+                    if not totp.verify(submitted_totp):
+                        return jsonify({'success': False, 'error': 'Invalid TOTP code'}), 400
+
+                    update_preferences_data['two_factor_enabled'] = False
+                    update_preferences_data['two_factor_secret'] = None
+                    session.pop('2fa_verified', None)
+                    session['two_factor_enabled'] = False
+                    flash('Two-factor authentication disabled successfully.', 'info')
+
                 supabase.table('user_preferences').update(update_preferences_data).eq('user_id', user_id).execute()
 
                 session['user_email'] = new_email
                 session['theme'] = theme
-                session['two_factor_enabled'] = two_factor_enabled
 
                 logger.info(f"Settings updated for user_id: {user_id} at {current_time_ist}")
                 return jsonify({'success': True, 'message': 'Settings updated successfully'})
@@ -1598,7 +1596,7 @@ def settings():
                               **dropdown_data)
 
     except Exception as e:
-        logger.error(f"Error in settings for user_id: {user_id} at {datetime.now(ZoneInfo('Asia/Kolkata')).strftime('%I:%M %p IST')}: {str(e)}")
+        logger.error(f"Error in settings route: {str(e)}")
         dropdown_data = get_user_dropdown_data(supabase, user_id)
         return render_template('settings.html',
                               email='Not found',
@@ -1611,6 +1609,7 @@ def settings():
                               success=None,
                               current_time=datetime.now(ZoneInfo("Asia/Kolkata")).strftime('%I:%M %p IST'),
                               **dropdown_data)
+
 
 @app.route('/export_data', methods=['GET'])
 def export_data():
@@ -1880,85 +1879,5 @@ if __name__ == '__main__':
     scheduler_thread.start()
     app.run(debug=True, host='0.0.0.0', port=5000)
 
-```
-
-# File: templates/login.html
-```html
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>NeuroAid - Login</title>
-
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css')}}" />
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-</head>
-<body>
-  <div class="login-container">
-    <div class="branding" aria-label="NeuroAid feature pillar with dynamic quote">
-      <div class="branding-scene">
-        <div class="logo"><span class="neuro">Neuro</span><span class="aid">Aid</span></div>
-        <div class="quote-container" id="quote">Take a moment to breathe deeply.</div>
-        <div class="feature-block">
-          <div class="feature-icon icon-journal">📝</div>
-          <p class="feature-label">Journal</p>
-          <p class="feature-tooltip">Write your thoughts</p>
-        </div>
-        <div class="feature-block">
-          <div class="feature-icon icon-mood">😊</div>
-          <p class="feature-label">Mood</p>
-          <p class="feature-tooltip">Track your emotions</p>
-        </div>
-        <div class="feature-block">
-          <div class="feature-icon icon-gratitude">🙏</div>
-          <p class="feature-label">Gratitude</p>
-          <p class="feature-tooltip">Practice gratitude</p>
-        </div>
-        <div class="feature-block">
-          <div class="feature-icon icon-music">🎵</div>
-          <p class="feature-label">Music</p>
-          <p class="feature-tooltip">Personalized recommendations</p>
-        </div>
-      </div>
-    </div>
-    <div class="login-box">
-      <div class="welcome-section">
-        <div class="welcome-icon">🧠</div>
-        <h1>Welcome Back</h1>
-        <p>Continue your mental wellness journey</p>
-      </div>
-      <h2>Login</h2>
-      {% if error %}
-        <p id="general-error">{{ error }}</p>
-      {% endif %}
-      <form id="login-form" method="POST" action="{{ url_for('login') }}">
-        <div class="input-group">
-          <input type="text" name="email" id="email" required placeholder=" " aria-describedby="email-error" />
-          <label for="email">Email</label>
-          <p class="error-message" id="email-error"></p>
-        </div>
-        <div class="input-group">
-          <input type="password" name="password" id="password" required placeholder=" " aria-describedby="password-error" />
-          <label for="password">Password</label>
-          <span class="toggle-password" role="button" tabindex="0" aria-label="Toggle password visibility">Show</span>
-          <p class="error-message" id="password-error"></p>
-        </div>
-        <div class="forgot-password-link">
-          <a href="/forgot_password">Forgot Password?</a>
-        </div>
-        <button type="submit" id="login-button">
-          <span>Login</span>
-          <div class="spinner"></div>
-        </button>
-      </form>
-      <div class="signup-link">
-        Don't have an account? <a href="/signup">Sign up!</a>
-      </div>
-    </div>
-  </div>
-  <script defer src="{{ url_for('static', filename='js/main.js') }}"></script>
-</body>
-</html>
 ```
 

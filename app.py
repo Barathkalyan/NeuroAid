@@ -23,6 +23,8 @@ from storage3.utils import StorageException
 import uuid
 import secrets
 from flask import flash, redirect, render_template
+from dotenv import load_dotenv
+load_dotenv()
 
 # Initialize logging
 logging.basicConfig(level=logging.INFO)
@@ -37,7 +39,6 @@ required_env_vars = [
     'SUPABASE_URL',
     'SUPABASE_ANON_KEY',
     'SUPABASE_SERVICE_KEY',
-    'HF_API_KEY',
     'EMAIL_SENDER',
     'EMAIL_PASSWORD'
 ]
@@ -55,35 +56,12 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
 SUPABASE_URL = os.getenv('SUPABASE_URL')
 SUPABASE_ANON_KEY = os.getenv('SUPABASE_ANON_KEY')
 SUPABASE_SERVICE_KEY = os.getenv('SUPABASE_SERVICE_KEY')
-HF_API_KEY = os.getenv('HF_API_KEY')
 
 # Initialize Supabase clients
 supabase_anon: Client = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
 supabase_service: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
 logger.info("Supabase clients initialized: anon_key and service_key")
-
-def query_huggingface(model: str, payload: dict, retries=3, backoff_factor=1):
-    headers = {"Authorization": f"Bearer {HF_API_KEY}"}
-    url = f"https://api-inference.huggingface.co/models/{model}"
-    for attempt in range(retries):
-        try:
-            response = requests.post(url, headers=headers, json=payload)
-            response.raise_for_status()
-            return response.json()
-        except requests.exceptions.HTTPError as e:
-            if response.status_code == 429:
-                wait_time = backoff_factor * (2 ** attempt)
-                logger.warning(f"Rate limit hit, retrying in {wait_time}s (attempt {attempt+1}/{retries})")
-                time.sleep(wait_time)
-                continue
-            logger.error(f"HTTPError calling model '{model}': {e}, Response: {response.text}")
-            return None
-        except Exception as e:
-            logger.error(f"Unexpected error calling model '{model}': {e}")
-            return None
-    logger.error(f"Failed to query model '{model}' after {retries} retries")
-    return None
 
 def simple_keyword_analysis(text):
     text = text.lower()
@@ -334,7 +312,6 @@ def generate_suggestion(emotions, mood, supabase, user_id):
     time_context = 'morning' if 5 <= current_hour < 12 else 'afternoon' if 12 <= current_hour < 17 else 'evening'
 
     journaling_freq = get_journaling_frequency(supabase, user_id)
-    recent_emotions = get_recent_emotions(supabase, user_id)
 
     top_emotions = sorted(emotions, key=lambda x: x['score'], reverse=True)[:2]
     primary_emotion = top_emotions[0]['label']
@@ -376,37 +353,13 @@ def generate_suggestion(emotions, mood, supabase, user_id):
         if freq_suggestion not in suggestions:
             suggestions.append(freq_suggestion)
 
-    try:
-        prompt = f"Generate a short, supportive suggestion for someone feeling {primary_emotion.lower()} with a goal of {primary_goal or 'well-being'}."
-        generative_result = query_huggingface("distilgpt2", {"inputs": prompt, "max_length": 50})
-        if generative_result and isinstance(generative_result, list) and 'generated_text' in generative_result[0]:
-            gen_suggestion = generative_result[0]['generated_text'].strip()
-            if gen_suggestion and len(gen_suggestion) < 100 and gen_suggestion not in suggestions:
-                suggestions.append(gen_suggestion)
-    except Exception as e:
-        logger.warning(f"Generative AI suggestion failed: {str(e)}")
-
     random.shuffle(suggestions)
     return suggestions[:3]
 
 def analyze_journal_entry(text, supabase, user_id):
-    emotion_result = query_huggingface("SamLowe/roberta-base-go_emotions", {"inputs": text})
-
-    emotions = []
-    if emotion_result:
-        if isinstance(emotion_result, list) and len(emotion_result) > 0:
-            first = emotion_result[0]
-            if isinstance(first, list):
-                emotions = [{"label": e['label'], "score": e['score']} for e in first if isinstance(e, dict)]
-            elif isinstance(first, dict):
-                emotions = [{"label": first['label'], "score": first['score']}]
-    else:
-        logger.warning("Hugging Face API failed, using keyword analysis")
-        emotions = simple_keyword_analysis(text)
-
+    emotions = simple_keyword_analysis(text)
     mood_score, confidence = derive_mood_from_emotions(emotions)
     suggestions = generate_suggestion(emotions, mood_score, supabase, user_id)
-
     return {
         "mood": mood_score,
         "emotions": emotions,
@@ -939,12 +892,6 @@ def login():
                     two_factor_secret = preferences.data[0].get('two_factor_secret') if preferences.data else None
                     session['two_factor_enabled'] = two_factor_enabled
                     if two_factor_enabled and two_factor_secret:
-                        return redirect(url_for('verify_2fa'))
-                    # Handle 2FA disabling
-                    if not two_factor_enabled and session.get['two_factor_enabled']:
-                        # User wants to disable 2FA
-                        session['wants_to_disable_2fa'] = True
-                        flash('Please enter your TOTP code to disable Two-Factor Authentication.', 'info')
                         return redirect(url_for('verify_2fa'))
 
                     logger.info(f"User {email} logged in successfully, user_id: {user['id']}, theme: {session['theme']}")
