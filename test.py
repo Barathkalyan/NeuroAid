@@ -12,7 +12,7 @@ headers = {
 }
 
 # The text you want to analyze
-input_text = "I’m so thrilled today!"
+input_text = "I’m so sad today!"
 
 # API endpoint
 url = "https://api-inference.huggingface.co/models/j-hartmann/emotion-english-distilroberta-base"

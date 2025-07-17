@@ -40,7 +40,8 @@ required_env_vars = [
     'SUPABASE_ANON_KEY',
     'SUPABASE_SERVICE_KEY',
     'EMAIL_SENDER',
-    'EMAIL_PASSWORD'
+    'EMAIL_PASSWORD',
+    'HUGGINGFACE_API_KEY'
 ]
 
 missing_vars = [var for var in required_env_vars if not os.getenv(var)]
@@ -63,53 +64,67 @@ supabase_service: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
 logger.info("Supabase clients initialized: anon_key and service_key")
 
-def simple_keyword_analysis(text):
-    text = text.lower()
-    emotion_keywords = {
-    'sadness': [
-        'sad', 'unhappy', 'down', 'depressed', 'lonely', 'gloomy', 'heartbroken',
-        'melancholy', 'blue', 'miserable', 'tearful', 'hopeless', 'lost', 'numb'
-    ],
-    'anger': [
-        'angry', 'mad', 'frustrated', 'annoyed', 'irritated', 'furious', 'rage',
-        'resentful', 'bitter', 'outraged', 'fuming', 'enraged', 'exasperated', 'hostile'
-    ],
-    'joy': [
-        'happy', 'joyful', 'great', 'amazing', 'excited', 'delighted', 'elated',
-        'cheerful', 'content', 'satisfied', 'blissful', 'radiant', 'thrilled', 'euphoric'
-    ],
-    'anxiety': [
-        'anxious', 'nervous', 'worried', 'scared', 'tense', 'afraid', 'panicked',
-        'restless', 'uneasy', 'apprehensive', 'on edge', 'stressed', 'overwhelmed', 'jittery'
-    ],
-    'gratitude': [
-        'grateful', 'thankful', 'appreciate', 'blessed', 'fortunate', 'content',
-        'recognize', 'acknowledge', 'indebted', 'touched', 'moved', 'honored', 'thankfulness', 'gratitude'
-    ],
-    'hope': [
-        'hopeful', 'optimistic', 'encouraged', 'inspired', 'motivated', 'uplifted',
-        'confident', 'positive', 'bright', 'reassured', 'buoyant', 'expectant', 'dreaming', 'faithful'
-    ]
-    }
-    emotions = []
-    total_words = len(text.split())
-    for emotion, keywords in emotion_keywords.items():
-        count = sum(text.count(keyword) for keyword in keywords)
-        score = min(0.9, (count / max(total_words, 1)) * 0.8) if count > 0 else 0
-        if score > 0:
-            emotions.append({"label": emotion, "score": score})
+def huggingface_emotion_analysis(text):
+    """
+    Analyzes text using Hugging Face's emotion analysis model via Inference API.
+    Returns a list of emotions with scores compatible with existing functions.
+    """
+    try:
+        api_key = os.getenv('HUGGINGFACE_API_KEY')
+        if not api_key:
+            logger.error("Hugging Face API key not found.")
+            return [{"label": "neutral", "score": 0.5}]
 
-    if not emotions:
-        emotions.append({"label": "neutral", "score": 0.5})
-    return emotions
+        api_url = "https://api-inference.huggingface.co/models/j-hartmann/emotion-english-distilroberta-base"
+        headers = {"Authorization": f"Bearer {api_key}"}
+        payload = {"inputs": text[:512]}  # Truncate to avoid API token limits
+        logger.info(f"Sending to HF API: {payload['inputs']}")
 
+        response = requests.post(api_url, headers=headers, json=payload)
+        response.raise_for_status()
+        result = response.json()
+        logger.info(f"HF API response: {result}")
+
+        if isinstance(result, list) and result:
+            emotion_mapping = {
+                'anger': 'anger',
+                'disgust': 'anger',
+                'fear': 'anxiety',
+                'joy': 'joy',
+                'neutral': 'neutral',
+                'sadness': 'sadness',
+                'surprise': 'neutral'
+            }
+            emotions = []
+            for emotion in result[0]:
+                label = emotion_mapping.get(emotion['label'], 'neutral')
+                score = min(float(emotion['score']), 0.9)  # Cap score for consistency
+                logger.debug(f"Processing emotion: {emotion['label']} -> {label}, score: {score}")
+                if score > 0.1:  # Filter low-confidence emotions
+                    emotions.append({"label": label, "score": score})
+
+            # Simplify: return top emotions without aggregation to preserve primary emotion
+            if not emotions:
+                logger.warning("No significant emotions detected.")
+                return [{"label": "neutral", "score": 0.5}]
+            return sorted(emotions, key=lambda x: x['score'], reverse=True)[:3]  # Return top 3 emotions
+        else:
+            logger.warning(f"Unexpected API response format: {result}")
+            return [{"label": "neutral", "score": 0.5}]
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Hugging Face API error: {str(e)}")
+        return [{"label": "neutral", "score": 0.5}]
+    except Exception as e:
+        logger.error(f"Unexpected error in emotion analysis: {str(e)}")
+        return [{"label": "neutral", "score": 0.5}]
+    
 def derive_mood_from_emotions(emotions):
     if not emotions:
         return 3, 0.5
 
-    positive_emotions = ['joy', 'love', 'gratitude', 'hope', 'pride', 'amusement', 'optimism']
-    negative_emotions = ['sadness', 'anger', 'fear', 'disgust', 'shame', 'frustration', 'anxiety']
-    neutral_emotions = ['neutral', 'confusion', 'surprise']
+    positive_emotions = ['joy']
+    negative_emotions = ['sadness', 'anger', 'anxiety']
+    neutral_emotions = ['neutral']
 
     top_emotion = max(emotions, key=lambda x: x['score'])
     emotion_label = top_emotion['label']
@@ -321,7 +336,10 @@ def generate_suggestion(emotions, mood, supabase, user_id):
     tone = "I’m sorry to hear" if mood <= 2 else "I can see" if mood == 3 else "It’s great to hear"
 
     suggestions = []
-    available_templates = SUGGESTION_TEMPLATES.get(primary_emotion, SUGGESTION_TEMPLATES['neutral'])
+    emotion_key = primary_emotion
+    if primary_emotion in ['gratitude', 'hope']:
+        emotion_key = 'joy'  # Map gratitude and hope to joy
+    available_templates = SUGGESTION_TEMPLATES.get(emotion_key, SUGGESTION_TEMPLATES['neutral'])
 
     activity = random.choice(preferred_activities) if preferred_activities else 'writing'
     activity_suggestion = random.choice(ACTIVITY_MAPPINGS.get(activity, ['a relaxing activity']))
@@ -354,10 +372,10 @@ def generate_suggestion(emotions, mood, supabase, user_id):
             suggestions.append(freq_suggestion)
 
     random.shuffle(suggestions)
-    return suggestions[:3]
+    return suggestions[:1]
 
 def analyze_journal_entry(text, supabase, user_id):
-    emotions = simple_keyword_analysis(text)
+    emotions = huggingface_emotion_analysis(text)
     mood_score, confidence = derive_mood_from_emotions(emotions)
     suggestions = generate_suggestion(emotions, mood_score, supabase, user_id)
     return {
