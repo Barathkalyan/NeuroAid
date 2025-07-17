@@ -120,7 +120,7 @@ def huggingface_emotion_analysis(text):
     
 def derive_mood_from_emotions(emotions):
     if not emotions:
-        return 3, 0.5
+        return 3, 0.5  # neutral mood, medium confidence
 
     positive_emotions = ['joy']
     negative_emotions = ['sadness', 'anger', 'anxiety']
@@ -128,15 +128,23 @@ def derive_mood_from_emotions(emotions):
 
     top_emotion = max(emotions, key=lambda x: x['score'])
     emotion_label = top_emotion['label']
-    confidence = top_emotion['score']
+    confidence = top_emotion['score']  # model's confidence
 
     if emotion_label in positive_emotions:
         mood_score = 5 if confidence > 0.7 else 4
+        # keep confidence as-is for positive emotions
     elif emotion_label in negative_emotions:
         mood_score = 1 if confidence > 0.7 else 2
+        confidence = round(1 - confidence, 2)  # invert confidence
+    elif emotion_label in neutral_emotions:
+        mood_score = 3
+        confidence = 0.5  # fixed mid value for neutrality
     else:
         mood_score = 3
+        confidence = 0.5  # fallback
+
     return mood_score, confidence
+
 
 def get_recent_emotions(supabase, user_id, days=7):
     start_date = (datetime.now(ZoneInfo("UTC")) - timedelta(days=days)).isoformat()
