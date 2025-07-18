@@ -339,39 +339,40 @@ def generate_suggestion(emotions, mood, supabase, user_id):
     primary_score = top_emotions[0]['score']
     secondary_emotion = top_emotions[1]['label'] if len(top_emotions) > 1 else None
 
-    # Adjust tone based on primary_score
-    if mood == 1:
-        tone = random.choice([
-            "It sounds like you're having a really tough time. I'm here for you." if primary_score > 0.7 else "Today seems hard. Let's take it slow together.",
-            "I'm sorry you're going through this. You're not alone." if primary_score > 0.7 else "It’s okay to feel this way. Let’s move forward.",
-            "Today seems hard. Let's take it slow together." if primary_score <= 0.7 else "I’m with you through this struggle."
-        ])
-    elif mood == 2:
-        tone = random.choice([
-            "Things might feel a bit heavy right now. Let's take it one step at a time." if primary_score > 0.6 else "I can sense you're feeling low. Be kind to yourself today.",
-            "I can sense you're feeling low. Be kind to yourself today." if primary_score > 0.6 else "It’s okay to take it easy with this feeling.",
-            "It's okay to not be okay. We'll get through this." if primary_score <= 0.6 else "Let’s ease into a better mood together."
-        ])
-    elif mood == 3:
-        tone = random.choice([
-            "Thanks for sharing how you're feeling. Let's explore this together.",
-            "I appreciate your honesty. Let’s reflect on this moment." if primary_score > 0.5 else "You’re expressing yourself well—let’s dig deeper.",
-            "You're expressing yourself clearly, and that matters." if primary_score <= 0.5 else "Let’s build on this neutral space."
-        ])
-    elif mood == 4:
-        tone = random.choice([
-            "That’s a positive vibe! Let’s keep the momentum going." if primary_score > 0.7 else "You're doing well — celebrate the little wins.",
-            "You're doing well — celebrate the little wins." if primary_score > 0.7 else "Nice! Keep that good energy flowing.",
-            "Nice! It’s good to acknowledge progress and feel grounded." if primary_score <= 0.7 else "Your positivity is shining—let’s maintain it!"
-        ])
-    elif mood == 5:
-        tone = random.choice([
-            "That’s fantastic to hear! You're radiating positivity today." if primary_score > 0.8 else "You're in a great headspace — keep that energy alive!",
-            "You're in a great headspace — keep that energy alive!" if primary_score > 0.8 else "Awesome! Your joy is contagious.",
-            "Awesome! It’s inspiring to see your positivity shine." if primary_score <= 0.8 else "Keep that amazing vibe going, {name}!"
-        ])
-    else:
-        tone = "Thanks for expressing yourself. Let's work through this together."
+    # Define tone selection function
+    def get_tone(mood, score):
+        if mood == 1:
+            return random.choice([
+                "It sounds like you're having a really tough time. I'm here for you." if score > 0.7 else "Today seems hard. Let's take it slow together.",
+                "I'm sorry you're going through this. You're not alone." if score > 0.7 else "It’s okay to feel this way. Let’s move forward.",
+                "Today seems hard. Let's take it slow together." if score <= 0.7 else "I’m with you through this struggle."
+            ])
+        elif mood == 2:
+            return random.choice([
+                "Things might feel a bit heavy right now. Let's take it one step at a time." if score > 0.6 else "I can sense you're feeling low. Be kind to yourself today.",
+                "I can sense you're feeling low. Be kind to yourself today." if score > 0.6 else "It’s okay to take it easy with this feeling.",
+                "It's okay to not be okay. We'll get through this." if score <= 0.6 else "Let’s ease into a better mood together."
+            ])
+        elif mood == 3:
+            return random.choice([
+                "Thanks for sharing how you're feeling. Let's explore this together.",
+                "I appreciate your honesty. Let’s reflect on this moment." if score > 0.5 else "You’re expressing yourself well—let’s dig deeper.",
+                "You're expressing yourself clearly, and that matters." if score <= 0.5 else "Let’s build on this neutral space."
+            ])
+        elif mood == 4:
+            return random.choice([
+                "That’s a positive vibe! Let’s keep the momentum going." if score > 0.7 else "You're doing well — celebrate the little wins.",
+                "You're doing well — celebrate the little wins." if score > 0.7 else "Nice! Keep that good energy flowing.",
+                "Nice! It’s good to acknowledge progress and feel grounded." if score <= 0.7 else "Your positivity is shining—let’s maintain it!"
+            ])
+        elif mood == 5:
+            return random.choice([
+                "That’s fantastic to hear! You're radiating positivity today." if score > 0.8 else "You're in a great headspace — keep that energy alive!",
+                "You're in a great headspace — keep that energy alive!" if score > 0.8 else "Awesome! Your joy is contagious.",
+                "Awesome! It’s inspiring to see your positivity shine." if score <= 0.8 else "Keep that amazing vibe going, {name}!"
+            ])
+        else:
+            return "Thanks for expressing yourself. Let's work through this together."
 
     suggestions = []
     emotion_key = primary_emotion
@@ -400,10 +401,10 @@ def generate_suggestion(emotions, mood, supabase, user_id):
         # Lower confidence, suggest lighter activities
         template_weights = {t: 1 if 'reflect' in t.lower() or 'how about' in t.lower() else 2 for t in available_templates}
 
-    # Weighted random selection of templates
+    # Ensure unique template selection
     templates = list(template_weights.keys())
     weights = list(template_weights.values())
-    unique_templates = random.choices(templates, weights=weights, k=2)
+    unique_templates = random.sample(templates, k=2)  # Use sample to guarantee uniqueness
 
     # Use secondary_emotion if score is significant (e.g., > 0.4)
     secondary_influence = False
@@ -415,42 +416,37 @@ def generate_suggestion(emotions, mood, supabase, user_id):
         secondary_templates = SUGGESTION_TEMPLATES.get(secondary_emotion_key, SUGGESTION_TEMPLATES['neutral'])
         unique_templates[1] = random.choice(secondary_templates)  # Replace second with secondary emotion suggestion
 
+    # Generate unique tones and suggestions
+    tone1 = get_tone(mood, primary_score)
+    tone2 = get_tone(mood, primary_score if not secondary_influence else top_emotions[1]['score'])
+
     suggestion1 = unique_templates[0].format(
-        tone=tone,
+        tone=tone1,
         emotion=primary_emotion.lower(),
         name=user_name,
         language=language
     )
     suggestion2 = unique_templates[1].format(
-        tone=tone,
+        tone=tone2,
         emotion=primary_emotion.lower() if not secondary_influence else secondary_emotion.lower(),
         name=user_name,
         language=language
     )
     suggestions.extend([suggestion1, suggestion2])
 
-    # Ensure suggestions are different
+    # Enhanced uniqueness check
     while len(set(suggestions)) < 2:
-        if suggestion1 == suggestion2:
-            remaining_templates = [t for t in available_templates if t not in unique_templates]
-            if remaining_templates:
-                new_template = random.choice(remaining_templates)
-                suggestion2 = new_template.format(
-                    tone=tone,
-                    emotion=primary_emotion.lower() if not secondary_influence else secondary_emotion.lower(),
-                    name=user_name,
-                    language=language
-                )
-            else:
-                new_activity = random.choice([a for a in ACTIVITY_MAPPINGS.keys() if a not in selected_activities])
-                suggestion2 = random.choice(available_templates).format(
-                    tone=tone,
-                    emotion=primary_emotion.lower() if not secondary_influence else secondary_emotion.lower(),
-                    name=user_name,
-                    language=language,
-                    activity=random.choice(ACTIVITY_MAPPINGS.get(new_activity, ['a different activity']))
-                )
-            suggestions[1] = suggestion2
+        tone2 = get_tone(mood, primary_score if not secondary_influence else top_emotions[1]['score'])
+        unique_templates = random.sample(templates, k=2)  # Regenerate unique templates
+        if secondary_influence:
+            unique_templates[1] = random.choice(secondary_templates)
+        suggestion2 = unique_templates[1].format(
+            tone=tone2,
+            emotion=primary_emotion.lower() if not secondary_influence else secondary_emotion.lower(),
+            name=user_name,
+            language=language
+        )
+        suggestions[1] = suggestion2
 
     if primary_goal:
         goal_suggestions = {
@@ -469,7 +465,7 @@ def generate_suggestion(emotions, mood, supabase, user_id):
             suggestions.append(freq_suggestion)
 
     random.shuffle(suggestions)
-    return suggestions[:2] 
+    return suggestions[:2]  
 
 def analyze_journal_entry(text, supabase, user_id):
     emotions = huggingface_emotion_analysis(text)
