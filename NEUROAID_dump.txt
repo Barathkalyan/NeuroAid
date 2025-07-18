@@ -122,7 +122,7 @@ def huggingface_emotion_analysis(text):
     
 def derive_mood_from_emotions(emotions):
     if not emotions:
-        return 3, 0.5
+        return 3, 0.5  # neutral mood, medium confidence
 
     positive_emotions = ['joy']
     negative_emotions = ['sadness', 'anger', 'anxiety']
@@ -130,15 +130,23 @@ def derive_mood_from_emotions(emotions):
 
     top_emotion = max(emotions, key=lambda x: x['score'])
     emotion_label = top_emotion['label']
-    confidence = top_emotion['score']
+    confidence = top_emotion['score']  # model's confidence
 
     if emotion_label in positive_emotions:
         mood_score = 5 if confidence > 0.7 else 4
+        # keep confidence as-is for positive emotions
     elif emotion_label in negative_emotions:
         mood_score = 1 if confidence > 0.7 else 2
+        confidence = round(1 - confidence, 2)  # invert confidence
+    elif emotion_label in neutral_emotions:
+        mood_score = 3
+        confidence = 0.5  # fixed mid value for neutrality
     else:
         mood_score = 3
+        confidence = 0.5  # fallback
+
     return mood_score, confidence
+
 
 def get_recent_emotions(supabase, user_id, days=7):
     start_date = (datetime.now(ZoneInfo("UTC")) - timedelta(days=days)).isoformat()
@@ -311,9 +319,14 @@ def get_user_preferences(supabase, user_id):
         logger.error(f"Error fetching user preferences: {str(e)}")
         return {'preferred_activities': [], 'primary_goal': None}
 
+
+import random
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
+
 def generate_suggestion(emotions, mood, supabase, user_id):
     if not emotions:
-        return ["Try writing more to help me understand your feelings."]
+        return ["Try writing more to help me understand your feelings.", "Consider jotting down your thoughts to explore your emotions."]
 
     user_prefs = get_user_preferences(supabase, user_id)
     preferred_activities = user_prefs.get('preferred_activities', [])
@@ -335,7 +348,38 @@ def generate_suggestion(emotions, mood, supabase, user_id):
     primary_score = top_emotions[0]['score']
     secondary_emotion = top_emotions[1]['label'] if len(top_emotions) > 1 else None
 
-    tone = "I’m sorry to hear" if mood <= 2 else "I can see" if mood == 3 else "It’s great to hear"
+    if mood == 1:
+        tone = random.choice([
+            "It sounds like you're having a really tough time. I'm here for you.",
+            "I'm sorry you're going through this. You're not alone.",
+            "Today seems hard. Let's take it slow together."
+        ])
+    elif mood == 2:
+        tone = random.choice([
+            "Things might feel a bit heavy right now. Let's take it one step at a time.",
+            "I can sense you're feeling low. Be kind to yourself today.",
+            "It's okay to not be okay. We'll get through this."
+        ])
+    elif mood == 3:
+        tone = random.choice([
+            "Thanks for sharing how you're feeling. Let's explore this together.",
+            "I appreciate your honesty. Let’s reflect on this moment.",
+            "You're expressing yourself clearly, and that matters."
+        ])
+    elif mood == 4:
+        tone = random.choice([
+            "That’s a positive vibe! Let’s keep the momentum going.",
+            "You're doing well — celebrate the little wins.",
+            "Nice! It’s good to acknowledge progress and feel grounded."
+        ])
+    elif mood == 5:
+        tone = random.choice([
+            "That’s fantastic to hear! You're radiating positivity today.",
+            "You're in a great headspace — keep that energy alive!",
+            "Awesome! It’s inspiring to see your positivity shine."
+        ])
+    else:
+        tone = "Thanks for expressing yourself. Let's work through this together."
 
     suggestions = []
     emotion_key = primary_emotion
@@ -346,16 +390,20 @@ def generate_suggestion(emotions, mood, supabase, user_id):
     activity = random.choice(preferred_activities) if preferred_activities else 'writing'
     activity_suggestion = random.choice(ACTIVITY_MAPPINGS.get(activity, ['a relaxing activity']))
 
-    for _ in range(2):
-        template = random.choice(available_templates)
-        suggestion = template.format(
-            tone=tone,
-            emotion=primary_emotion.lower(),
-            activity=activity_suggestion,
-            language=language
-        )
-        if suggestion not in suggestions:
-            suggestions.append(suggestion)
+    # Select two unique templates
+    unique_templates = random.sample(available_templates, 2)
+    suggestions.append(unique_templates[0].format(
+        tone=tone,
+        emotion=primary_emotion.lower(),
+        activity=activity_suggestion,
+        language=language
+    ))
+    suggestions.append(unique_templates[1].format(
+        tone=tone,
+        emotion=primary_emotion.lower(),
+        activity=activity_suggestion,
+        language=language
+    ))
 
     if primary_goal:
         goal_suggestions = {
@@ -365,16 +413,16 @@ def generate_suggestion(emotions, mood, supabase, user_id):
             'self-discovery': f"Your goal is {primary_goal.lower()}. Reflect on a recent experience that taught you something new."
         }
         goal_suggestion = goal_suggestions.get(primary_goal.lower(), f"Your goal is {primary_goal.lower()}. Try {activity_suggestion} to stay aligned.")
-        if goal_suggestion not in suggestions:
+        if goal_suggestion not in suggestions and len(suggestions) < 2:
             suggestions.append(goal_suggestion)
 
-    if journaling_freq < 3:
+    if journaling_freq < 3 and len(suggestions) < 2:
         freq_suggestion = f"Journaling helps with {primary_goal or 'self-reflection'}. Try writing daily this week!"
         if freq_suggestion not in suggestions:
             suggestions.append(freq_suggestion)
 
     random.shuffle(suggestions)
-    return suggestions[:3]
+    return suggestions[:2]  # Return exactly two suggestions  
 
 def analyze_journal_entry(text, supabase, user_id):
     emotions = huggingface_emotion_analysis(text)

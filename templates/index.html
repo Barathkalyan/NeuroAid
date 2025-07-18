@@ -61,17 +61,30 @@
           <h2><i class="ri-home-5-line"></i> Welcome to NeuroAid</h2>
           <p>Your companion for mental health and self-reflection.</p>
         </div>
-
+        
         <div class="suggestions-card">
           <h3><i class="ri-lightbulb-line"></i> Today's Suggestions</h3>
           {% if suggestions is defined and suggestions %}
-            <ul>
-              {% for suggestion in suggestions %}
-                <li>{{ suggestion }}</li>
-              {% endfor %}
-            </ul>
+          <ul>
+            {% for suggestion in suggestions %}
+            <li>{{ suggestion }}</li>
+            {% endfor %}
+          </ul>
           {% else %}
-            <p>No suggestions available. Write a journal entry to get started!</p>
+          <p>No suggestions available.</p>
+          {% endif %}
+        </div>
+
+        <div class="activity-suggestions-card">
+          <h3><i class="ri-run-line"></i> Activity Suggestions</h3>
+          {% if activities is defined and activities %}
+          <ul>
+            {% for activity in activities %}
+            <li>{{ activity }}</li>
+            {% endfor %}
+          </ul>
+          {% else %}
+          <p>No activities available.</p>
           {% endif %}
         </div>
 
@@ -86,7 +99,7 @@
               </div>
             {% endfor %}
           {% else %}
-            <p>No recent entries. <a href="{{ url_for('journal') }}">Start journaling today!</a></p>
+            <p>No recent entries.</p>
           {% endif %}
         </div>
 

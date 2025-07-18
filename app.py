@@ -182,80 +182,77 @@ def get_journaling_frequency(supabase, user_id, days=7):
 
 SUGGESTION_TEMPLATES = {
     'sadness': [
-        "{tone} you’re feeling {emotion}. Try writing about a memory that brings you comfort.",
-        "{tone} you’re feeling {emotion}. Consider a short walk to clear your mind.",
-        "{tone} you’re feeling {emotion}. How about listening to some calming {language} music?",
-        "{tone} you’re feeling {emotion}. Reflect on something you’re grateful for today.",
-        "{tone} you’re feeling {emotion}. Try a breathing exercise: inhale for 4, hold for 4, exhale for 4.",
-        "{tone} you’re feeling {emotion}. Cuddle up in a blanket and write a letter to your future self.",
-        "{tone} you’re feeling {emotion}. Watch a comforting {language} movie or series episode you love.",
-        "{tone} you’re feeling {emotion}. Look at photos that remind you of good times.",
-        "{tone} you’re feeling {emotion}. Try drawing how you feel — even if it's abstract.",
-        "{tone} you’re feeling {emotion}. Call or message someone who always listens.",
-        "{tone} you’re feeling {emotion}. Light a scented candle and reflect in silence for a few minutes.",
-        "{tone} you’re feeling {emotion}. Journal three things that make you feel safe or supported."
-
+        "When {tone} you’re feeling {emotion}, try writing about a memory that brings you comfort.",
+        "Sometimes {tone} you’re feeling {emotion}, a short walk can help clear your mind.",
+        "If {tone} you’re feeling {emotion}, listening to calming {language} music might soothe you.",
+        "Consider this: {tone} you’re feeling {emotion}. Reflecting on gratitude may help.",
+        "Feeling {emotion}? {tone} you can pause and try a simple breathing exercise: inhale for 4, hold for 4, exhale for 4.",
+        "On days like this, {tone} you’re feeling {emotion}, cuddle up in a blanket and write to your future self.",
+        "To cope when {tone} you’re feeling {emotion}, watch a comforting {language} movie or show you love.",
+        "Bring back some joy — {tone} you’re feeling {emotion}, so try looking at nostalgic photos.",
+        "Draw what’s on your mind. Even abstract lines help when {tone} you’re feeling {emotion}.",
+        "Connection matters. If {tone} you’re feeling {emotion}, message someone who truly listens.",
+        "Create a calm space. {tone} you’re feeling {emotion} — light a scented candle and reflect in silence.",
+        "Give yourself care. When {tone} you’re feeling {emotion}, journal three things that make you feel safe."
     ],
     'anger': [
-        "{tone} you’re feeling {emotion}. Take a moment to jot down what’s frustrating you.",
-        "{tone} you’re feeling {emotion}. Try a quick physical activity like stretching or jumping jacks.",
-        "{tone} you’re feeling {emotion}. Listen to an energetic {language} playlist to channel your energy.",
-        "{tone} you’re feeling {emotion}. Write a letter to yourself about letting go of this feeling.",
-        "{tone} you’re feeling {emotion}. Try counting backwards from 10 to calm your mind.",
-        "{tone} you’re feeling {emotion}. Squeeze a pillow tightly or punch it safely to release tension.",
-        "{tone} you’re feeling {emotion}. Take a cold shower or wash your face with cold water.",
-        "{tone} you’re feeling {emotion}. Walk outside and name 5 things you see to ground yourself.",
-        "{tone} you’re feeling {emotion}. Doodle furiously on paper — let your energy out creatively.",
-        "{tone} you’re feeling {emotion}. Try writing what happened from a third-person point of view.",
-        "{tone} you’re feeling {emotion}. Say “I feel angry because…” and finish the sentence 3 times.",
-        "{tone} you’re feeling {emotion}. Hold ice in your hand for 10 seconds and focus on your breath."
+        "Capture your thoughts. {tone} you’re feeling {emotion}, so write what’s frustrating you.",
+        "To release energy, {tone} you’re feeling {emotion} — try stretching or a few jumping jacks.",
+        "Redirect intensity — {tone} you’re feeling {emotion}, so blast an energetic {language} playlist.",
+        "Writing helps. {tone} you’re feeling {emotion}, so draft a letter to let go of this moment.",
+        "Calm your racing mind. {tone} you’re feeling {emotion}, count backward slowly from 10.",
+        "Physical release can help — if {tone} you’re feeling {emotion}, punch a pillow safely or squeeze it tight.",
+        "Shock your system gently — {tone} you’re feeling {emotion}, wash your face with cold water.",
+        "Feel grounded. {tone} you’re feeling {emotion}, so walk outside and name 5 things you see.",
+        "Put it on paper — {tone} you’re feeling {emotion}, try furiously doodling your energy out.",
+        "Gain perspective — {tone} you’re feeling {emotion}, rewrite the situation from a third-person view.",
+        "Express it verbally — if {tone} you’re feeling {emotion}, finish this sentence 3 times: 'I feel angry because...'",
+        "Cool down with a sensory reset — {tone} you’re feeling {emotion}, so hold ice and breathe slowly."
     ],
     'anxiety': [
-        "{tone} you’re feeling {emotion}. List five things you can see around you to ground yourself.",
-        "{tone} you’re feeling {emotion}. Try a guided meditation in {language} for a few minutes.",
-        "{tone} you’re feeling {emotion}. Write about a safe place you can imagine.",
-        "{tone} you’re feeling {emotion}. Focus on slow, deep breaths for a minute.",
-        "{tone} you’re feeling {emotion}. Jot down one thing you can control today.",
-        "{tone} you’re feeling {emotion}. Try the 3-3-3 rule: name 3 sights, 3 sounds, 3 things you can move.",
-        "{tone} you’re feeling {emotion}. Make a simple to-do list — just one or two tasks.",
-        "{tone} you’re feeling {emotion}. Put your hand on your chest and feel your heartbeat slow down.",
-        "{tone} you’re feeling {emotion}. Write about your worry as if it's a character — give it a name.",
-        "{tone} you’re feeling {emotion}. Repeat a calming phrase: 'I am safe. I am grounded. I am okay.'",
-        "{tone} you’re feeling {emotion}. Try holding a warm mug and focus on the feeling.",
-        "{tone} you’re feeling {emotion}. Stretch your body gently, focusing on your breath."
-
+        "Start with grounding. {tone} you’re feeling {emotion}, so name five things you see around you.",
+        "Calm your thoughts. {tone} you’re feeling {emotion}, so try a guided {language} meditation.",
+        "Ease your mind — if {tone} you’re feeling {emotion}, write about a safe imaginary place.",
+        "Slow down — {tone} you’re feeling {emotion}, focus on deep breaths for just one minute.",
+        "Simplify the moment — when {tone} you’re feeling {emotion}, jot down one thing you can control.",
+        "Center yourself. {tone} you’re feeling {emotion}, try the 3-3-3 rule: 3 sights, 3 sounds, 3 movements.",
+        "Less is more. {tone} you’re feeling {emotion}, create a tiny to-do list — 1 or 2 things max.",
+        "Use your body to connect — {tone} you’re feeling {emotion}, place your hand on your chest and feel your breath.",
+        "Externalize the worry — when {tone} you’re feeling {emotion}, give your anxiety a name and write about it.",
+        "Affirm your safety. {tone} you’re feeling {emotion}, so repeat: 'I am safe. I am grounded. I am okay.'",
+        "Soothing touch helps — if {tone} you’re feeling {emotion}, hold a warm mug and notice the warmth.",
+        "Stretch out the tension. {tone} you’re feeling {emotion}, move gently while focusing on breath."
     ],
     'joy': [
-        "{tone} you’re feeling {emotion}! Celebrate by doing something you love, like {activity}.",
-        "{tone} you’re feeling {emotion}! Share a happy moment in your journal.",
-        "{tone} you’re feeling {emotion}! Listen to an upbeat {language} playlist to keep the vibe going.",
-        "{tone} you’re feeling {emotion}! Write about a goal you’re excited to pursue.",
-        "{tone} you’re feeling {emotion}! Do a quick sketch or doodle to express your happiness.",
-        "{tone} you’re feeling {emotion}! Capture this moment in a photo or video to remember it later.",
-        "{tone} you’re feeling {emotion}! Send a positive message to someone — share the joy.",
-        "{tone} you’re feeling {emotion}! Reflect on how far you’ve come this week or month.",
-        "{tone} you’re feeling {emotion}! Dance like nobody’s watching to your favorite {language} song.",
-        "{tone} you’re feeling {emotion}! Write a note to your future self about today.",
-        "{tone} you’re feeling {emotion}! Try something new or spontaneous — even if it’s small.",
-        "{tone} you’re feeling {emotion}! Write a ‘joy list’ of things that always boost your mood."
-
+        "Celebrate it! {tone} you’re feeling {emotion}, so do something fun like {activity}.",
+        "Hold onto this moment — {tone} you’re feeling {emotion}, journal what’s making you smile.",
+        "Amplify your mood — {tone} you’re feeling {emotion}, play an upbeat {language} playlist.",
+        "Dream a little — {tone} you’re feeling {emotion}, write about a goal you’re excited about.",
+        "Channel your energy — {tone} you’re feeling {emotion}, do a joyful sketch or doodle.",
+        "Create a memory — {tone} you’re feeling {emotion}, take a photo or short video right now.",
+        "Spread the light — {tone} you’re feeling {emotion}, message someone a kind or fun note.",
+        "Celebrate your progress — when {tone} you’re feeling {emotion}, reflect on recent wins.",
+        "Feel the rhythm — {tone} you’re feeling {emotion}, dance to your favorite {language} track.",
+        "Record the joy — {tone} you’re feeling {emotion}, write a letter to your future self.",
+        "Spice things up — when {tone} you’re feeling {emotion}, try something spontaneous or new.",
+        "Make a joy toolkit — {tone} you’re feeling {emotion}, list things that always lift your spirits."
     ],
     'neutral': [
-        "{tone} you’re feeling balanced. Try exploring a new {activity} today.",
-        "{tone} your mood is steady. Write about something you’re curious about.",
-        "{tone} you’re feeling neutral. How about a short {language} podcast to spark inspiration?",
-        "{tone} your mood is calm. Reflect on a small win from this week.",
-        "{tone} you’re feeling neutral. Set a small intention for the rest of your day.",
-        "{tone} you’re feeling neutral. Try a new recipe, song, or quote and reflect on it.",
-        "{tone} you’re feeling neutral. Take five deep breaths and observe your surroundings.",
-        "{tone} you’re feeling neutral. Journal what your ideal day would look like.",
-        "{tone} you’re feeling neutral. Watch a short educational video in {language}.",
-        "{tone} you’re feeling neutral. Declutter one small area — your desk, bag, or phone.",
-        "{tone} you’re feeling neutral. Reach out to a friend you haven’t talked to in a while.",
-        "{tone} you’re feeling neutral. Try reading a page from a book you like and note a thought."
-
+        "Today feels balanced. {tone} you’re feeling neutral — explore a fresh {activity} idea.",
+        "Use this calm to wander — {tone} you’re steady, write about something you’re curious about.",
+        "Add something new — {tone} you’re feeling neutral, listen to a short {language} podcast.",
+        "Reflect on progress — {tone} your mood is calm, so think about a small win this week.",
+        "Set gentle goals — {tone} you’re feeling neutral, what intention can you set right now?",
+        "Let curiosity lead — {tone} your energy is steady, try a new song, quote, or recipe and reflect.",
+        "Observe with awareness — {tone} you’re feeling neutral, breathe deeply and look around.",
+        "Design your day — {tone} your mind is calm, so journal your ideal 24 hours.",
+        "Feed your mind — {tone} you’re feeling neutral, watch a short {language} video that interests you.",
+        "Tidy your space — {tone} your mood is even, declutter a small area around you.",
+        "Reconnect — {tone} you’re feeling neutral, reach out to a friend you haven’t spoken to lately.",
+        "Find inspiration — {tone} your mind is steady, read a page from a book and reflect on one idea."
     ]
 }
+
 
 ACTIVITY_MAPPINGS = {
     'meditation': [
@@ -305,6 +302,7 @@ ACTIVITY_MAPPINGS = {
     ]
 }
 
+
 def get_user_preferences(supabase, user_id):
     try:
         preferences = supabase.table('profiles')\
@@ -319,7 +317,7 @@ def get_user_preferences(supabase, user_id):
 
 def generate_suggestion(emotions, mood, supabase, user_id):
     if not emotions:
-        return ["Try writing more to help me understand your feelings."]
+        return ["Try writing more to help me understand your feelings.", "Consider jotting down your thoughts to explore your emotions."]
 
     user_prefs = get_user_preferences(supabase, user_id)
     preferred_activities = user_prefs.get('preferred_activities', [])
@@ -341,46 +339,137 @@ def generate_suggestion(emotions, mood, supabase, user_id):
     primary_score = top_emotions[0]['score']
     secondary_emotion = top_emotions[1]['label'] if len(top_emotions) > 1 else None
 
-    tone = "I’m sorry to hear" if mood <= 2 else "I can see" if mood == 3 else "It’s great to hear"
+    # Adjust tone based on primary_score
+    if mood == 1:
+        tone = random.choice([
+            "It sounds like you're having a really tough time. I'm here for you." if primary_score > 0.7 else "Today seems hard. Let's take it slow together.",
+            "I'm sorry you're going through this. You're not alone." if primary_score > 0.7 else "It’s okay to feel this way. Let’s move forward.",
+            "Today seems hard. Let's take it slow together." if primary_score <= 0.7 else "I’m with you through this struggle."
+        ])
+    elif mood == 2:
+        tone = random.choice([
+            "Things might feel a bit heavy right now. Let's take it one step at a time." if primary_score > 0.6 else "I can sense you're feeling low. Be kind to yourself today.",
+            "I can sense you're feeling low. Be kind to yourself today." if primary_score > 0.6 else "It’s okay to take it easy with this feeling.",
+            "It's okay to not be okay. We'll get through this." if primary_score <= 0.6 else "Let’s ease into a better mood together."
+        ])
+    elif mood == 3:
+        tone = random.choice([
+            "Thanks for sharing how you're feeling. Let's explore this together.",
+            "I appreciate your honesty. Let’s reflect on this moment." if primary_score > 0.5 else "You’re expressing yourself well—let’s dig deeper.",
+            "You're expressing yourself clearly, and that matters." if primary_score <= 0.5 else "Let’s build on this neutral space."
+        ])
+    elif mood == 4:
+        tone = random.choice([
+            "That’s a positive vibe! Let’s keep the momentum going." if primary_score > 0.7 else "You're doing well — celebrate the little wins.",
+            "You're doing well — celebrate the little wins." if primary_score > 0.7 else "Nice! Keep that good energy flowing.",
+            "Nice! It’s good to acknowledge progress and feel grounded." if primary_score <= 0.7 else "Your positivity is shining—let’s maintain it!"
+        ])
+    elif mood == 5:
+        tone = random.choice([
+            "That’s fantastic to hear! You're radiating positivity today." if primary_score > 0.8 else "You're in a great headspace — keep that energy alive!",
+            "You're in a great headspace — keep that energy alive!" if primary_score > 0.8 else "Awesome! Your joy is contagious.",
+            "Awesome! It’s inspiring to see your positivity shine." if primary_score <= 0.8 else "Keep that amazing vibe going, {name}!"
+        ])
+    else:
+        tone = "Thanks for expressing yourself. Let's work through this together."
 
     suggestions = []
     emotion_key = primary_emotion
     if primary_emotion in ['gratitude', 'hope']:
-        emotion_key = 'joy'  # Map gratitude and hope to joy
+        emotion_key = 'joy'
     available_templates = SUGGESTION_TEMPLATES.get(emotion_key, SUGGESTION_TEMPLATES['neutral'])
 
-    activity = random.choice(preferred_activities) if preferred_activities else 'writing'
-    activity_suggestion = random.choice(ACTIVITY_MAPPINGS.get(activity, ['a relaxing activity']))
+    # Fetch and store user name in session
+    dropdown_data = get_user_dropdown_data(supabase, user_id)
+    user_name = dropdown_data.get('user_name', 'friend')
+    session['user_name'] = user_name  # Store in session for persistence
 
-    for _ in range(2):
-        template = random.choice(available_templates)
-        suggestion = template.format(
-            tone=tone,
-            emotion=primary_emotion.lower(),
-            activity=activity_suggestion,
-            language=language
-        )
-        if suggestion not in suggestions:
-            suggestions.append(suggestion)
+    # Select two unique activities
+    activity_options = preferred_activities if preferred_activities else list(ACTIVITY_MAPPINGS.keys())
+    selected_activities = random.sample(activity_options, 2) if len(activity_options) >= 2 else activity_options + ['writing'][:2]
+    activity_suggestions = [
+        random.choice(ACTIVITY_MAPPINGS.get(selected_activities[0], ['a relaxing activity'])),
+        random.choice(ACTIVITY_MAPPINGS.get(selected_activities[1], ['a calming activity']))
+    ]
+
+    # Incorporate primary_score and secondary_emotion
+    if primary_score > 0.7:
+        # High confidence in primary emotion, prioritize strong actions
+        template_weights = {t: 2 if 'try' in t.lower() or 'do' in t.lower() else 1 for t in available_templates}
+    else:
+        # Lower confidence, suggest lighter activities
+        template_weights = {t: 1 if 'reflect' in t.lower() or 'how about' in t.lower() else 2 for t in available_templates}
+
+    # Weighted random selection of templates
+    templates = list(template_weights.keys())
+    weights = list(template_weights.values())
+    unique_templates = random.choices(templates, weights=weights, k=2)
+
+    # Use secondary_emotion if score is significant (e.g., > 0.4)
+    secondary_influence = False
+    if secondary_emotion and len(top_emotions) > 1 and top_emotions[1]['score'] > 0.4:
+        secondary_influence = True
+        secondary_emotion_key = secondary_emotion
+        if secondary_emotion in ['gratitude', 'hope']:
+            secondary_emotion_key = 'joy'
+        secondary_templates = SUGGESTION_TEMPLATES.get(secondary_emotion_key, SUGGESTION_TEMPLATES['neutral'])
+        unique_templates[1] = random.choice(secondary_templates)  # Replace second with secondary emotion suggestion
+
+    suggestion1 = unique_templates[0].format(
+        tone=tone,
+        emotion=primary_emotion.lower(),
+        name=user_name,
+        language=language
+    )
+    suggestion2 = unique_templates[1].format(
+        tone=tone,
+        emotion=primary_emotion.lower() if not secondary_influence else secondary_emotion.lower(),
+        name=user_name,
+        language=language
+    )
+    suggestions.extend([suggestion1, suggestion2])
+
+    # Ensure suggestions are different
+    while len(set(suggestions)) < 2:
+        if suggestion1 == suggestion2:
+            remaining_templates = [t for t in available_templates if t not in unique_templates]
+            if remaining_templates:
+                new_template = random.choice(remaining_templates)
+                suggestion2 = new_template.format(
+                    tone=tone,
+                    emotion=primary_emotion.lower() if not secondary_influence else secondary_emotion.lower(),
+                    name=user_name,
+                    language=language
+                )
+            else:
+                new_activity = random.choice([a for a in ACTIVITY_MAPPINGS.keys() if a not in selected_activities])
+                suggestion2 = random.choice(available_templates).format(
+                    tone=tone,
+                    emotion=primary_emotion.lower() if not secondary_influence else secondary_emotion.lower(),
+                    name=user_name,
+                    language=language,
+                    activity=random.choice(ACTIVITY_MAPPINGS.get(new_activity, ['a different activity']))
+                )
+            suggestions[1] = suggestion2
 
     if primary_goal:
         goal_suggestions = {
             'stress management': f"Since your goal is {primary_goal.lower()}, try a {time_context} relaxation technique like deep breathing.",
-            'improved mood': f"To support your goal of {primary_goal.lower()}, do a small {activity_suggestion} to lift your spirits.",
+            'improved mood': f"To support your goal of {primary_goal.lower()}, do a small {activity_suggestions[0]} to lift your spirits.",
             'better sleep': f"With your goal of {primary_goal.lower()}, consider a {time_context} routine like journaling before bed.",
             'self-discovery': f"Your goal is {primary_goal.lower()}. Reflect on a recent experience that taught you something new."
         }
-        goal_suggestion = goal_suggestions.get(primary_goal.lower(), f"Your goal is {primary_goal.lower()}. Try {activity_suggestion} to stay aligned.")
-        if goal_suggestion not in suggestions:
+        goal_suggestion = goal_suggestions.get(primary_goal.lower(), f"Your goal is {primary_goal.lower()}. Try {activity_suggestions[1]} to stay aligned.")
+        if goal_suggestion not in suggestions and len(suggestions) < 2:
             suggestions.append(goal_suggestion)
 
-    if journaling_freq < 3:
+    if journaling_freq < 3 and len(suggestions) < 2:
         freq_suggestion = f"Journaling helps with {primary_goal or 'self-reflection'}. Try writing daily this week!"
         if freq_suggestion not in suggestions:
             suggestions.append(freq_suggestion)
 
     random.shuffle(suggestions)
-    return suggestions[:1]
+    return suggestions[:2] 
 
 def analyze_journal_entry(text, supabase, user_id):
     emotions = huggingface_emotion_analysis(text)

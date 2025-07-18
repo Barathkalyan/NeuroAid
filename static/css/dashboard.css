@@ -729,3 +729,94 @@ footer {
   color: var(--button-hover);
   text-decoration: underline;
 }
+
+/* Existing styles for suggestions-card (assumed) - ensure these are present */
+.suggestions-card {
+  background: #fff;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.suggestions-card h3 {
+  color: var(--text-primary);
+  font-size: 30px;
+  margin-bottom: 15px;
+  display: flex;
+  align-items: center;
+}
+
+.suggestions-card h3 i {
+  margin-right: 0.5rem;
+}
+
+.suggestions-card ul {
+  list-style-type: disc;
+  padding-left: 20px;
+  margin: 0;
+}
+
+.suggestions-card p {
+  color: #666;
+  margin: 0.5rem 0 0;
+}
+
+.suggestions-card p a {
+  color: #7c3aed;
+  text-decoration: none;
+}
+
+.suggestions-card p a:hover {
+  text-decoration: underline;
+}
+
+/* New styles for activity-suggestions-card */
+.activity-suggestions-card {
+  background: #fff;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.activity-suggestions-card h3 {
+  color: var(--text-primary);
+  font-size: 30px;
+  margin-bottom: 15px;
+  display: flex;
+  align-items: center;
+}
+
+.activity-suggestions-card h3 i {
+  margin-right: 0.5rem;
+}
+
+.activity-suggestions-card ul {
+  list-style-type: disc;
+  padding-left: 20px;
+  margin: 0;
+}
+
+.activity-suggestions-card p {
+  color: #666;
+  margin: 0.5rem 0 0;
+}
+
+.activity-suggestions-card p a {
+  color: #7c3aed;
+  text-decoration: none;
+}
+
+.activity-suggestions-card p a:hover {
+  text-decoration: underline;
+}
+
+/* Ensure proper spacing and order in home-section */
+.home-section > div {
+  margin-bottom: 1.5rem;
+}
+
+.home-section .suggestions-card + .activity-suggestions-card {
+  margin-top: 0; /* Remove extra margin between suggestions and activities */
+}
