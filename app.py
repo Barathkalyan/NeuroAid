@@ -349,6 +349,11 @@ def generate_activity_suggestions(supabase, user_id, mood_score):
     user_prefs = get_user_preferences(supabase, user_id)
     preferred_activities = user_prefs.get('preferred_activities', ['writing', 'meditation'])
     
+    # Set a deterministic seed based on user_id and current date
+    current_date = datetime.now(ZoneInfo("UTC")).date().isoformat()
+    seed_value = hash(user_id + current_date)
+    random.seed(seed_value)
+    
     # Adjust activity selection based on mood
     mood_activity_map = {
         1: ['meditation', 'writing', 'mindfulness'],  # Very low mood
