@@ -64,6 +64,7 @@
         
         <div class="suggestions-card">
           <h3><i class="ri-lightbulb-line"></i> Today's Suggestions</h3>
+          <p>Your mood today: {{ mood_description }}</p>
           {% if suggestions is defined and suggestions %}
           <ul>
             {% for suggestion in suggestions %}
@@ -71,7 +72,20 @@
             {% endfor %}
           </ul>
           {% else %}
-          <p>No suggestions available.</p>
+          <p>No suggestions available. Write a journal entry!</p>
+          {% endif %}
+        </div>
+
+        <div class="activity-suggestions-card">
+          <h3><i class="ri-star-line"></i> Activity Suggestions</h3>
+          {% if activities is defined and activities %}
+          <ul>
+            {% for activity in activities %}
+            <li>{{ activity }}</li>
+            {% endfor %}
+          </ul>
+          {% else %}
+          <p>No activity suggestions available.</p>
           {% endif %}
         </div>
 

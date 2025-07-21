@@ -345,12 +345,36 @@ def get_user_preferences(supabase, user_id):
         logger.error(f"Error fetching user preferences: {str(e)}")
         return {'preferred_activities': ['writing', 'meditation'], 'primary_goal': None}
     
+def generate_activity_suggestions(supabase, user_id, mood_score):
+    user_prefs = get_user_preferences(supabase, user_id)
+    preferred_activities = user_prefs.get('preferred_activities', ['writing', 'meditation'])
+    
+    # Adjust activity selection based on mood
+    mood_activity_map = {
+        1: ['meditation', 'writing', 'mindfulness'],  # Very low mood
+        2: ['meditation', 'writing', 'mindfulness', 'exercise'],  # Low mood
+        3: ['writing', 'reading', 'music', 'mindfulness'],  # Neutral mood
+        4: ['exercise', 'music', 'writing', 'mood-speech'],  # Good mood
+        5: ['exercise', 'music', 'mood-speech', 'writing']  # Great mood
+    }
+    
+    available_activities = [act for act in preferred_activities if act in mood_activity_map.get(mood_score, preferred_activities)]
+    if not available_activities:
+        available_activities = mood_activity_map.get(mood_score, ['writing', 'meditation'])
+    
+    selected_activities = random.sample(available_activities, min(2, len(available_activities)))
+    activity_suggestions = [
+        random.choice(ACTIVITY_MAPPINGS.get(act, ['a relaxing activity'])) for act in selected_activities
+    ]
+    
+    logger.info(f"[ACTIVITY_SUGGESTIONS] user_id: {user_id}, mood: {mood_score}, activities: {activity_suggestions}")
+    return activity_suggestions
+    
 def generate_suggestion(emotions, mood, supabase, user_id):
     if not emotions:
         return ["Try writing more to help me understand your feelings.", "Consider jotting down your thoughts to explore your emotions."]
 
     user_prefs = get_user_preferences(supabase, user_id)
-    preferred_activities = user_prefs.get('preferred_activities', [])
     primary_goal = user_prefs.get('primary_goal', 'general well-being')
 
     language_prefs = supabase.table('user_preferences')\
@@ -370,39 +394,27 @@ def generate_suggestion(emotions, mood, supabase, user_id):
     secondary_emotion = top_emotions[1]['label'] if len(top_emotions) > 1 else None
 
     def get_tone(mood, score):
-        # [Existing tone logic remains unchanged]
-        pass
+        if score > 0.7:
+            return "it seems"
+        elif score > 0.4:
+            return "it looks like"
+        else:
+            return "perhaps"
 
     suggestions = []
     emotion_key = primary_emotion
     if primary_emotion in ['gratitude', 'hope']:
         emotion_key = 'joy'
     available_templates = SUGGESTION_TEMPLATES.get(emotion_key, SUGGESTION_TEMPLATES['neutral'])
-    available_templates = [t for t in available_templates if '{activity}' in t]
-    
-    if not available_templates:
-        available_templates = [
-            "You're feeling {emotion}. Try {activity} to align with your energy.",
-            "Consider {activity} — it matches how you're feeling: {emotion}.",
-            "Based on your mood, {activity} might be helpful."
-        ]
-
 
     dropdown_data = get_user_dropdown_data(supabase, user_id)
     user_name = dropdown_data.get('user_name', 'friend')
     session['user_name'] = user_name
 
-    activity_options = preferred_activities if preferred_activities else list(ACTIVITY_MAPPINGS.keys())
-    selected_activities = random.sample(activity_options, 2) if len(activity_options) >= 2 else activity_options + ['writing'][:2]
-    activity_suggestions = [
-        random.choice(ACTIVITY_MAPPINGS.get(selected_activities[0], ['a relaxing activity'])),
-        random.choice(ACTIVITY_MAPPINGS.get(selected_activities[1], ['a calming activity']))
-    ]
-
     if primary_score > 0.7:
-        template_weights = {t: 2 if 'try' in t.lower() or 'do' in t.lower() else 1 for t in available_templates}
+        template_weights = {t: 2 if 'try' in t.lower() or 'reflect' in t.lower() else 1 for t in available_templates}
     else:
-        template_weights = {t: 1 if 'reflect' in t.lower() or 'how about' in t.lower() else 2 for t in available_templates}
+        template_weights = {t: 1 for t in available_templates}
 
     templates = list(template_weights.keys())
     weights = list(template_weights.values())
@@ -424,15 +436,13 @@ def generate_suggestion(emotions, mood, supabase, user_id):
         tone=tone1,
         emotion=primary_emotion.lower(),
         name=user_name,
-        language=language,
-        activity=activity_suggestions[0]  # Add activity here
+        language=language
     )
     suggestion2 = unique_templates[1].format(
         tone=tone2,
         emotion=primary_emotion.lower() if not secondary_influence else secondary_emotion.lower(),
         name=user_name,
-        language=language,
-        activity=activity_suggestions[1]  # Add activity here
+        language=language
     )
     suggestions.extend([suggestion1, suggestion2])
 
@@ -445,19 +455,18 @@ def generate_suggestion(emotions, mood, supabase, user_id):
             tone=tone2,
             emotion=primary_emotion.lower() if not secondary_influence else secondary_emotion.lower(),
             name=user_name,
-            language=language,
-            activity=activity_suggestions[1]
+            language=language
         )
         suggestions[1] = suggestion2
 
     if primary_goal:
         goal_suggestions = {
-            'stress management': f"Since your goal is {primary_goal.lower()}, try a {time_context} relaxation technique like deep breathing.",
-            'improved mood': f"To support your goal of {primary_goal.lower()}, do a small {activity_suggestions[0]} to lift your spirits.",
+            'stress management': f"Since your goal is {primary_goal.lower()}, try a {time_context} relaxation technique.",
+            'improved mood': f"To support your goal of {primary_goal.lower()}, reflect on a positive moment today.",
             'better sleep': f"With your goal of {primary_goal.lower()}, consider a {time_context} routine like journaling before bed.",
             'self-discovery': f"Your goal is {primary_goal.lower()}. Reflect on a recent experience that taught you something new."
         }
-        goal_suggestion = goal_suggestions.get(primary_goal.lower(), f"Your goal is {primary_goal.lower()}. Try {activity_suggestions[1]} to stay aligned.")
+        goal_suggestion = goal_suggestions.get(primary_goal.lower(), f"Your goal is {primary_goal.lower()}. Try reflecting to stay aligned.")
         if goal_suggestion not in suggestions and len(suggestions) < 2:
             suggestions.append(goal_suggestion)
 
@@ -468,9 +477,6 @@ def generate_suggestion(emotions, mood, supabase, user_id):
 
     random.shuffle(suggestions)
     logger.info(f"[SUGGESTIONS] user_id: {user_id}")
-    logger.info(f"[SUGGESTIONS] preferred_activities raw: {user_prefs.get('preferred_activities')}")
-    logger.info(f"[SUGGESTIONS] selected activities: {selected_activities}")
-    logger.info(f"[SUGGESTIONS] activity suggestions: {activity_suggestions}")
     logger.info(f"[SUGGESTIONS] final suggestions: {suggestions}")
 
     return suggestions[:2]
@@ -1101,6 +1107,8 @@ def index():
 
     suggestions = None
     recent_entries_data = []
+    mood_description = "Neutral"
+    activities = []
 
     try:
         latest_entry_query = supabase.table('journal_entries')\
@@ -1121,11 +1129,24 @@ def index():
             current_date_ist = ist_now.date()
 
             if entry_date_ist.date() == current_date_ist:
-                suggestions = latest_entry.data[0]['analysis'].get('suggestions', [])
+                analysis = latest_entry.data[0]['analysis']
+                suggestions = analysis.get('suggestions', [])
+                mood_score = analysis.get('mood', 3)
+                mood_descriptions = {
+                    1: "Very Low",
+                    2: "Low",
+                    3: "Neutral",
+                    4: "Good",
+                    5: "Great"
+                }
+                mood_description = mood_descriptions.get(mood_score, "Neutral")
+                activities = generate_activity_suggestions(supabase, user_id, mood_score)
             else:
                 suggestions = ["Write a journal entry for today!"]
+                activities = generate_activity_suggestions(supabase, user_id, 3)  # Default to neutral mood
         else:
             suggestions = ["Write a journal entry to get suggestions!"]
+            activities = generate_activity_suggestions(supabase, user_id, 3)  # Default to neutral mood
 
         recent_entries_query = supabase.table('journal_entries')\
             .select('id, content, created_at')\
@@ -1149,6 +1170,7 @@ def index():
     except Exception as e:
         logger.error(f"Error fetching data for index: {str(e)}")
         suggestions = ["Unable to load suggestions. Try writing!"]
+        activities = ["Try a relaxing activity.", "Consider a short mindfulness session."]
         recent_entries_data = []
 
     dropdown_data = get_user_dropdown_data(supabase, user_id)
@@ -1157,7 +1179,10 @@ def index():
                           suggestions=suggestions, 
                           recent_entries=recent_entries_data, 
                           theme=session.get('theme', 'light'),
+                          mood_description=mood_description,
+                          activities=activities,
                           **dropdown_data)
+
 
 @app.route('/journal', methods=['GET', 'POST'])
 def journal():
