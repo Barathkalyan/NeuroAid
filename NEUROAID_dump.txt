@@ -32,6 +32,7 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 # Load environment variables
 load_dotenv()
 
@@ -52,6 +53,9 @@ if missing_vars:
     raise EnvironmentError(f"Missing required environment variables: {', '.join(missing_vars)}")
 
 app = Flask(__name__)
+print("🚀 Flask app started!")
+logger.info("🔧 Logger is working!")
+app.logger.setLevel(logging.INFO)
 app.secret_key = os.getenv('FLASK_SECRET_KEY')
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
 
@@ -277,12 +281,12 @@ ACTIVITY_MAPPINGS = {
     ],
     'writing': [
         'writing a short story',
-        'journaling your thoughts',
         'penning a poem',
         'writing a letter to your future self',
         'brain-dumping whatever’s on your mind',
         'composing a gratitude list',
-        'creating a bucket list or vision board entry'
+        'creating a bucket list or vision board entry',
+        'exploring your emotions through journaling'
     ],
     'music': [
         'listening to music',
@@ -302,15 +306,6 @@ ACTIVITY_MAPPINGS = {
         'revisiting an inspiring quote or poem',
         'learning something new from a how-to guide'
     ],
-    'journaling': [
-        'journaling your thoughts',
-        'writing a daily reflection',
-        'penning a gratitude journal entry',
-        'writing a letter to yourself',
-        'recording your mood in a journal',
-        'creating a journal entry about your day',
-        'exploring your emotions through journaling'
-    ],
     'mood-speech': [
         'expressing your feelings through speech',
         'recording a voice note about your mood',
@@ -321,15 +316,14 @@ ACTIVITY_MAPPINGS = {
         'using voice to release your feelings'
     ],
     'mindfulness': [
-        'a mindfulness exercise',
         'a short mindfulness break',
         'practicing mindful breathing',
         'a guided mindfulness session',
         'a mindful walk outside',
-        'a moment of mindful observation',
-        'a mindfulness meditation'
+        'a moment of mindful observation'
     ]
 }
+
 
 def get_user_preferences(supabase, user_id):
     try:
@@ -386,6 +380,15 @@ def generate_suggestion(emotions, mood, supabase, user_id):
     if primary_emotion in ['gratitude', 'hope']:
         emotion_key = 'joy'
     available_templates = SUGGESTION_TEMPLATES.get(emotion_key, SUGGESTION_TEMPLATES['neutral'])
+    available_templates = [t for t in available_templates if '{activity}' in t]
+    
+    if not available_templates:
+        available_templates = [
+            "You're feeling {emotion}. Try {activity} to align with your energy.",
+            "Consider {activity} — it matches how you're feeling: {emotion}.",
+            "Based on your mood, {activity} might be helpful."
+        ]
+
 
     dropdown_data = get_user_dropdown_data(supabase, user_id)
     user_name = dropdown_data.get('user_name', 'friend')
@@ -466,9 +469,16 @@ def generate_suggestion(emotions, mood, supabase, user_id):
             suggestions.append(freq_suggestion)
 
     random.shuffle(suggestions)
+    logger.info(f"[SUGGESTIONS] user_id: {user_id}")
+    logger.info(f"[SUGGESTIONS] preferred_activities raw: {user_prefs.get('preferred_activities')}")
+    logger.info(f"[SUGGESTIONS] selected activities: {selected_activities}")
+    logger.info(f"[SUGGESTIONS] activity suggestions: {activity_suggestions}")
+    logger.info(f"[SUGGESTIONS] final suggestions: {suggestions}")
+
     return suggestions[:2]
 
 def analyze_journal_entry(text, supabase, user_id):
+    print("🔍 analyze_journal_entry was called")
     emotions = huggingface_emotion_analysis(text)
     mood_score, confidence = derive_mood_from_emotions(emotions)
     suggestions = generate_suggestion(emotions, mood_score, supabase, user_id)
