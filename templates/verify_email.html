@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>NeuroAid - Sign Up</title>
+  <title>NeuroAid - Verify Email</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}" />
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
@@ -38,38 +38,15 @@
     <div class="login-box">
       <div class="welcome-section">
         <div class="welcome-icon">🧠</div>
-        <h1>Begin Your Journey</h1>
-        <p>Start your path to mental wellness today</p>
+        <h1>Email Verification</h1>
       </div>
-      <h2>Signup</h2>
       {% if error %}
         <p id="general-error">{{ error }}</p>
       {% endif %}
       {% if success %}
         <p id="general-success">{{ success }}</p>
+        <p><a href="{{ url_for('login') }}">Click here to log in</a></p>
       {% endif %}
-      <form id="signup-form" method="POST" action="{{ url_for('signup') }}">
-        <div class="input-group">
-          <input type="text" name="email" id="email" required placeholder=" " />
-          <label for="email">Email</label>
-        </div>
-        <div class="input-group">
-          <input type="password" name="password" id="password" required placeholder=" " aria-describedby="password-error" />
-          <label for="password">Password</label>
-          <span class="toggle-password">Show</span>
-          <p class="error-message" id="password-error"></p>
-        </div>
-        <div class="input-group">
-          <input type="password" name="confirm_password" id="confirm-password" required placeholder=" " aria-describedby="confirm-password-error" />
-          <label for="confirm-password">Confirm Password</label>
-          <span class="toggle-password">Show</span>
-          <p class="error-message" id="confirm-password-error"></p>
-        </div>
-        <button type="submit">Signup</button>
-      </form>
-      <div class="login-link">
-        Already have an account? <a href="{{ url_for('login') }}">Login!</a>
-      </div>
     </div>
   </div>
   <script defer src="{{ url_for('static', filename='js/main.js') }}"></script>

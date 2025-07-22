@@ -4,8 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>NeuroAid - Login</title>
-
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css')}}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}" />
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -39,35 +38,40 @@
     <div class="login-box">
       <div class="welcome-section">
         <div class="welcome-icon">🧠</div>
-        <h1>Welcome Back</h1>
-        <p>Continue your mental wellness journey</p>
+        <h1>Welcome Back!</h1>
+        <p>Continue your journey to mental wellness</p>
       </div>
       <h2>Login</h2>
       {% if error %}
         <p id="general-error">{{ error }}</p>
       {% endif %}
+      {% if success %}
+        <p id="general-success">{{ success }}</p>
+      {% endif %}
       <form id="login-form" method="POST" action="{{ url_for('login') }}">
         <div class="input-group">
-          <input type="text" name="email" id="email" required placeholder=" " aria-describedby="email-error" />
+          <input type="text" name="email" id="email" required placeholder=" " />
           <label for="email">Email</label>
-          <p class="error-message" id="email-error"></p>
         </div>
         <div class="input-group">
           <input type="password" name="password" id="password" required placeholder=" " aria-describedby="password-error" />
           <label for="password">Password</label>
-          <span class="toggle-password" role="button" tabindex="0" aria-label="Toggle password visibility">Show</span>
+          <span class="toggle-password">Show</span>
           <p class="error-message" id="password-error"></p>
         </div>
-        <div class="forgot-password-link">
-          <a href="/forgot_password">Forgot Password?</a>
-        </div>
-        <button type="submit" id="login-button">
-          <span>Login</span>
-          <div class="spinner"></div>
-        </button>
+        <button type="submit">Login</button>
       </form>
-      <div class="signup-link">
-        Don't have an account? <a href="/signup">Sign up!</a>
+      <div class="login-link">
+        <p>Didn't receive a verification email? <a href="#" onclick="document.getElementById('resend-form').style.display='block';return false;">Resend Verification</a></p>
+        <form id="resend-form" method="POST" action="{{ url_for('resend_verification') }}" style="display:none;">
+          <div class="input-group">
+            <input type="text" name="email" id="resend-email" required placeholder=" " />
+            <label for="resend-email">Email</label>
+          </div>
+          <button type="submit">Resend Verification Email</button>
+        </form>
+        <p>Forgot your password? <a href="{{ url_for('forgot_password') }}">Reset here</a></p>
+        <p>Don't have an account? <a href="{{ url_for('signup') }}">Signup!</a></p>
       </div>
     </div>
   </div>

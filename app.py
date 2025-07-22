@@ -987,26 +987,31 @@ def verify_2fa():
 @app.route('/', methods=['GET', 'POST'])
 def login():
     error = None
+    success = None
     if request.method == 'POST':
         email = request.form.get('email')
         password = request.form.get('password')
         if not email or not password:
             error = 'Email and password are required.'
-            return render_template('login.html', error=error), 400
+            return render_template('login.html', error=error, success=success), 400
         
         email = email.strip().lower()
         logger.info(f"Attempting login for email: {email}")
         
         supabase = get_supabase(use_service_role=True)
         try:
-            user_response = supabase.table('users').select('id, email, password').eq('email', email).execute()
+            user_response = supabase.table('users').select('id, email, password, is_verified').eq('email', email).execute()
             logger.info(f"Supabase query response for email {email}: {user_response.data}")
             
             if not user_response.data:
                 error = 'User not found.'
-                return render_template('login.html', error=error), 401
+                return render_template('login.html', error=error, success=success), 401
             
             user = user_response.data[0]
+            if not user['is_verified']:
+                error = 'Please verify your email before logging in.'
+                return render_template('login.html', error=error, success=success), 403
+
             stored_password = user['password'].encode('utf-8')
             if bcrypt.checkpw(password.encode('utf-8'), stored_password):
                 session['user'] = str(user['id'])
@@ -1034,16 +1039,19 @@ def login():
                     return redirect(url_for('index'))
             else:
                 error = 'Invalid credentials.'
-                return render_template('login.html', error=error), 401
+                return render_template('login.html', error=error, success=success), 401
         except Exception as e:
             error = 'Unable to log in right now. Please try again later.'
             logger.error(f"Login error: {str(e)}")
-            return render_template('login.html', error=error), 500
-    return render_template('login.html', error=error)
+            return render_template('login.html', error=error, success=success), 500
+    return render_template('login.html', error=error, success=success)
+
+import traceback  # Ensure this is at the top of app.py
 
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
     error = None
+    success = None
     if request.method == 'POST':
         email = request.form.get('email')
         password = request.form.get('password')
@@ -1051,45 +1059,201 @@ def signup():
 
         if not email or not password or not confirm_password:
             error = 'Email, password, and confirm password are required.'
-            return render_template('signup.html', error=error), 400
+            logger.error(f"Signup failed: Missing required fields for email: {email}")
+            return render_template('signup.html', error=error, success=success), 400
 
         if password != confirm_password:
             error = 'Passwords do not match!'
-            return render_template('signup.html', error=error), 400
+            logger.error(f"Signup failed: Passwords do not match for email: {email}")
+            return render_template('signup.html', error=error, success=success), 400
 
         email = email.strip().lower()
         logger.info(f"Attempting signup for email: {email}")
 
         supabase = get_supabase(use_service_role=True)
         try:
+            # Check for existing user
             existing_user = supabase.table('users').select('id').eq('email', email).execute()
+            logger.debug(f"Existing user check response: {existing_user.data}")
             if existing_user.data:
                 error = 'Email already exists.'
-                return render_template('signup.html', error=error), 400
+                logger.error(f"Signup failed: Email already exists: {email}")
+                return render_template('signup.html', error=error, success=success), 400
 
             user_id = str(uuid.uuid4())
             hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-            user_data = {'id': user_id, 'email': email, 'password': hashed_password}
+            verification_token = secrets.token_urlsafe(32)
+            expires_at = (datetime.now(ZoneInfo("UTC")) + timedelta(hours=24)).isoformat()
+
+            # Insert user
+            user_data = {
+                'id': user_id,
+                'email': email,
+                'password': hashed_password,
+                'is_verified': False
+            }
+            logger.debug(f"Inserting user data: {user_data}")
             supabase.table('users').insert(user_data).execute()
 
+            # Insert verification token
+            verification_data = {
+                'user_id': user_id,
+                'token': verification_token,
+                'expires_at': expires_at
+            }
+            logger.debug(f"Inserting verification data: {verification_data}")
+            supabase.table('email_verifications').insert(verification_data).execute()
+
+            # Send verification email
+            verification_link = f"{request.url_root}verify_email?token={verification_token}"
+            email_body = f"""
+            Hi,
+
+            Thank you for signing up with NeuroAid! Please verify your email by clicking the link below:
+            {verification_link}
+
+            This link will expire in 24 hours. If you didn't sign up, please ignore this email.
+
+            Best,
+            The NeuroAid Team
+            """
+            if send_email(email, "NeuroAid Email Verification", email_body):
+                logger.info(f"Verification email sent to {email}")
+                success = 'Signup successful! Please check your email to verify your account.'
+                return render_template('signup.html', error=None, success=success), 200
+            else:
+                # Rollback user creation if email fails
+                supabase.table('users').delete().eq('id', user_id).execute()
+                error = 'Failed to send verification email. Please try again.'
+                logger.error(f"Failed to send verification email to {email}")
+                return render_template('signup.html', error=error, success=success), 500
+
+            # Insert user preferences
             preferences_data = {
                 'user_id': user_id,
                 'two_factor_enabled': False,
                 'two_factor_secret': None,
                 'theme': 'light',
                 'reminder_time': '09:00',
-                'notification_preference': 'email'
+                'notification_preference': 'email',
+                'language': 'tamil'  # From your app's default
             }
+            logger.debug(f"Inserting preferences data: {preferences_data}")
             supabase.table('user_preferences').insert(preferences_data).execute()
 
             logger.info(f"User {email} signed up successfully with user_id: {user_id}")
             return redirect(url_for('login'))
         except Exception as e:
             error = 'Unable to sign up right now. Please try again later.'
-            logger.error(f"Signup error: {str(e)}")
-            return render_template('signup.html', error=error), 400
+            logger.error(f"Signup error: {str(e)}, Type: {type(e).__name__}, Traceback: {traceback.format_exc()}")
+            return render_template('signup.html', error=error, success=success), 400
 
-    return render_template('signup.html', error=error)
+    return render_template('signup.html', error=error, success=success)
+
+@app.route('/verify_email', methods=['GET'])
+def verify_email():
+    token = request.args.get('token')
+    error = None
+    success = None
+    if not token:
+        error = 'Invalid or missing verification token.'
+        return render_template('verify_email.html', error=error, success=success), 400
+
+    supabase = get_supabase(use_service_role=True)
+    try:
+        verification = supabase.table('email_verifications')\
+            .select('user_id, expires_at, verified')\
+            .eq('token', token)\
+            .execute()
+
+        if not verification.data or verification.data[0]['verified']:
+            error = 'Invalid or already used verification token.'
+            return render_template('verify_email.html', error=error, success=success), 400
+
+        expires_at = verification.data[0]['expires_at']
+        if '.' in expires_at:
+            expires_at = expires_at.split('.')[0] + '+00:00'
+        else:
+            expires_at = expires_at.replace('Z', '+00:00')
+        expiry_date = datetime.fromisoformat(expires_at).replace(tzinfo=ZoneInfo("UTC"))
+        if datetime.now(ZoneInfo("UTC")) > expiry_date:
+            error = 'Verification token has expired.'
+            return render_template('verify_email.html', error=error, success=success), 400
+
+        user_id = verification.data[0]['user_id']
+        supabase.table('users').update({'is_verified': True}).eq('id', user_id).execute()
+        supabase.table('email_verifications').update({'verified': True}).eq('token', token).execute()
+
+        logger.info(f"Email verified for user_id: {user_id}")
+        success = 'Email verified successfully! You can now log in.'
+        return render_template('verify_email.html', error=error, success=success)
+    except Exception as e:
+        logger.error(f"Error verifying email with token {token}: {str(e)}")
+        error = 'Unable to verify email. Please try again later.'
+        return render_template('verify_email.html', error=error, success=success), 500
+    
+@app.route('/resend_verification', methods=['POST'])
+def resend_verification():
+    email = request.form.get('email')
+    error = None
+    success = None
+    if not email:
+        error = 'Email is required.'
+        return render_template('login.html', error=error, success=success), 400
+
+    email = email.strip().lower()
+    supabase = get_supabase(use_service_role=True)
+    try:
+        user_response = supabase.table('users').select('id, is_verified').eq('email', email).execute()
+        if not user_response.data:
+            error = 'Email not found.'
+            return render_template('login.html', error=error, success=success), 404
+
+        user = user_response.data[0]
+        if user['is_verified']:
+            error = 'Email is already verified.'
+            return render_template('login.html', error=error, success=success), 400
+
+        user_id = user['id']
+        verification_token = secrets.token_urlsafe(32)
+        expires_at = (datetime.now(ZoneInfo("UTC")) + timedelta(hours=24)).isoformat()
+
+        # Delete any existing verification tokens for this user
+        supabase.table('email_verifications').delete().eq('user_id', user_id).execute()
+
+        # Insert new verification token
+        verification_data = {
+            'user_id': user_id,
+            'token': verification_token,
+            'expires_at': expires_at
+        }
+        supabase.table('email_verifications').insert(verification_data).execute()
+
+        # Send verification email
+        verification_link = f"{request.url_root}verify_email?token={verification_token}"
+        email_body = f"""
+        Hi,
+
+        Please verify your NeuroAid account by clicking the link below:
+        {verification_link}
+
+        This link will expire in 24 hours. If you didn't request this, please ignore this email.
+
+        Best,
+        The NeuroAid Team
+        """
+        if send_email(email, "NeuroAid Email Verification", email_body):
+            logger.info(f"Verification email resent to {email}")
+            success = 'Verification email resent. Please check your email.'
+            return render_template('login.html', error=error, success=success), 200
+        else:
+            logger.error(f"Failed to resend verification email to {email}")
+            error = 'Failed to resend verification email.'
+            return render_template('login.html', error=error, success=success), 500
+    except Exception as e:
+        logger.error(f"Error resending verification email: {str(e)}")
+        error = 'Unable to resend verification email.'
+        return render_template('login.html', error=error, success=success), 500
 
 @app.route('/index')
 def index():
@@ -1882,7 +2046,7 @@ def forgot_password():
                 'expires_at': expires_at
             }).execute()
 
-            reset_link = f"{request.url_root}reset_password?token={reset_token}"
+            reset_link = f"{request.url_root}reset_password/{reset_token}"  # Fixed URL format
             email_body = f"""
             Hi,
             
@@ -1906,60 +2070,66 @@ def forgot_password():
 
     return render_template('forgot_password.html', error=error, success=success)
 
-@app.route('/reset_password', methods=['GET', 'POST'])
-def reset_password():
+@app.route('/reset_password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
     error = None
     success = None
-    token = request.args.get('token')
-
-    if not token:
-        error = 'Invalid or missing reset token.'
-        return render_template('reset_password.html', error=error, success=success, token=token), 400
-
     supabase = get_supabase(use_service_role=True)
-    try:
-        reset_request = supabase.table('password_resets').select('user_id, expires_at').eq('token', token).execute()
-        if not reset_request.data:
-            error = 'Invalid or expired reset token.'
-            return render_template('reset_password.html', error=error, success=success, token=token), 404
 
-        reset_data = reset_request.data[0]
-        expires_at = reset_data['expires_at']
-        if '.' in expires_at:
-            expires_at = expires_at.split('.')[0] + '+00:00'
-        else:
-            expires_at = expires_at.replace('Z', '+00:00')
-        expiry_date = datetime.fromisoformat(expires_at).replace(tzinfo=ZoneInfo("UTC"))
-        if datetime.now(ZoneInfo("UTC")) > expiry_date:
-            error = 'Reset token has expired.'
+    if request.method == 'POST':
+        password = request.form.get('password')
+        confirm_password = request.form.get('confirm_password')
+
+        if not password or not confirm_password:
+            error = 'New password and confirm password are required.'
+            logger.error(f"Password reset failed: Missing required fields")
             return render_template('reset_password.html', error=error, success=success, token=token), 400
 
-        if request.method == 'POST':
-            password = request.form.get('password')
-            confirm_password = request.form.get('confirm_password')
+        if password != confirm_password:
+            error = 'Passwords do not match.'
+            logger.error(f"Password reset failed: Passwords do not match")
+            return render_template('reset_password.html', error=error, success=success, token=token), 400
 
-            if not password or not confirm_password:
-                error = 'Password and confirm password are required.'
+        try:
+            # Verify the reset token
+            reset_data = supabase.table('password_resets')\
+                .select('user_id, expires_at, used')\
+                .eq('token', token)\
+                .execute()
+
+            if not reset_data.data or reset_data.data[0]['used']:
+                error = 'Invalid or already used reset token.'
+                logger.error(f"Password reset failed: Invalid or used token: {token}")
                 return render_template('reset_password.html', error=error, success=success, token=token), 400
 
-            if password != confirm_password:
-                error = 'Passwords do not match.'
+            expires_at = reset_data.data[0]['expires_at']
+            if '.' in expires_at:
+                expires_at = expires_at.split('.')[0] + '+00:00'
+            else:
+                expires_at = expires_at.replace('Z', '+00:00')
+            expiry_date = datetime.fromisoformat(expires_at).replace(tzinfo=ZoneInfo("UTC"))
+            if datetime.now(ZoneInfo("UTC")) > expiry_date:
+                error = 'Reset token has expired.'
+                logger.error(f"Password reset failed: Expired token: {token}")
                 return render_template('reset_password.html', error=error, success=success, token=token), 400
 
+            user_id = reset_data.data[0]['user_id']
             hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-            supabase.table('users').update({'password': hashed_password}).eq('id', reset_data['user_id']).execute()
-            supabase.table('password_resets').delete().eq('token', token).execute()
 
-            success = 'Password reset successfully. Please log in.'
-            logger.info(f"Password reset for user_id: {reset_data['user_id']}")
-            return render_template('reset_password.html', error=error, success=success, token=token), 200
+            # Update user password
+            supabase.table('users').update({'password': hashed_password}).eq('id', user_id).execute()
+            # Mark token as used
+            supabase.table('password_resets').update({'used': True}).eq('token', token).execute()
 
-        return render_template('reset_password.html', error=error, success=success, token=token)
+            logger.info(f"Password reset successfully for user_id: {user_id}")
+            success = 'Password reset successfully! You can now log in with your new password.'
+            return render_template('reset_password.html', error=error, success=success, token=token)
+        except Exception as e:
+            error = 'Unable to reset password right now. Please try again later.'
+            logger.error(f"Password reset error: {str(e)}, Type: {type(e).__name__}, Traceback: {traceback.format_exc()}")
+            return render_template('reset_password.html', error=error, success=success, token=token), 500
 
-    except Exception as e:
-        logger.error(f"Error processing password reset with token {token}: {str(e)}")
-        error = 'Unable to process request. Please try again later.'
-        return render_template('reset_password.html', error=error, success=success, token=token), 500
+    return render_template('reset_password.html', error=error, success=success, token=token)
 
 # Load environment variables
 load_dotenv()
