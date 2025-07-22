@@ -16,6 +16,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const wordCountElement = document.querySelector('.word-count');
   const journalForm = document.getElementById('journal-form');
   const journalContentInput = document.getElementById('journal-content');
+  const dialog = document.getElementById('saveDialog');
+  const dialogRedirectBtn = document.getElementById('dialogRedirectBtn');
 
   quill.on('text-change', () => {
     const text = quill.getText().trim();
@@ -23,18 +25,21 @@ document.addEventListener('DOMContentLoaded', () => {
     wordCountElement.textContent = `${wordCount} words`;
   });
 
-    // DELETE ENTRY BUTTONS
+  dialogRedirectBtn.addEventListener('click', () => {
+    dialog.close();
+    window.location.href = '/index';
+  });
+
   document.querySelectorAll('.delete-entry-btn').forEach(button => {
     button.addEventListener('click', async (event) => {
       const entryId = event.target.getAttribute('data-id');
       if (confirm('Are you sure you want to delete this journal entry?')) {
         try {
           const response = await fetch(`/delete_entry/${entryId}`, {
-            method: 'DELETE',
+            method: 'DELETE'
           });
 
           if (response.ok) {
-            // Remove the entry card from DOM
             const card = event.target.closest('.entry-card');
             card.remove();
           } else {
@@ -48,8 +53,29 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-
-  journalForm.addEventListener('submit', (event) => {
+  journalForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
     journalContentInput.value = quill.root.innerHTML;
+
+    try {
+      const response = await fetch('/journal', {
+        method: 'POST',
+        body: new FormData(journalForm),
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      });
+
+      if (response.ok) {
+        journalForm.reset();
+        quill.setContents([]);
+        dialog.showModal();
+      } else {
+        alert('Failed to save journal entry. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error saving entry:', error);
+      alert('An error occurred while saving the entry. Please try again.');
+    }
   });
 });

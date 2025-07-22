@@ -828,27 +828,3 @@ footer {
   margin-top: 0; /* Remove extra margin between suggestions and activities */
 }
 
-/* New styles for Spotify info message */
-.spotify-info-container {
-    background: var(--secondary, #f9faff);
-    border-radius: 8px;
-    padding: 12px 16px;
-    box-shadow: var(--shadow, 0 4px 12px rgba(0, 0, 0, 0.1));
-    margin-top: 10px;
-    display: inline-block;
-}
-
-.spotify-info {
-    color: var(--text-secondary, #6b7280);
-    font-size: 1rem;
-    margin: 0;
-}
-
-.spotify-info a {
-    color: var(--primary, #7c3aed);
-    text-decoration: none;
-}
-
-.spotify-info a:hover {
-    text-decoration: underline;
-}
