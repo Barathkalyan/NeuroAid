@@ -44,7 +44,7 @@
         <div class="profile-dropdown">
           <div class="profile">
             <img src="{{ profile_data.profile_pic_url if profile_data.get('profile_pic_url') else 'https://randomuser.me/api/portraits/men/32.jpg' }}" alt="Profile" id="header-profile-pic" />
-            <span>{{ session.get('user_email', 'User').split('@')[0] }}</span>
+            <span>{{ user_name }}</span>
             <i class="ri-arrow-down-s-line"></i>
           </div>
           <div class="dropdown-content">
