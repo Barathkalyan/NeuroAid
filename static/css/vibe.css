@@ -20,7 +20,8 @@
 
 .selector-group {
     display: flex;
-    gap: 15px;
+    flex-direction: column;
+    gap: 10px;
     margin-bottom: 20px;
     align-items: center;
     justify-content: center;
@@ -42,7 +43,8 @@
     color: var(--text-primary, #1f2937);
     font-size: 1rem;
     cursor: pointer;
-    margin-top:25px;
+    margin-top: 25px;
+    max-width: 200px;
 }
 
 .selector-group select:focus {
@@ -56,4 +58,42 @@
     align-items: center;
     gap: 8px;
     color: var(--text-primary, #1f2937);
+}
+
+/* New styles for Spotify info note */
+.note-container {
+    background: var(--warning-bg, #fff3cd); /* Light yellow for warning/note */
+    border: 1px solid var(--warning-border, #ffeeba);
+    border-radius: 8px;
+    padding: 12px 16px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    margin-top: 10px;
+    display: flex;
+    align-items: flex-start;
+    width: 100%;
+    max-width: 500px;
+}
+
+.note-container .note-label {
+    font-weight: 600;
+    color: var(--text-primary, #1f2937);
+    margin-right: 8px;
+    white-space: nowrap;
+}
+
+.note-container .note-text {
+    color: var(--text-secondary, #6b7280);
+    font-size: 1rem;
+    line-height: 1.5;
+    margin: 0;
+}
+
+.note-container .note-text a {
+    color: var(--primary, #7c3aed);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.note-container .note-text a:hover {
+    text-decoration: underline;
 }
