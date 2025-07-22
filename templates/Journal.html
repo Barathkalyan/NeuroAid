@@ -21,8 +21,7 @@
       border-radius: 12px;
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
       padding: 24px;
-      width: 400px; 
-      height: 200px;
+      width: 350px;
       background: var(--card-bg, #ffffff);
       color: var(--text-primary, #1f2937);
       text-align: center;
@@ -31,9 +30,6 @@
       left: 50%;
       transform: translate(-50%, -50%);
     }
-    .dia{
-      font-size: 18px;
-    }
     dialog::backdrop {
       background: rgba(0, 0, 0, 0.5);
     }
@@ -41,15 +37,33 @@
       background: linear-gradient(90deg, #7c3aed, #a855f7);
       color: white;
       border: none;
-      padding: 15px 20px;
+      padding: 10px 20px;
       border-radius: 6px;
       cursor: pointer;
-      margin-top: 30px;
+      margin-top: 15px;
       font-weight: 500;
       transition: background 0.3s;
     }
     .dialog-button:hover {
       background: linear-gradient(90deg, #6d28d9, #9333ea);
+    }
+    .voice-btn {
+      background: var(--primary, #7c3aed);
+      color: white;
+      border: none;
+      padding: 13px 17px;
+      border-radius: 6px;
+      font-size: 15px;
+      font-weight:500;
+      cursor: pointer;
+      margin-top: 12px;
+      transition: background 0.3s;
+    }
+    .voice-btn:hover {
+      background: #6d28d9;
+    }
+    .voice-btn i {
+      margin-right: 5px;
     }
   </style>
 </head>
@@ -110,6 +124,7 @@
             <span class="date">{{ current_date }}</span>
             <span class="word-count">0 words</span>
           </div>
+          <button type="button" id="voiceBtn" class="voice-btn"><i class="ri-mic-line"></i> Start Recording</button>
         </div>
 
         <form id="journal-form" method="POST" action="{{ url_for('journal') }}">
@@ -145,8 +160,8 @@
   </div>
 
   <dialog id="saveDialog">
-    <p class="dia">Your journal has been analyzed! Visit the home page for suggestions.</p>
-    <button id="dialogRedirectBtn" class="dialog-button"> Redirect</button>
+    <p>Your journal has been analyzed! Visit the home page for suggestions.</p>
+    <button id="dialogRedirectBtn" class="dialog-button">OK</button>
   </dialog>
 
   <script src="{{ url_for('static', filename='js/dropdown.js') }}"></script>
