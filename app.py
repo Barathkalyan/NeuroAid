@@ -517,12 +517,13 @@ def get_user_dropdown_data(supabase, user_id):
             .execute()
         
         profile_data = supabase.table('profiles')\
-            .select('name')\
+            .select('name, profile_pic_url')\
             .eq('user_id', user_id)\
             .limit(1)\
             .execute()
         
         user_name = profile_data.data[0]['name'] if profile_data.data and profile_data.data[0]['name'] else None
+        profile_pic_url = profile_data.data[0]['profile_pic_url'] if profile_data.data and profile_data.data[0].get('profile_pic_url') else 'https://randomuser.me/api/portraits/men/32.jpg'
         email = user_data.data[0]['email'] if user_data.data else 'Not found'
         created_date = user_data.data[0]['created_date'] if user_data.data and user_data.data[0]['created_date'] else '2025-01-01'
         
@@ -538,14 +539,16 @@ def get_user_dropdown_data(supabase, user_id):
         return {
             'user_name': user_name,
             'user_email': email,
-            'joined_date': formatted_date
+            'joined_date': formatted_date,
+            'profile_pic_url': profile_pic_url
         }
     except Exception as e:
         logger.error(f"Error fetching dropdown data for user {user_id}: {str(e)}")
         return {
             'user_name': None,
             'user_email': 'Not found',
-            'joined_date': 'January 01, 2025'
+            'joined_date': 'January 01, 2025',
+            'profile_pic_url': 'https://randomuser.me/api/portraits/men/32.jpg'
         }
 
 @app.teardown_appcontext
@@ -1506,34 +1509,32 @@ def upload_profile_pic():
         logger.warning("Unauthorized access attempt to /upload_profile_pic")
         return jsonify({'error': 'Unauthorized'}), 401
 
-    supabase = get_supabase(use_service_role=True)  # Use service role for storage operations
+    supabase = get_supabase(use_service_role=True)
     user_id = session['user']
-    file = request.files.get('profile-pics')
+    file = request.files.get('profile-pic')
 
     if not file:
         logger.info(f"No file uploaded for user_id: {user_id}")
         return jsonify({'error': 'No file uploaded'}), 400
 
-    allowed_types = ['image/jpeg', 'image/png']
-    max_size = 5 * 1024 * 1024  # 5MB
+    allowed_types = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+    max_size = 5 * 1024 * 1024  # 5MB limit
     if file.mimetype not in allowed_types:
         logger.info(f"Invalid file type {file.mimetype} for user_id: {user_id}")
-        return jsonify({'error': 'Invalid file type. Only JPEG and PNG are allowed'}), 400
+        return jsonify({'error': 'Invalid file type. Only JPEG, PNG, GIF, and WEBP are allowed'}), 400
 
     file_content = file.read()
     if len(file_content) > max_size:
         logger.info(f"File size {len(file_content)} exceeds limit for user_id: {user_id}")
         return jsonify({'error': 'File too large. Maximum size is 5MB'}), 400
 
-    # Determine file extension based on MIME type
-    file_extension = 'jpg' if file.mimetype == 'image/jpeg' else 'png'
+    file_extension = file.mimetype.split('/')[-1]
+    if file_extension == 'jpeg':
+        file_extension = 'jpg'
     file_path = f"profiles/{user_id}/{uuid.uuid4()}.{file_extension}"
 
     try:
-        # Upload to Supabase storage
-        supabase.storage.from_('profile-pics').upload(file_path, file_content)
-
-        # Construct public URL using SUPABASE_URL
+        supabase.storage.from_('profile-pics').upload(file_path, file_content, {'content-type': file.mimetype})
         file_url = f"{os.getenv('SUPABASE_URL')}/storage/v1/object/public/profile-pics/{file_path}"
         supabase.table('profiles').update({'profile_pic_url': file_url}).eq('user_id', user_id).execute()
 

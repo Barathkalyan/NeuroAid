@@ -51,7 +51,7 @@
           </div>
           <div class="profile-dropdown">
             <div class="profile">
-              <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile" id="header-profile-pic" />
+              <img src="{{ profile_pic_url | default('https://randomuser.me/api/portraits/men/32.jpg') }}" alt="Profile" id="header-profile-pic" />
               <span>{{ user_name }}</span>
               <i class="ri-arrow-down-s-line"></i>
             </div>

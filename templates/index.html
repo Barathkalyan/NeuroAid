@@ -39,8 +39,10 @@
         </div>
         <div class="profile-dropdown">
           <div class="profile">
-            <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Profile" />
-            <span>{{ user_name }}</span>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <img src="{{ profile_pic_url | default('https://randomuser.me/api/portraits/men/32.jpg') }}" alt="Profile" class="profile-pic" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary-color);" />
+              <span>{{ user_name | default('User') }}</span>
+            </div>
             <i class="ri-arrow-down-s-line"></i>
           </div>
           <div class="dropdown-content" style="z-index: 1000;">
