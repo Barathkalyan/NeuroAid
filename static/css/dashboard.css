@@ -797,6 +797,12 @@ footer {
   padding-left: 20px;
   margin: 0;
 }
+.activity-suggestions-card ul li {
+  font-size: 22px;
+  padding-top:10px;
+  text-decoration: none;
+  list-style-type: none;
+}
 
 .activity-suggestions-card p {
   color: #666;

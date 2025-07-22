@@ -65,14 +65,9 @@ SUPABASE_SERVICE_KEY = os.getenv('SUPABASE_SERVICE_KEY')
 # Initialize Supabase clients
 supabase_anon: Client = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
 supabase_service: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
-
 logger.info("Supabase clients initialized: anon_key and service_key")
 
 def huggingface_emotion_analysis(text):
-    """
-    Analyzes text using Hugging Face's emotion analysis model via Inference API.
-    Returns a list of emotions with scores compatible with existing functions.
-    """
     try:
         api_key = os.getenv('HUGGINGFACE_API_KEY')
         if not api_key:
@@ -260,67 +255,68 @@ SUGGESTION_TEMPLATES = {
 
 ACTIVITY_MAPPINGS = {
     'meditation': [
-        'a mindfulness meditation',
-        'a guided breathing session',
-        'a calming visualization',
-        'a body scan meditation',
-        'a gratitude-focused meditation',
-        'a sound bath session',
-        'a five-minute silence sit'
+        'A Mindfulness Meditation',
+        'A Guided Breathing Session',
+        'A Calming Visualization',
+        'A Body Scan Meditation',
+        'A Gratitude-Focused Meditation',
+        'A Sound Bath Session',
+        'A Five-Minute Silence Sit'
     ],
     'exercise': [
-        'a quick workout',
-        'a short run',
-        'some yoga stretches',
-        'a walk in nature',
-        'a dance session in your room',
-        'a 7-minute HIIT routine',
-        'a few sets of jumping jacks or squats'
+        'A Quick Workout',
+        'A Short Run',
+        'Some Yoga Stretches',
+        'A Walk In Nature',
+        'A Dance Session In Your Room',
+        'A 7-Minute HIIT Routine',
+        'A Few Sets Of Jumping Jacks Or Squats'
     ],
     'writing': [
-        'writing a short story',
-        'penning a poem',
-        'writing a letter to your future self',
-        'brain-dumping whatever’s on your mind',
-        'composing a gratitude list',
-        'creating a bucket list or vision board entry',
-        'exploring your emotions through journaling'
+        'Writing A Short Story',
+        'Penning A Poem',
+        'Writing A Letter To Your Future Self',
+        'Brain-Dumping Whatever’s On Your Mind',
+        'Composing A Gratitude List',
+        'Creating A Bucket List Or Vision Board Entry',
+        'Exploring Your Emotions Through Journaling'
     ],
     'music': [
-        'listening to music',
-        'playing an instrument',
-        'singing along to a song',
-        'exploring a new {language} playlist',
-        'humming a favorite melody',
-        'trying a music-making app or tool',
-        'sitting with headphones and closing your eyes'
+        'Listening To Music',
+        'Playing An Instrument',
+        'Singing Along To A Song',
+        'Exploring A New {language} Playlist',
+        'Humming A Favorite Melody',
+        'Trying A Music-Making App Or Tool',
+        'Sitting With Headphones And Closing Your Eyes'
     ],
     'reading': [
-        'reading a favorite book',
-        'exploring a new article',
-        'diving into a novel',
-        'reading a comic or graphic story',
-        'skimming a blog or newsletter',
-        'revisiting an inspiring quote or poem',
-        'learning something new from a how-to guide'
+        'Reading A Favorite Book',
+        'Exploring A New Article',
+        'Diving Into A Novel',
+        'Reading A Comic Or Graphic Story',
+        'Skimming A Blog Or Newsletter',
+        'Revisiting An Inspiring Quote Or Poem',
+        'Learning Something New From A How-To Guide'
     ],
     'mood-speech': [
-        'expressing your feelings through speech',
-        'recording a voice note about your mood',
-        'talking aloud to process your emotions',
-        'practicing a mood-affirming monologue',
-        'speaking your thoughts into a recorder',
-        'sharing your mood with a trusted friend',
-        'using voice to release your feelings'
+        'Expressing Your Feelings Through Speech',
+        'Recording A Voice Note About Your Mood',
+        'Talking Aloud To Process Your Emotions',
+        'Practicing A Mood-Affirming Monologue',
+        'Speaking Your Thoughts Into A Recorder',
+        'Sharing Your Mood With A Trusted Friend',
+        'Using Voice To Release Your Feelings'
     ],
     'mindfulness': [
-        'a short mindfulness break',
-        'practicing mindful breathing',
-        'a guided mindfulness session',
-        'a mindful walk outside',
-        'a moment of mindful observation'
+        'A Short Mindfulness Break',
+        'Practicing Mindful Breathing',
+        'A Guided Mindfulness Session',
+        'A Mindful Walk Outside',
+        'A Moment Of Mindful Observation'
     ]
 }
+
 
 
 def get_user_preferences(supabase, user_id):
