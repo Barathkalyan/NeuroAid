@@ -77,17 +77,12 @@
           <div class="quote-text"></div>
         </div>
         <div class="profile-dropdown">
-          <div class="profile">
-            {% if profile_data.get('profile_pic_url') %}
-              <img src="{{ profile_data.profile_pic_url }}" alt="Profile" id="header-profile-pic" />
-            {% else %}
-              <i class="ri-user-line profile-icon"></i>
-            {% endif %}
-            <span>{{ name }}</span>
-            <i class="ri-arrow-down-s-line"></i>
-          </div>
+            <div class="profile">
+              <img src="{{ profile_pic_url | default('https://randomuser.me/api/portraits/men/32.jpg') }}" alt="Profile" id="header-profile-pic" />
+              <span>{{ user_name }}</span>
+              <i class="ri-arrow-down-s-line"></i>
+            </div>
           <div class="dropdown-content">
-            <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
             <a href="{{ url_for('settings') }}"><i class="ri-settings-3-line"></i> Settings</a>
             <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
           </div>
