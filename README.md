@@ -102,19 +102,21 @@ The platform prioritizes user security with robust authentication (including 2FA
 
 ---
 
-## 🚀 **Getting Started**
-
-Follow these steps to set up and run **NeuroAid** locally.
-
 ---
 
-### 📦 Installation
+## 👨‍💻 Creators
 
-#### 1. Clone the Repository
+**NeuroAid** is crafted with care by:
 
+- **Barath Kalyan** – Full-stack developer, AI enthusiast!  
+  🔗 [GitHub](https://github.com/Barathkalyan) | 📫 tbarathkalyan@gmail.com
 
-git clone https://github.com/Barathkalyan/NeuroAid.git
-cd NeuroAid
+- **Krishna Kumar** - Backend Developer, LLM Model tuner, Learner!!!
+-  🔗 [GitHub](https://github.com/Barathkalyan) | 📫 
+- 
+
+We welcome contributions, feedback, or collaborations! Feel free to reach out or open an issue.
+
 
 
 
