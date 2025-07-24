@@ -42,7 +42,8 @@ required_env_vars = [
     'SUPABASE_SERVICE_KEY',
     'EMAIL_SENDER',
     'EMAIL_PASSWORD',
-    'HUGGINGFACE_API_KEY'
+    'HUGGINGFACE_API_KEY',
+    'PUBLIC_URL'
 ]
 
 missing_vars = [var for var in required_env_vars if not os.getenv(var)]
@@ -1105,7 +1106,9 @@ def signup():
             supabase.table('email_verifications').insert(verification_data).execute()
 
             # Send verification email
-            verification_link = f"{request.url_root}verify_email?token={verification_token}"
+            base_url = os.getenv('PUBLIC_URL', request.url_root.rstrip('/'))
+            verification_link = f"{base_url}/verify_email?token={verification_token}"
+            logger.info(f"Generated verification link: {verification_link}")
             email_body = f"""
             Hi,
 
@@ -1136,7 +1139,7 @@ def signup():
                 'theme': 'light',
                 'reminder_time': '09:00',
                 'notification_preference': 'email',
-                'language': 'tamil'  # From your app's default
+                'language': 'tamil'
             }
             logger.debug(f"Inserting preferences data: {preferences_data}")
             supabase.table('user_preferences').insert(preferences_data).execute()
@@ -1230,7 +1233,9 @@ def resend_verification():
         supabase.table('email_verifications').insert(verification_data).execute()
 
         # Send verification email
-        verification_link = f"{request.url_root}verify_email?token={verification_token}"
+        base_url = os.getenv('PUBLIC_URL', request.url_root.rstrip('/'))
+        verification_link = f"{base_url}/verify_email?token={verification_token}"
+        logger.info(f"Generated verification link: {verification_link}")
         email_body = f"""
         Hi,
 
@@ -2046,7 +2051,9 @@ def forgot_password():
                 'expires_at': expires_at
             }).execute()
 
-            reset_link = f"{request.url_root}reset_password/{reset_token}"  # Fixed URL format
+            base_url = os.getenv('PUBLIC_URL', request.url_root.rstrip('/'))
+            reset_link = f"{base_url}/reset_password/{reset_token}"
+            logger.info(f"Generated password reset link: {reset_link}")
             email_body = f"""
             Hi,
             
@@ -2058,10 +2065,15 @@ def forgot_password():
             Best,
             The NeuroAid Team
             """
-            send_email(email, "NeuroAid Password Reset", email_body)
-            success = 'Password reset link sent to your email.'
-            logger.info(f"Password reset email sent to {email}")
-            return render_template('forgot_password.html', error=error, success=success), 200
+            if send_email(email, "NeuroAid Password Reset", email_body):
+                success = 'Password reset link sent to your email.'
+                logger.info(f"Password reset email sent to {email}")
+                return render_template('forgot_password.html', error=error, success=success), 200
+
+            else:
+                logger.error(f"Failed to send password reset email to {email}")
+                error = 'Failed to send password reset email.'
+                return render_template('forgot_password.html', error=error, success=success), 500
 
         except Exception as e:
             logger.error(f"Error processing password reset for {email}: {str(e)}")
