@@ -2,8 +2,6 @@
 
 **A mental health journaling web application with emotion analysis and personalized support.**
 
-![NeuroAid Banner](https://github.com/Barathkalyan/NeuroAid/assets/banner.png) <!-- optional: replace with your image URL -->
-
 ---
 
 ## 🪷 Overview
