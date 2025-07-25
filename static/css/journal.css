@@ -36,59 +36,71 @@ body {
   border-radius: 5px;
 }
 
-#editor {
-  height: 600px;
-  width: 100%;
-  font-size: 23px;
-  background-color: #f4f0fa;
-  border: 1px solid #7a7a8c;
-  border-radius: 8px;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-}
+  #editor {
+      height: 550px;
+     
+      width: 100%;
+      font-size: 23px;
+      background-color: var(--secondary, #f4f0fa);
+      border: 1px solid #7a7a8c;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+      margin: 0 auto;
+    }
 
-.ql-toolbar.ql-snow {
-  border-top-left-radius: 8px;
-  border-top-right-radius: 8px;
-  border-color: #7a7a8c;
-  background-color: #fff;
-  padding: 8px;
-}
+    .ql-toolbar.ql-snow {
+      border-top-left-radius: 8px;
+      border-top-right-radius: 8px;
+      border-color: #7a7a8c;
+      background-color: #fff;
+      padding: 8px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
 
-.ql-container.ql-snow {
-  border-bottom-left-radius: 8px;
-  border-bottom-right-radius: 8px;
-  border-color: #7a7a8c;
-  font-family: 'Inter', sans-serif;
-  font-size: 16px;
-}
+    .ql-container.ql-snow {
+      border-bottom-left-radius: 8px;
+      border-bottom-right-radius: 8px;
+      border-color: #7a7a8c;
+      font-family: 'Inter', sans-serif;
+      font-size: 16px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
 
-.ql-editor {
-  background-color: #f4f0fa;
-  color: #2d2d2d;
-  font-size: 20px; /* Increased for larger, more readable text input */
-}
+ .ql-editor {
+      background-color: var(--secondary, #f4f0fa);
+      color: var(--text-primary, #2d2d2d);
+      font-size: 24px;
+    }
 
-.journal-actions {
-  margin-top: 20px;
-  text-align: right;
-}
+   .journal-actions {
+      margin-top: 20px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      width: 100%;
+      max-width: 800px;
+    }
+    .pagination {
+      display: flex;
+      justify-content: center;
+      margin-top: 20px;
+    }
 
-.save-btn:hover {
-  background-color: #6b21a8;
-}
 
-.delete-entry-btn {
-  position: absolute;
-  top: 15px;
-  right: 15px;
-  background-color: #ef4444;
-  color: white;
-  padding: 5px 10px;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  z-index: 10;  
-}
+    .delete-entry-btn {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      background: none;
+      border: none;
+      color: #b71c1c;
+      padding: 5px 10px;
+      border-radius: 5px;
+      cursor: pointer;
+      z-index: 10;}
+    
 
 .entry-card {
   position: relative;
@@ -211,15 +223,16 @@ dialog::backdrop {
   outline-offset: 2px;
 }
 
-.save-btn {
-  background: linear-gradient(90deg, #7c3aed, #a855f7);
-  color: white;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background 0.3s;
-}
-.save-btn:hover {
-  background: linear-gradient(90deg, #6d28d9, #9333ea);
-}
+    .save-btn {
+      background: linear-gradient(90deg, #7c3aed, #a855f7);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    .save-btn:hover {
+      background: linear-gradient(90deg, #6d28d9, #9333ea);
+    }
