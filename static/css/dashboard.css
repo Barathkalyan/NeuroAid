@@ -16,7 +16,7 @@ body {
   flex-direction: column;
   overflow-x: hidden;
   transition: background-color 0.3s ease, color 0.3s ease;
-  font-size: 1rem; /* Base font size: 16px */
+  font-size: 1.125rem; /* Base font size: 18px */
 }
 
 .wrapper {
@@ -54,14 +54,14 @@ body {
 }
 
 .logo i {
-  font-size: 2rem;
+  font-size: 2.25rem; /* 36px for logo icon */
   color: var(--primary);
 }
 
 .dropdown-content .user-info {
   padding: 10px;
   border-bottom: 1px solid #eee;
-  font-size: 0.875rem; /* 14px for user info */
+  font-size: 1rem; /* 16px for user info */
   color: var(--text-primary);
   z-index: 1;
 }
@@ -74,12 +74,12 @@ body {
 }
 
 .dropdown-content .user-info i {
-  font-size: 1rem; /* 16px for icons */
+  font-size: 1.125rem; /* 18px for icons */
   color: var(--primary);
 }
 
 .logo h1 {
-  font-size: 1.75rem; /* 28px for logo heading */
+  font-size: 2rem; /* 32px for logo heading */
   font-weight: 700;
   color: var(--text-primary);
 }
@@ -97,7 +97,7 @@ body {
 .sidebar nav a {
   color: var(--text-primary);
   text-decoration: none;
-  font-size: 1rem; /* 16px for nav links */
+  font-size: 1.125rem; /* 18px for nav links */
   font-weight: 500;
   padding: 12px 16px;
   border-radius: 8px;
@@ -147,21 +147,21 @@ header {
 
 .search-bar i {
   color: #fff;
-  font-size: 1.25rem; /* 20px for search icon */
+  font-size: 1.5rem; /* 24px for search icon */
 }
 
 .search-bar input {
   background: transparent;
   border: none;
   color: #fff;
-  font-size: 1rem; /* 16px for input */
+  font-size: 1.125rem; /* 18px for input */
   outline: none;
   width: 100%;
 }
 
 .search-bar input::placeholder {
   color: var(--text-secondary, rgba(255, 255, 255, 0.7));
-  font-size: 1rem; /* 16px for placeholder */
+  font-size: 1.125rem; /* 18px for placeholder */
 }
 
 .profile {
@@ -181,13 +181,13 @@ header {
 
 .profile span {
   color: #fff;
-  font-size: 1rem; /* 16px for profile text */
+  font-size: 1.125rem; /* 18px for profile text */
   font-weight: 500;
 }
 
 .profile i {
   color: #fff;
-  font-size: 1.25rem; /* 20px for profile icon */
+  font-size: 1.5rem; /* 24px for profile icon */
 }
 
 .dashboard {
@@ -196,7 +196,7 @@ header {
 
 .dashboard h2, .stats-section h2, .chart-section h2, .insights-section h2 {
   color: var(--text-primary);
-  font-size: 1.75rem; /* 28px for main section headings */
+  font-size: 2rem; /* 32px for main section headings */
   font-weight: 700; /* Bold for main headings */
   margin-bottom: 24px;
   display: flex;
@@ -205,7 +205,7 @@ header {
 }
 
 .card-content h3 {
-  font-size: 1.25rem; /* 20px for card headings */
+  font-size: 1.5rem; /* 24px for card headings */
   font-weight: 600;
   color: var(--text-primary);
   margin-bottom: 8px;
@@ -213,7 +213,7 @@ header {
 
 .card-content p, .insights-content {
   color: var(--text-secondary);
-  font-size: 0.875rem; /* 14px for secondary text */
+  font-size: 1rem; /* 16px for secondary text */
   line-height: 1.5;
 }
 
@@ -245,7 +245,7 @@ header {
 }
 
 .card-icon {
-  font-size: 2.2rem;
+  font-size: 2.5rem; /* 40px for card icons */
   color: var(--primary);
   background: var(--secondary);
   border-radius: 12px;
@@ -263,7 +263,7 @@ header {
   border: none;
   padding: 8px 16px;
   border-radius: 8px;
-  font-size: 0.875rem; /* 14px for button text */
+  font-size: 1rem; /* 16px for button text */
   font-weight: 500;
   cursor: pointer;
   transition: all 0.3s ease;
@@ -288,7 +288,7 @@ footer {
   padding: 20px;
   background: #6d28d9;
   color: var(--text-primary);
-  font-size: 1rem; /* 16px for footer text */
+  font-size: 1.125rem; /* 18px for footer text */
   font-weight: 500;
   backdrop-filter: blur(4px);
   border-top: 1px solid var(--glass-border);
@@ -309,7 +309,7 @@ footer {
   border: none;
   padding: 0.75rem 1.5rem;
   border-radius: 8px;
-  font-size: 0.875rem; /* 14px for button text */
+  font-size: 1rem; /* 16px for button text */
   font-weight: 500;
   cursor: pointer;
   transition: transform 0.2s ease, background-color 0.2s ease;
@@ -351,7 +351,7 @@ footer {
 /* Stats section */
 .stats-section h2 i {
   color: var(--primary);
-  font-size: 2rem;
+  font-size: 2.25rem; /* 36px for heading icons */
 }
 
 .stats-boxes {
@@ -381,7 +381,7 @@ footer {
 }
 
 .stat-box i {
-  font-size: 2.2rem;
+  font-size: 2.5rem; /* 40px for stat box icons */
   color: var(--primary);
   background: var(--secondary);
   border-radius: 12px;
@@ -394,14 +394,14 @@ footer {
 }
 
 .stat-box h3 {
-  font-size: 1.25rem; /* 20px for stat box headings */
+  font-size: 1.5rem; /* 24px for stat box headings */
   font-weight: 600;
   color: var(--text-primary);
   margin-bottom: 8px;
 }
 
 .stat-box p {
-  font-size: 0.875rem; /* 14px for stat box text */
+  font-size: 1rem; /* 16px for stat box text */
   color: var(--text-primary);
   line-height: 1.5;
 }
@@ -409,7 +409,7 @@ footer {
 /* Chart section */
 .chart-section h2 i {
   color: var(--primary);
-  font-size: 2rem;
+  font-size: 2.25rem; /* 36px for heading icons */
 }
 
 .chart-card {
@@ -435,7 +435,7 @@ footer {
 /* Insights section */
 .insights-section h2 i {
   color: var(--primary);
-  font-size: 2rem;
+  font-size: 2.25rem; /* 36px for heading icons */
 }
 
 .insights-content {
@@ -445,7 +445,7 @@ footer {
   border: 1px solid var(--glass-border);
   backdrop-filter: blur(12px);
   box-shadow: var(--shadow);
-  font-size: 0.875rem; /* 14px for insights text */
+  font-size: 1rem; /* 16px for insights text */
   color: var(--text-primary);
   line-height: 1.5;
 }
@@ -474,8 +474,8 @@ footer {
   opacity: 1;
 }
 
-.floating-mood-card hh3 {
-  font-size: 1.25rem; /* 20px for floating mood card heading */
+.floating-mood-card h3 {
+  font-size: 1.5rem; /* 24px for floating mood card heading */
   font-weight: 700;
   color: var(--text-primary);
   margin-bottom: 10px;
@@ -485,7 +485,7 @@ footer {
 }
 
 .floating-mood-card p {
-  font-size: 0.875rem; /* 14px for floating mood card text */
+  font-size: 1rem; /* 16px for floating mood card text */
   color: var(--text-secondary);
   line-height: 1.5;
 }
@@ -497,7 +497,7 @@ footer {
   background: none;
   border: none;
   color: var(--text-secondary);
-  font-size: 1.2rem;
+  font-size: 1.25rem; /* 20px for close icon */
   cursor: pointer;
   transition: color 0.3s ease, transform 0.2s ease;
 }
@@ -595,7 +595,7 @@ footer {
   .stats-section h2,
   .chart-section h2,
   .insights-section h2 {
-    font-size: 1.5rem; /* 24px for main headings on small screens */
+    font-size: 1.75rem; /* 28px for main headings on small screens */
   }
 
   .stat-box,
@@ -610,12 +610,12 @@ footer {
   }
 
   .search-bar i {
-    font-size: 1rem; /* 16px for search icon */
+    font-size: 1.125rem; /* 18px for search icon */
   }
 
   .search-bar input,
   .search-bar input::placeholder {
-    font-size: 0.875rem; /* 14px for input and placeholder */
+    font-size: 1rem; /* 16px for input and placeholder */
   }
 
   .chart-card {
@@ -642,7 +642,7 @@ footer {
   padding-top: 20px;
   padding-bottom: 20px;
   border-radius: 8px;
-  font-size: 0.875rem; /* 14px for button text */
+  font-size: 1rem; /* 16px for button text */
   font-weight: 500;
   cursor: pointer;
   transition: transform 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease;
@@ -705,7 +705,7 @@ footer {
 
 .welcome-message h2 {
   color: var(--text-primary);
-  font-size: 1.75rem; /* 28px for welcome heading */
+  font-size: 2rem; /* 32px for welcome heading */
   font-weight: 700;
   display: flex;
   align-items: center;
@@ -714,7 +714,7 @@ footer {
 
 .welcome-message p {
   color: var(--text-secondary);
-  font-size: 0.875rem; /* 14px for welcome text */
+  font-size: 1rem; /* 16px for welcome text */
   font-weight: 400;
   margin-top: 0.75rem;
 }
@@ -737,7 +737,7 @@ footer {
 
 .suggestions-card h3 {
   color: var(--text-primary);
-  font-size: 1.25rem; /* 20px for suggestions heading */
+  font-size: 1.5rem; /* 24px for suggestions heading */
   font-weight: 600;
   margin-bottom: 1rem;
   display: flex;
@@ -750,7 +750,7 @@ footer {
   padding-left: 1.5rem;
   margin: 0.75rem 0;
   color: var(--text-secondary);
-  font-size: 0.875rem; /* 14px for list items */
+  font-size: 1rem; /* 16px for list items */
   line-height: 1.6;
 }
 
@@ -761,7 +761,7 @@ footer {
 
 .suggestions-card p {
   color: var(--text-secondary);
-  font-size: 0.875rem; /* 14px for suggestions text */
+  font-size: 1rem; /* 16px for suggestions text */
   margin: 0.5rem 0;
 }
 
@@ -791,7 +791,7 @@ footer {
 }
 
 .recent-reflections h3 {
-  font-size: 1.25rem; /* 20px for reflections heading */
+  font-size: 1.5rem; /* 24px for reflections heading */
   font-weight: 600;
   margin-bottom: 1rem;
   color: var(--text-primary);
@@ -818,20 +818,20 @@ footer {
 
 .recent-reflections .entry-meta {
   color: var(--text-secondary);
-  font-size: 0.75rem; /* 12px for entry meta */
+  font-size: 0.875rem; /* 14px for entry meta */
   margin-bottom: 0.5rem;
 }
 
 .recent-reflections .entry-snippet {
   color: var(--text-secondary);
-  font-size: 0.875rem; /* 14px for entry snippet */
+  font-size: 1rem; /* 16px for entry snippet */
   line-height: 1.6;
   margin-bottom: 0.5rem;
 }
 
 .recent-reflections .entry-preview a {
   color: var(--primary);
-  font-size: 0.875rem; /* 14px for read more link */
+  font-size: 1rem; /* 16px for read more link */
   text-decoration: none;
   font-weight: 500;
 }
@@ -860,7 +860,7 @@ footer {
 
 .activity-suggestions-card h3 {
   color: var(--text-primary, #1f2937);
-  font-size: 1.25rem; /* 20px for activity suggestions heading */
+  font-size: 1.5rem; /* 24px for activity suggestions heading */
   font-weight: 600;
   margin-bottom: 1rem;
   display: flex;
@@ -873,13 +873,13 @@ footer {
   padding-left: 1.5rem;
   margin: 0.75rem 0;
   color: var(--text-secondary, #4b5563);
-  font-size: 0.875rem; /* 14px for list items */
+  font-size: 1rem; /* 16px for list items */
   line-height: 1.6;
 }
 
 .activity-suggestions-card p {
   color: var(--text-secondary, #4b5563);
-  font-size: 0.875rem; /* 14px for activity suggestions text */
+  font-size: 1rem; /* 16px for activity suggestions text */
   margin: 0.5rem 0;
 }
 
@@ -910,7 +910,7 @@ footer {
 
 .mood-card h3 {
   color: var(--text-primary);
-  font-size: 1.25rem; /* 20px for mood card heading */
+  font-size: 1.5rem; /* 24px for mood card heading */
   font-weight: 600;
   margin-bottom: 0.75rem;
   display: flex;
@@ -920,6 +920,6 @@ footer {
 
 .mood-card p {
   color: var(--text-secondary);
-  font-size: 0.875rem; /* 14px for mood card text */
+  font-size: 1rem; /* 16px for mood card text */
   line-height: 1.6;
 }
