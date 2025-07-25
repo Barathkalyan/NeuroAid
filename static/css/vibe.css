@@ -19,33 +19,28 @@
 }
 
 .selector-group {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    margin-bottom: 20px;
-    align-items: center;
-    justify-content: center;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
 }
+
 
 .selector-group label {
-    font-weight: 500;
-    font-size: 26px;
-    color: var(--text-primary, #1f2937);
-    margin-right: 10px;
-    margin-top: 25px;
+  font-weight: 500;
+  font-size: 1rem;
+  color: var(--text-primary, #1f2937);
 }
 
+
 .selector-group select {
-    padding: 12px 18px;
-    border-radius: 8px;
-    border: 1px solid var(--glass-border, #e5e7eb);
-    background: var(--secondary, #f9faff);
-    color: var(--text-primary, #1f2937);
-    font-size: 1rem;
-    cursor: pointer;
-    margin-top: 25px;
-    max-width: 200px;
+  padding: 10px 14px;
+  font-size: 1rem;
+  max-width: 200px;
 }
+
 
 .selector-group select:focus {
     outline: none;
@@ -62,38 +57,37 @@
 
 /* New styles for Spotify info note */
 .note-container {
-    background: var(--warning-bg, #fff3cd); /* Light yellow for warning/note */
-    border: 1px solid var(--warning-border, #ffeeba);
-    border-radius: 8px;
-    padding: 12px 16px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    margin-top: 10px;
-    display: flex;
-    align-items: flex-start;
-    width: 100%;
-    max-width: 500px;
+  background: #f9fafb; /* Very soft gray */
+  border-left: 4px solid var(--primary, #7c3aed);
+  padding: 10px 16px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  color: var(--text-secondary, #4b5563);
+  max-width: 480px;
+  line-height: 1.5;
+  margin-top: 12px;
+  box-shadow: none;
 }
 
-.note-container .note-label {
-    font-weight: 600;
-    color: var(--text-primary, #1f2937);
-    margin-right: 8px;
-    white-space: nowrap;
+.note-label {
+  display: block;
+  font-weight: 600;
+  color: var(--primary, #7c3aed);
+  margin-bottom: 4px;
+  font-size: 0.9rem;
 }
 
-.note-container .note-text {
-    color: var(--text-secondary, #6b7280);
-    font-size: 1rem;
-    line-height: 1.5;
-    margin: 0;
+.note-text {
+  color: var(--text-secondary, #4b5563);
+  font-size: 0.9rem;
 }
 
-.note-container .note-text a {
-    color: var(--primary, #7c3aed);
-    text-decoration: none;
-    font-weight: 500;
+.note-text a {
+  color: var(--primary, #7c3aed);
+  text-decoration: none;
+  font-weight: 500;
 }
 
-.note-container .note-text a:hover {
-    text-decoration: underline;
+.note-text a:hover {
+  text-decoration: underline;
 }
