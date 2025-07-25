@@ -17,7 +17,6 @@ body {
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-
 .wrapper {
   display: flex;
   flex-direction: column;
@@ -121,9 +120,6 @@ body {
   transition: margin-left 0.3s ease;
 }
 
-
-
-
 header {
   display: flex;
   justify-content: space-between;
@@ -166,8 +162,7 @@ header {
   font-size: 1.2rem;
 }
 
-
-.profile {
+.profile{
   display: flex;
   align-items: center;
   gap: 12px;
@@ -294,7 +289,7 @@ footer {
 .quick-actions {
   display: flex;
   gap: 1rem; /* Reduced from 35px for tighter layout */
-  justify-content: center; /* Center buttons for balance */
+ justify-content: center; /* Center buttons for balance */
   margin-bottom: 2rem;
 }
 
@@ -319,7 +314,6 @@ footer {
   background-color: #6d28d9;
   box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
 }
-
 
 .neuroaid-btn:active {
   transform: scale(0.98);
@@ -489,6 +483,45 @@ footer {
   width: 100%;
 }
 
+/* Floating Mood Card */
+.floating-mood-card {
+  position: fixed;
+  top: 100px;
+  right: 24px;
+  width: 300px;
+  background: var(--glass-bg, rgba(255, 255, 255, 0.1));
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  z-index: 10000;
+  transform: translateY(-100%);
+  opacity: 0;
+  transition: transform 0.5s ease, opacity 0.5s ease;
+}
+
+.floating-mood-card.show {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.floating-mood-card h3 {
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.floating-mood-card p {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
 /* Responsive Styles */
 @media (max-width: 900px) {
   .sidebar {
@@ -529,33 +562,13 @@ footer {
     max-width: 100%;
     height: 400px !important;
   }
-}
 
-.recent-reflections {
-  background-color: white;
-  border: 1px solid #ccc; /* subtle light border */
-  border-radius: 10px;
-  padding: 20px;
-  margin-bottom: 30px;
-  box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.08); /* soft 3D shadow */
-  transition: box-shadow 0.3s ease;
+  .floating-mood-card {
+    width: 250px;
+    right: 16px;
+    top: 80px;
+  }
 }
-
-.recent-reflections:hover {
-  box-shadow: 4px 4px 15px rgba(0, 0, 0, 0.12); /* slight lift on hover */
-}
-
-.recent-reflections h3 {
-  font-size: 1.5rem;
-  margin-bottom: 15px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: #333;
-  border-bottom: 1px solid #eee;
-  padding-bottom: 8px;
-}
-
 
 @media (max-width: 600px) {
   .sidebar {
@@ -583,7 +596,9 @@ footer {
 
   .stats-section h2,
   .chart-section h2,
-  .insights-section h2 {
+  .insights-sectionиру
+
+  h2 {
     font-size: 1.6rem;
   }
 
@@ -613,6 +628,12 @@ footer {
 
   .chart-card canvas {
     height: 300px !important;
+  }
+
+  .floating-mood-card {
+    width: 200px;
+    right: 12px;
+    top: 60px;
   }
 }
 
@@ -949,7 +970,6 @@ footer {
   line-height: 1.6;
 }
 
-
 /* Ensure proper spacing and order in home-section */
 .home-section > div {
   margin-bottom: 2rem; /* Consistent spacing */
@@ -958,4 +978,3 @@ footer {
 .home-section .suggestions-card + .activity-suggestions-card {
   margin-top: 0; /* Maintain no extra margin */
 }
-
