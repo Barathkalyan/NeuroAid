@@ -73,7 +73,9 @@
             <span class="date">{{ current_date }}</span>
             <span class="word-count">0 words</span>
           </div>
-          <button type="button" id="voiceBtn" class="voice-btn"><i class="ri-mic-line"></i> Start Recording</button>
+          <button class="voice-btn" aria-label="Start voice recording">
+            <i class="fas fa-microphone"></i> Voice Assist
+          </button>
         </div>
 
         <form id="journal-form" method="POST" action="{{ url_for('journal') }}">

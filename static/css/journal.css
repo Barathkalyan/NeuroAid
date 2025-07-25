@@ -8,7 +8,7 @@ body {
 .journal-section {
   width: 1400px;
   margin: 0 auto;
-  background-color: #ffffff;
+  background-color: var(--card-bg, #ffffff);
   padding: 20px;
   border-radius: 10px;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
@@ -109,7 +109,8 @@ body {
 }
 
 .entries-section h3 {
-  color: #2d2d2d;
+  color: var(--text-primary);
+  font-weight: 700;
   margin-top: 40px;
   margin-bottom: 20px;
   font-size: 28px;
@@ -117,7 +118,7 @@ body {
 
 .entry-card {
   background-color: #f4f0fa;
-  padding: 15px;
+  padding: 20px;
   border-radius: 8px;
   margin-bottom: 15px;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
@@ -129,6 +130,9 @@ body {
   font-size: 20px;
   color: #7c3aed;
   margin-bottom: 10px;
+}
+.entry-meta, .entry-content {
+  margin-bottom: 15px;
 }
 
 .delete-entry-btn {
@@ -194,3 +198,28 @@ dialog::backdrop {
 .voice-btn i {
       margin-right: 5px;
     }
+
+.voice-btn.recording {
+  background: #ef4444;
+}
+.voice-btn.recording i::before {
+  content: '\f04d'; /* Font Awesome stop icon */
+}
+
+.save-btn:focus, .voice-btn:focus, .delete-entry-btn:focus {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.save-btn {
+  background: linear-gradient(90deg, #7c3aed, #a855f7);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+.save-btn:hover {
+  background: linear-gradient(90deg, #6d28d9, #9333ea);
+}
