@@ -1,955 +1,264 @@
-# File: static/css/dashboard.css
+# File: static/css/journal.css
 ```css
-/* Remove hardcoded :root variables to rely on themes/dark.css */
-/* Variables like --card-bg, --text-primary, etc., are sourced from themes/dark.css */
-
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-  font-family: 'Inter', sans-serif;
-}
-
 body {
-  min-height: 100vh;
-  background: var(--background);
+  margin: 0;
+  font-family: 'Inter', sans-serif;
   display: flex;
-  flex-direction: column;
-  overflow-x: hidden;
-  transition: background-color 0.3s ease, color 0.3s ease;
+  background-color: #f5f5f5;
 }
 
-
-.wrapper {
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
+.journal-section {
+  width: 1400px;
+  margin: 0 auto;
+  background-color: var(--card-bg, #ffffff);
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
 
-.container {
-  display: flex;
+.journal-header {
+  margin-bottom: 30px;
 }
 
-.sidebar {
-  width: 260px;
-  background: var(--glass-bg);
-  backdrop-filter: blur(10px);
-  border-right: 1px solid var(--glass-border);
-  padding: 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 32px;
-  position: fixed;
-  top: 0;
-  left: 0;
-  height: 100vh;
-  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
-  z-index: 1000;
-  transition: all 0.3s ease;
+.journal-header h2, .journal-header p, .entry-content {
+  color: var(--text-primary);
+}
+.journal-header p {
+  color: var(--text-secondary);
 }
 
-.logo {
-  display: flex;
+.journal-meta {
   align-items: center;
-  gap: 12px;
-}
-
-.logo i {
-  font-size: 2rem;
-  color: var(--primary);
-}
-
-.dropdown-content .user-info {
-  padding: 10px;
-  border-bottom: 1px solid #eee;
-  font-size: 14px;
-  color: var(--text-primary);
-  z-index: 1;
-}
-
-.dropdown-content .user-info p {
-  margin: 5px 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.dropdown-content .user-info i {
-  font-size: 16px;
-  color: var(--primary);
-}
-
-.logo h1 {
-  font-size: 2.3rem;
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
-.logo h1 span {
-  color: var(--primary);
-}
-
-.sidebar nav {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.sidebar nav a {
-  color: var(--text-primary);
-  text-decoration: none;
-  font-size: 1.3rem;
+  justify-content: space-between;
+  color: #7c3aed;
+  font-size: 20px;
   font-weight: 500;
-  padding: 12px 16px;
+  background-color: #f4f0fa;
+  padding: 8px 12px;
+  border-radius: 5px;
+}
+
+  #editor {
+      height: 550px;
+     
+      width: 100%;
+      font-size: 23px;
+      background-color: var(--secondary, #f4f0fa);
+      border: 1px solid #7a7a8c;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+      margin: 0 auto;
+    }
+
+    .ql-toolbar.ql-snow {
+      border-top-left-radius: 8px;
+      border-top-right-radius: 8px;
+      border-color: #7a7a8c;
+      background-color: #fff;
+      padding: 8px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .ql-container.ql-snow {
+      border-bottom-left-radius: 8px;
+      border-bottom-right-radius: 8px;
+      border-color: #7a7a8c;
+      font-family: 'Inter', sans-serif;
+      font-size: 16px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+ .ql-editor {
+      background-color: var(--secondary, #f4f0fa);
+      color: var(--text-primary, #2d2d2d);
+      font-size: 24px;
+    }
+
+   .journal-actions {
+      margin-top: 20px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      width: 100%;
+      max-width: 800px;
+    }
+    .pagination {
+      display: flex;
+      justify-content: center;
+      margin-top: 20px;
+    }
+
+
+    .delete-entry-btn {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      background: none;
+      border: none;
+      color: #b71c1c;
+      padding: 5px 10px;
+      border-radius: 5px;
+      cursor: pointer;
+      z-index: 10;}
+    
+
+.entry-card {
+  position: relative;
+  background-color: #f4f0fa;
+  padding: 15px;
   border-radius: 8px;
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  transition: all 0.3s ease;
+  margin-bottom: 15px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
 }
 
-.sidebar nav a:hover,
-.sidebar nav a.active {
-  background: var(--primary);
-  color: #fff;
+/* Extracted and modified styles from inline CSS */
+.error-message {
+  color: #b71c1c;
+  background-color: #ffebee;
+  padding: 10px;
+  border-radius: 5px;
+  margin-bottom: 20px;
 }
 
-.main-content {
-  margin-left: 260px;
-  flex: 1;
-  padding: 24px;
-  display: flex;
-  flex-direction: column;
-  transition: margin-left 0.3s ease;
+.entries-section h3 {
+  color: var(--text-primary);
+  font-weight: 700;
+  margin-top: 40px;
+  margin-bottom: 20px;
+  font-size: 28px;
 }
 
+.entry-card {
+  background-color: #f4f0fa;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 15px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
 
-
-
-header {
+.entry-meta {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  padding: 16px 24px;
-  background: var(--header-bg);
-  border-radius: 12px;
-  z-index: 9998;
-  backdrop-filter: blur(10px);
-  border: 1px solid var(--glass-border);
-  margin-bottom: 24px;
-}
-
-.search-bar {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  background: rgba(255, 255, 255, 0.3);
-  padding: 14px 20px;
-  border-radius: 10px;
-  width: 450px;
-}
-
-.search-bar i {
-  color: #fff;
-  font-size: 1.5rem;
-}
-
-.search-bar input {
-  background: transparent;
-  border: none;
-  color: #fff;
-  font-size: 1.2rem;
-  outline: none;
-  width: 100%;
-}
-
-.search-bar input::placeholder {
-  color: var(--text-secondary, rgba(255, 255, 255, 0.7));
-  font-size: 1.2rem;
-}
-
-
-.profile {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  cursor: pointer;
-}
-
-.profile img {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  border: 2px solid #fff;
-  object-fit: cover;
-}
-
-.profile span {
-  color: #fff;
-  font-size: 1rem;
-  font-weight: 500;
-}
-
-.profile i {
-  color: #fff;
-  font-size: 1.2rem;
-}
-
-.dashboard {
-  flex: 1;
-}
-
-.dashboard h2, .card-content h3, .card-content p, .stats-section h2, .chart-section h2, .insights-section h2 {
-  color: var(--text-primary);
-}
-
-.card-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 24px;
-}
-
-.card {
-  background: var(--card-bg, #2a3646);
-  border-radius: 16px;
-  padding: 24px;
-  border: 1px solid var(--glass-border);
-  backdrop-filter: blur(12px);
-  box-shadow: var(--shadow);
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-  color: var(--text-primary);
-}
-
-.card:hover,
-.stat-box:hover,
-.entry-preview:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.15);
-}
-
-.card-icon {
-  font-size: 2.2rem;
-  color: var(--primary);
-  background: var(--secondary);
-  border-radius: 12px;
-  padding: 12px;
-  min-width: 48px;
-  min-height: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.card-content h3 {
-  font-size: 1.2rem;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-bottom: 8px;
-}
-
-.card-content p, .insights-content {
-  color: var(--text-secondary);
-}
-
-.card-button {
-  background: var(--accent);
-  color: #fff;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 8px;
-  font-size: 0.9rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.card-button a {
-  color: #fff;
-  text-decoration: none;
-}
-
-.card-button:hover {
-  background: #6d28d9;
-}
-
-.card.welcome .card-icon { background: #f5f3ff; color: #7c3aed; }
-.card.journal .card-icon { background: #f5f3ff; color: #8b5cf6; }
-.card.mood .card-icon { background: #f5f3ff; color: #a78bfa; }
-.card.tips .card-icon { background: #f5f3ff; color: #c084fc; }
-
-footer {
-  text-align: center;
-  padding: 20px;
-  background: #6d28d9;
-  color: var(--text-primary);
-  font-size: 1.4rem;
-  font-weight:500;
-  backdrop-filter: blur(4px);
-  border-top: 1px solid var(--glass-border);
-  margin-top: auto;
-  width: 100%;
-}
-
-.quick-actions {
-  display: flex;
-  gap: 1rem; /* Reduced from 35px for tighter layout */
-  justify-content: center; /* Center buttons for balance */
-  margin-bottom: 2rem;
-}
-
-.neuroaid-btn {
-  background-color: var(--primary);
-  color: #fff;
-  border: none;
-  padding: 0.75rem 1.5rem; /* Reduced padding for smaller buttons */
-  border-radius: 8px;
-  font-size: 0.9rem; /* Slightly smaller for balance */
-  font-weight: 500;
-  cursor: pointer;
-  transition: transform 0.2s ease, background-color 0.2s ease;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  text-decoration: none;
-}
-
-.neuroaid-btn:hover {
-  transform: scale(1.05);
-  background-color: #6d28d9;
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
-}
-
-
-.neuroaid-btn:active {
-  transform: scale(0.98);
-}
-
-.neuroaid-btn.loading {
-  position: relative;
-  pointer-events: none;
-  opacity: 0.7;
-}
-
-.neuroaid-btn.loading::after {
-  content: '';
-  width: 14px;
-  height: 14px;
-  border: 2px solid #fff;
-  border-top: 2px solid transparent;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-  right: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-}
-
-/* Stats section */
-.stats-section {
-  margin-bottom: 32px;
-}
-
-.stats-section h2 {
-  font-size: 1.8rem;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-bottom: 24px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.stats-section h2 i {
-  color: var(--primary);
-  font-size: 2rem;
-}
-
-.stats-boxes {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 24px;
-  width: 100%;
-}
-
-.stat-box {
-  background: var(--card-bg, #2a3646);
-  border-radius: 16px;
-  padding: 24px;
-  border: 1px solid var(--glass-border);
-  backdrop-filter: blur(12px);
-  box-shadow: var(--shadow);
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-  color: var(--text-primary);
-}
-
-.stat-box:hover {
-  transform: translateY(-8px);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1);
-}
-
-.stat-box i {
-  font-size: 2.2rem;
-  color: var(--primary);
-  background: var(--secondary);
-  border-radius: 12px;
-  padding: 12px;
-  min-width: 48px;
-  min-height: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.stat-box h3 {
-  font-size: 1.2rem;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-bottom: 8px;
-}
-
-.stat-box p {
-  font-size: 0.95rem;
-  color: var(--text-primary);
-  line-height: 1.5;
-}
-
-/* Chart section */
-.chart-section {
-  margin-bottom: 32px;
-}
-
-.chart-section h2 {
-  font-size: 1.8rem;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-bottom: 24px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.chart-section h2 i {
-  color: var(--primary);
-  font-size: 2rem;
-}
-
-.chart-card {
-  background: var(--card-bg, #2a3646);
-  border-radius: 16px;
-  padding: 10px;
-  border: 1px solid var(--glass-border);
-  backdrop-filter: blur(12px);
-  box-shadow: var(--shadow);
-  width: 100%;
-  min-height: 670px;
-  overflow: visible;
-  color: var(--text-primary);
-}
-
-.chart-card canvas {
-  width: 100% !important;
-  max-width: 900px;
-  height: 650px !important;
-  margin: 0 auto;
-}
-
-/* Insights section */
-.insights-section {
-  margin-bottom: 32px;
-}
-
-.insights-section h2 {
-  font-size: 1.8rem;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-bottom: 24px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.insights-section h2 i {
-  color: var(--primary);
-  font-size: 2rem;
-}
-
-.insights-content {
-  background: var(--card-bg, #2a3646);
-  border-radius: 16px;
-  padding: 24px;
-  border: 1px solid var(--glass-border);
-  backdrop-filter: blur(12px);
-  box-shadow: var(--shadow);
-  font-size: 1rem;
-  color: var(--text-primary);
-  line-height: 1.5;
-  width: 100%;
-}
-
-/* Responsive Styles */
-@media (max-width: 900px) {
-  .sidebar {
-    width: 80px;
-    align-items: center;
-  }
-
-  .sidebar .logo h1 {
-    display: none;
-  }
-
-  .sidebar nav a {
-    justify-content: center;
-    padding: 12px;
-  }
-
-  .sidebar nav a span {
-    display: none;
-  }
-
-  .main-content {
-    margin-left: 80px;
-  }
-
-  .search-bar {
-    width: 300px;
-  }
-
-  .stats-boxes {
-    grid-template-columns: 1fr;
-  }
-
-  .chart-card {
-    min-height: 670px;
-  }
-
-  .chart-card canvas {
-    max-width: 100%;
-    height: 400px !important;
-  }
-}
-
-.recent-reflections {
-  background-color: white;
-  border: 1px solid #ccc; /* subtle light border */
-  border-radius: 10px;
-  padding: 20px;
-  margin-bottom: 30px;
-  box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.08); /* soft 3D shadow */
-  transition: box-shadow 0.3s ease;
-}
-
-.recent-reflections:hover {
-  box-shadow: 4px 4px 15px rgba(0, 0, 0, 0.12); /* slight lift on hover */
-}
-
-.recent-reflections h3 {
-  font-size: 1.5rem;
-  margin-bottom: 15px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: #333;
-  border-bottom: 1px solid #eee;
-  padding-bottom: 8px;
-}
-
-
-@media (max-width: 600px) {
-  .sidebar {
-    width: 100%;
-    height: auto;
-    position: static;
-    flex-direction: row;
-    justify-content: space-between;
-    padding: 16px;
-  }
-
-  .sidebar nav {
-    flex-direction: row;
-    gap: 8px;
-  }
-
-  .main-content {
-    margin-left: 0;
-    padding: 16px;
-  }
-
-  .card-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .stats-section h2,
-  .chart-section h2,
-  .insights-section h2 {
-    font-size: 1.6rem;
-  }
-
-  .stat-box,
-  .chart-card,
-  .insights-content {
-    padding: 16px;
-  }
-
-  .search-bar {
-    width: 100%;
-    padding: 10px 16px;
-  }
-
-  .search-bar i {
-    font-size: 1.2rem;
-  }
-
-  .search-bar input,
-  .search-bar input::placeholder {
-    font-size: 1rem;
-  }
-
-  .chart-card {
-    min-height: 450px;
-  }
-
-  .chart-card canvas {
-    height: 300px !important;
-  }
-}
-
-/* Reusable button styles */
-.neuroaid-btn {
-  background-color: var(--primary);
-  margin-top: 20px;
-  color: #fff;
-  border: none;
-  padding-top: 20px;
-  padding-bottom: 20px;
-  border-radius: 8px;
-  font-size: 1rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: transform 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease;
-  display: inline-flex;
-  align-items: center;
-  gap: 15px;
-  text-decoration: none;
-}
-
-.neuroaid-btn:hover {
-  transform: scale(1.05);
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
-  background-color: #6d28d9;
-}
-
-.neuroaid-btn:active {
-  transform: scale(0.95);
-}
-
-.neuroaid-btn.loading {
-  position: relative;
-  pointer-events: none;
-  opacity: 0.7;
-}
-
-.neuroaid-btn.loading::after {
-  content: '';
-  position: absolute;
-  width: 16px;
-  height: 16px;
-  border: 2px solid #fff;
-  border-top: 2px solid transparent;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-  right: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-}
-
-@keyframes spin {
-  0% { transform: translateY(-50%) rotate(0deg); }
-  100% { transform: translateY(-50%) rotate(360deg); }
-}
-
-/* Welcome Message */
-.welcome-message {
-  margin-bottom: 2rem; /* Increased for better separation */
-  border: none; /* Removed border for cleaner look */
-  border-radius: 8px;
-  padding: 1.5rem; /* Slightly more padding for balance */
-  background-color: var(--card-bg, #2a3646); /* Consistent with dark theme */
-  box-shadow: var(--shadow-light, 0 2px 8px rgba(0, 0, 0, 0.1)); /* Softer shadow */
-}
-
-.welcome-message h2 {
-  color: var(--text-primary);
-  font-size: 1.8rem; /* Reduced from 42px for better proportion */
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.welcome-message p {
-  color: var(--text-secondary);
-  font-family: 'Inter', sans-serif;
-  font-size: 1rem; /* Reduced from 26px for readability */
-  font-weight: 400;
-  margin-top: 0.75rem;
-}
-
-/* Suggestions Card */
-.suggestions-card {
-  background: var(--card-bg, #2a3646); /* Consistent with theme */
-  border-radius: 8px;
-  padding: 1.5rem;
-  margin-bottom: 2rem;
-  border: 1px solid var(--glass-border); /* Subtle border */
-  box-shadow: var(--shadow-light, 0 2px 8px rgba(0, 0, 0, 0.1)); /* Softer shadow */
-}
-
-.suggestions-card h3 {
-  color: var(--text-primary);
-  font-size: 1.5rem; /* Reduced from 30px */
-  font-weight: 600;
-  margin-bottom: 1rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.suggestions-card ul {
-  list-style-type: disc;
-  padding-left: 1.5rem;
-  margin: 0.75rem 0;
-  color: var(--text-secondary);
-  font-size: 1rem; /* Reduced from 22px */
-  line-height: 1.6; /* Improved readability */
-}
-
-.suggestions-card ul li {
-  margin-bottom: 0.5rem;
-  display: block; /* Removed flex for simplicity */
-}
-
-.suggestions-card p {
-  color: var(--text-secondary);
-  font-size: 1rem;
-  margin: 0.5rem 0;
-}
-
-.suggestions-card p a {
-  color: var(--primary);
-  text-decoration: none;
-}
-
-.suggestions-card p a:hover {
-  text-decoration: underline;
-}
-
-/* Recent Reflections */
-.recent-reflections {
-  background: var(--card-bg, #2a3646); /* Consistent with theme */
-  border-radius: 8px;
-  padding: 1.5rem;
-  margin-bottom: 2rem;
-  border: 1px solid var(--glass-border); /* Subtle border */
-  box-shadow: var(--shadow-light, 0 2px 8px rgba(0, 0, 0, 0.1));
-}
-
-.recent-reflections h3 {
-  font-size: 1.5rem; /* Reduced from 1.5rem for consistency */
-  font-weight: 600;
-  margin-bottom: 1rem;
-  color: var(--text-primary);
-  border-bottom: 1px solid var(--glass-border); /* Subtle divider */
-  padding-bottom: 0.5rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.recent-reflections .entry-preview {
-  background: transparent; /* No inner background to blend with section */
-  border: 1px solid var(--glass-border);
-  border-radius: 8px;
-  padding: 1rem;
-  margin-bottom: 1rem;
-  box-shadow: none; /* Removed shadow to reduce noise */
-  transition: transform 0.2s ease;
-}
-
-.recent-reflections .entry-preview:hover {
-  transform: translateY(-4px);
-}
-
-.recent-reflections .entry-meta {
-  color: var(--text-secondary);
-  font-size: 0.9rem; /* Reduced from 20px */
-  margin-bottom: 0.5rem;
-}
-
-.recent-reflections .entry-snippet {
-  color: var(--text-secondary);
-  font-size: 1rem; /* Reduced for consistency */
-  line-height: 1.6;
-  margin-bottom: 0.5rem;
-}
-
-.recent-reflections .entry-preview a {
-  color: var(--primary);
-  font-size: 0.9rem;
-  text-decoration: none;
-  font-weight: 500;
-}
-
-.recent-reflections .entry-preview a:hover {
-  color: var(--button-hover);
-  text-decoration: underline;
-}
-
-/* Existing styles for suggestions-card (assumed) - ensure these are present */
-.suggestions-card {
-  background: #fff;
-  border-radius: 8px;
-  padding: 1rem;
-  margin-bottom: 1.5rem;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.suggestions-card h3 {
-  color: var(--text-primary);
-  font-size: 30px;
-  margin-bottom: 15px;
-  display: flex;
-  align-items: center;
-}
-
-.suggestions-card h3 i {
-  margin-right: 0.5rem;
-}
-
-.suggestions-card ul {
-  list-style-type: disc;
-  padding-left: 20px;
-  margin: 0;
-}
-
-.suggestions-card p {
-  color: #666;
-  margin: 0.5rem 0 0;
-}
-
-.suggestions-card p a {
+  font-size: 20px;
   color: #7c3aed;
-  text-decoration: none;
+  margin-bottom: 10px;
+}
+.entry-meta, .entry-content {
+  margin-bottom: 15px;
 }
 
-.suggestions-card p a:hover {
-  text-decoration: underline;
+.delete-entry-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding-top: 10px;
+  padding-left: 10px;
+  color: #b71c1c;
 }
 
-/* Activity Suggestions Card */
-.activity-suggestions-card {
-  background: var(--card-bg, #ffffff);
-  color: var(--text-primary, #1f2937);
-  border-radius: 12px;
-  padding: 24px;
-  margin-bottom: 2rem;
-  box-shadow: var(--shadow, 0 4px 12px rgba(0, 0, 0, 0.1));
-  border: 1px solid #e5e7eb;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+.entry-content {
+  color: #2d2d2d;
+  font-size: 18px;
 }
 
-.activity-suggestions-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+dialog {
+      border: none;
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+      padding: 24px;
+      width: 350px;
+      background: var(--card-bg, #ffffff);
+      color: var(--text-primary, #1f2937);
+      text-align: center;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+dialog::backdrop {
+      background: rgba(0, 0, 0, 0.5);
+    }
+.dialog-button {
+      background: linear-gradient(90deg, #7c3aed, #a855f7);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-top: 15px;
+      font-weight: 500;
+      transition: background 0.3s;
+    }
+.dialog-button:hover {
+      background: linear-gradient(90deg, #6d28d9, #9333ea);
+    }
+.voice-btn {
+      background: var(--primary, #7c3aed);
+      color: white;
+      border: none;
+      padding: 13px 17px;
+      border-radius: 6px;
+      font-size: 15px;
+      font-weight:500;
+      cursor: pointer;
+      margin-top: 12px;
+      transition: background 0.3s;
+    }
+.voice-btn:hover {
+      background: #6d28d9;
+    }
+.voice-btn i {
+      margin-right: 5px;
+    }
+
+.voice-btn.recording {
+  background: #ef4444;
+}
+.voice-btn.recording i::before {
+  content: '\f04d'; /* Font Awesome stop icon */
 }
 
-.activity-suggestions-card h3 {
-  color: var(--text-primary, #1f2937);
-  font-size: 1.5rem;
-  font-weight: 600;
-  margin-bottom: 1rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+.save-btn:focus, .voice-btn:focus, .delete-entry-btn:focus {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
 }
 
-.activity-suggestions-card ul {
-  list-style-type: disc;
-  padding-left: 1.5rem;
-  margin: 0.75rem 0;
-  color: var(--text-secondary, #4b5563);
-  font-size: 1rem;
-  line-height: 1.6;
-}
+    .save-btn {
+      background: linear-gradient(90deg, #7c3aed, #a855f7);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
 
-.activity-suggestions-card p {
-  color: var(--text-secondary, #4b5563);
-  font-size: 1rem;
-  margin: 0.5rem 0;
-}
-
-.activity-suggestions-card p a {
-  color: var(--primary);
-  text-decoration: none;
-}
-
-.activity-suggestions-card p a:hover {
-  text-decoration: underline;
-}
-
-/* Ensure proper spacing and order in home-section */
-.home-section > div {
-  margin-bottom: 2rem; /* Consistent spacing */
-}
-
-.home-section .suggestions-card + .activity-suggestions-card {
-  margin-top: 0; /* Maintain no extra margin */
-}
-
-/* 🔁 Give all main cards the same hover effect */
-/* 🔁 Apply hover to ALL card types */
-.card:hover,
-.stat-box:hover,
-.insights-content:hover,
-.activity-suggestions-card:hover,
-.suggestion-card:hover,
-.reflection-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-/* 🔁 Also make sure transitions are smooth when not hovered */
-.card,
-.stat-box,
-.insights-content,
-.activity-suggestions-card,
-.suggestion-card,
-.reflection-card {
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
+    .save-btn:hover {
+      background: linear-gradient(90deg, #6d28d9, #9333ea);
+    }
 ```
 
-# File: templates/index.html
+# File: templates/Journal.html
 ```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>NeuroAid - Home</title>
+  <title>NeuroAid - Journal</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/journal.css') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dropdown.css') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/welcome.css') }}" />
   <link id="theme-stylesheet" rel="stylesheet" href="{{ url_for('static', filename='css/themes/' + theme + '.css') }}">
+  <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
+  <script src="{{ url_for('static', filename='js/journal.js') }}" defer></script>
 </head>
 <body>
   <div class="sidebar">
@@ -958,8 +267,8 @@ footer {
       <h1>Neuro<span>Aid</span></h1>
     </div>
     <nav>
-      <a href="{{ url_for('index') }}" class="active"><i class="ri-home-5-line"></i> Home</a>
-      <a href="{{ url_for('journal') }}"><i class="ri-booklet-line"></i> Journal</a>
+      <a href="{{ url_for('index') }}"><i class="ri-home-5-line"></i> Home</a>
+      <a href="{{ url_for('journal') }}" class="active"><i class="ri-booklet-line"></i> Journal</a>
       <a href="{{ url_for('progress') }}"><i class="ri-bar-chart-2-line"></i> Progress</a>
       <a href="{{ url_for('vibe') }}"><i class="ri-music-2-line"></i> Vibe</a>
       <a href="{{ url_for('gratitude') }}"><i class="ri-heart-line"></i> Gratitude</a>
@@ -973,20 +282,18 @@ footer {
     <main class="main-content">
       <header>
         <div class="welcome-container">
-          <div class="welcome-text">Welcome to NeuroAid, {{ user_name }}</div>
+          <div class="welcome-text">Welcome to NeuroAid, {{ user_name | default('Unknown') }}</div>
           <div class="quote-text"></div>
         </div>
         <div class="profile-dropdown">
           <div class="profile">
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <img src="{{ profile_pic_url | default('https://randomuser.me/api/portraits/men/32.jpg') }}" alt="Profile" class="profile-pic"
-              <span>{{ user_name | default('User') }}</span>
-            </div>
+            <img src="{{ profile_pic_url | default('https://randomuser.me/api/portraits/men/32.jpg') }}" alt="Profile" />
+            <span>{{ user_name | default('Unknown') }}</span>
             <i class="ri-arrow-down-s-line"></i>
           </div>
           <div class="dropdown-content" style="z-index: 1000;">
             <div class="user-info">
-              <p><i class="ri-user-line"></i> {{ user_name }}</p>
+              <p><i class="ri-user-line"></i> {{ user_name | default('Unknown') }}</p>
               <p><i class="ri-mail-line"></i> {{ user_email }}</p>
               <p><i class="ri-calendar-line"></i> Joined: {{ joined_date }}</p>
             </div>
@@ -997,65 +304,60 @@ footer {
         </div>
       </header>
 
-      <section class="home-section">
-        <div class="welcome-message">
-          <h2><i class="ri-home-5-line"></i> Welcome to NeuroAid</h2>
-          <p>Your companion for mental health and self-reflection.</p>
-        </div>
-        
-        <div class="suggestions-card">
-          <h3><i class="ri-lightbulb-line"></i> Today's Suggestions</h3>
-          <p>Your mood today: {{ mood_description }}</p>
-          {% if suggestions is defined and suggestions %}
-          <ul>
-            {% for suggestion in suggestions %}
-            <li>{{ suggestion }}</li>
-            {% endfor %}
-          </ul>
-          {% else %}
-          <p>No suggestions available. Write a journal entry!</p>
-          {% endif %}
+      <section class="journal-section">
+        {% if error %}
+          <div class="error-message">
+            {{ error }}
+          </div>
+        {% endif %}
+        <div class="journal-header">
+          <h2><i class="ri-booklet-line"></i> Your Daily Journal</h2>
+          <p>Write freely and reflect on your day to boost self-awareness.</p>
+          <div class="journal-meta">
+            <span class="date">{{ current_date }}</span>
+            <span class="word-count">0 words</span>
+          </div>
+          <button class="voice-btn" aria-label="Start voice recording">
+            <i class="fas fa-microphone"></i> Voice Assist
+          </button>
         </div>
 
-        <div class="activity-suggestions-card">
-          <h3><i class="ri-star-line"></i> Activity Suggestions</h3>
-          {% if activities is defined and activities %}
-          <ul>
-            {% for activity in activities %}
-            <li>{{ activity }}</li>
-            {% endfor %}
-          </ul>
-          {% else %}
-          <p>No activity suggestions available.</p>
-          {% endif %}
-        </div>
+        <form id="journal-form" method="POST" action="{{ url_for('journal') }}">
+          <div id="editor" aria-label="Journal entry text editor"></div>
+          <input type="hidden" name="content" id="journal-content">
+          <div class="journal-actions">
+            <button type="submit" class="neuroaid-btn"><i class="ri-save-line"></i> Save Entry</button>
+          </div>
+        </form>
 
-        <div class="recent-reflections">
-          <h3><i class="ri-booklet-line"></i> Recent Reflections</h3>
-          {% if recent_entries is defined and recent_entries %}
-            {% for entry in recent_entries %}
-              <div class="entry-preview">
-                <div class="entry-meta">{{ entry.created_at }}</div>
-                <div class="entry-snippet">{{ entry.content_snippet | safe }}</div>
-                <a href="{{ url_for('journal') }}">Read More</a>
-              </div>
-            {% endfor %}
-          {% else %}
-            <p>No recent entries.</p>
-          {% endif %}
-        </div>
-
-        <div class="quick-actions">
-          <a href="{{ url_for('journal') }}" class="neuroaid-btn"><i class="ri-booklet-line"></i> Write a Journal Entry</a>
-          <a href="{{ url_for('progress') }}" class="neuroaid-btn"><i class="ri-bar-chart-2-line"></i> View Progress</a>
-        </div>
+        {% if entries %}
+          <div class="entries-section">
+            <h3>Your Journal Entries</h3>
+            <div class="entries-list">
+              {% for entry in entries %}
+                <div class="entry-card" id="entry-{{ entry.id }}">
+                  <div class="entry-meta">
+                    <span>{{ entry.created_at }}</span>
+                    <button class="delete-entry-btn" data-id="{{ entry.id }}"><i class="ri-delete-bin-line"></i></button>
+                  </div>
+                  <div class="entry-content">{{ entry.content | safe }}</div>
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+        {% endif %}
       </section>
     </main>
 
-    <footer>
+    <footer>  
       <span>© 2025 NeuroAid. Your mental health companion.</span>
     </footer>
   </div>
+
+  <dialog id="saveDialog">
+    <p>Your journal has been analyzed! Visit the home page for suggestions.</p>
+    <button id="dialogRedirectBtn" class="dialog-button">OK</button>
+  </dialog>
 
   <script src="{{ url_for('static', filename='js/dropdown.js') }}"></script>
   <script src="{{ url_for('static', filename='js/welcome.js') }}"></script>
