@@ -13,7 +13,10 @@ body {
   background: var(--background);
   display: flex;
   flex-direction: column;
+  overflow-x: hidden;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
+
 
 .wrapper {
   display: flex;
@@ -115,7 +118,9 @@ body {
   padding: 24px;
   display: flex;
   flex-direction: column;
+  transition: margin-left 0.3s ease;
 }
+
 
 
 
@@ -157,9 +162,10 @@ header {
 }
 
 .search-bar input::placeholder {
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--text-secondary, rgba(255, 255, 255, 0.7));
   font-size: 1.2rem;
 }
+
 
 .profile {
   display: flex;
@@ -215,9 +221,11 @@ header {
   color: var(--text-primary);
 }
 
-.card:hover {
-  transform: translateY(-8px);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1);
+.card:hover,
+.stat-box:hover,
+.entry-preview:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.15);
 }
 
 .card-icon {
@@ -307,9 +315,11 @@ footer {
 }
 
 .neuroaid-btn:hover {
-  transform: scale(1.03); /* Subtler scale effect */
-  background-color: var(--accent, #6d28d9);
+  transform: scale(1.05);
+  background-color: #6d28d9;
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
 }
+
 
 .neuroaid-btn:active {
   transform: scale(0.98);
@@ -662,17 +672,23 @@ footer {
 
 /* Welcome Message */
 .welcome-message {
-  margin-bottom: 2rem; /* Increased for better separation */
-  border: none; /* Removed border for cleaner look */
+  margin-bottom: 2rem;
+  border: none;
   border-radius: 8px;
-  padding: 1.5rem; /* Slightly more padding for balance */
-  background-color: var(--card-bg, #2a3646); /* Consistent with dark theme */
-  box-shadow: var(--shadow-light, 0 2px 8px rgba(0, 0, 0, 0.1)); /* Softer shadow */
+  padding: 1.5rem;
+  background-color: var(--card-bg, #2a3646);
+  box-shadow: var(--shadow-light, 0 2px 8px rgba(0, 0, 0, 0.1));
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.welcome-message:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
 }
 
 .welcome-message h2 {
   color: var(--text-primary);
-  font-size: 1.8rem; /* Reduced from 42px for better proportion */
+  font-size: 1.8rem;
   font-weight: 600;
   display: flex;
   align-items: center;
@@ -682,24 +698,30 @@ footer {
 .welcome-message p {
   color: var(--text-secondary);
   font-family: 'Inter', sans-serif;
-  font-size: 1rem; /* Reduced from 26px for readability */
+  font-size: 1rem;
   font-weight: 400;
   margin-top: 0.75rem;
 }
 
 /* Suggestions Card */
 .suggestions-card {
-  background: var(--card-bg, #2a3646); /* Consistent with theme */
+  background: var(--card-bg, #2a3646);
   border-radius: 8px;
   padding: 1.5rem;
   margin-bottom: 2rem;
-  border: 1px solid var(--glass-border); /* Subtle border */
-  box-shadow: var(--shadow-light, 0 2px 8px rgba(0, 0, 0, 0.1)); /* Softer shadow */
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-light, 0 2px 8px rgba(0, 0, 0, 0.1));
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.suggestions-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
 }
 
 .suggestions-card h3 {
   color: var(--text-primary);
-  font-size: 1.5rem; /* Reduced from 30px */
+  font-size: 1.5rem;
   font-weight: 600;
   margin-bottom: 1rem;
   display: flex;
@@ -712,13 +734,13 @@ footer {
   padding-left: 1.5rem;
   margin: 0.75rem 0;
   color: var(--text-secondary);
-  font-size: 1rem; /* Reduced from 22px */
-  line-height: 1.6; /* Improved readability */
+  font-size: 1rem;
+  line-height: 1.6;
 }
 
 .suggestions-card ul li {
   margin-bottom: 0.5rem;
-  display: block; /* Removed flex for simplicity */
+  display: block;
 }
 
 .suggestions-card p {
@@ -738,20 +760,26 @@ footer {
 
 /* Recent Reflections */
 .recent-reflections {
-  background: var(--card-bg, #2a3646); /* Consistent with theme */
+  background: var(--card-bg, #2a3646);
   border-radius: 8px;
   padding: 1.5rem;
   margin-bottom: 2rem;
-  border: 1px solid var(--glass-border); /* Subtle border */
+  border: 1px solid var(--glass-border);
   box-shadow: var(--shadow-light, 0 2px 8px rgba(0, 0, 0, 0.1));
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.recent-reflections:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
 }
 
 .recent-reflections h3 {
-  font-size: 1.5rem; /* Reduced from 1.5rem for consistency */
+  font-size: 1.5rem;
   font-weight: 600;
   margin-bottom: 1rem;
   color: var(--text-primary);
-  border-bottom: 1px solid var(--glass-border); /* Subtle divider */
+  border-bottom: 1px solid var(--glass-border);
   padding-bottom: 0.5rem;
   display: flex;
   align-items: center;
@@ -759,12 +787,12 @@ footer {
 }
 
 .recent-reflections .entry-preview {
-  background: transparent; /* No inner background to blend with section */
+  background: transparent;
   border: 1px solid var(--glass-border);
   border-radius: 8px;
   padding: 1rem;
   margin-bottom: 1rem;
-  box-shadow: none; /* Removed shadow to reduce noise */
+  box-shadow: none;
   transition: transform 0.2s ease;
 }
 
@@ -774,13 +802,13 @@ footer {
 
 .recent-reflections .entry-meta {
   color: var(--text-secondary);
-  font-size: 0.9rem; /* Reduced from 20px */
+  font-size: 0.9rem;
   margin-bottom: 0.5rem;
 }
 
 .recent-reflections .entry-snippet {
   color: var(--text-secondary);
-  font-size: 1rem; /* Reduced for consistency */
+  font-size: 1rem;
   line-height: 1.6;
   margin-bottom: 0.5rem;
 }
@@ -840,16 +868,24 @@ footer {
 
 /* Activity Suggestions Card */
 .activity-suggestions-card {
-  background: var(--card-bg, #f7f7f7);
-  border-radius: 8px;
-  padding: 1.5rem;
+  background: var(--card-bg, #ffffff);
+  color: var(--text-primary, #1f2937);
+  border-radius: 12px;
+  padding: 24px;
   margin-bottom: 2rem;
-  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow, 0 4px 12px rgba(0, 0, 0, 0.1));
+  border: 1px solid #e5e7eb;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.activity-suggestions-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
 }
 
 .activity-suggestions-card h3 {
-  color: var(--text-primary);
-  font-size: 1.5rem; /* Reduced from 30px */
+  color: var(--text-primary, #1f2937);
+  font-size: 1.5rem;
   font-weight: 600;
   margin-bottom: 1rem;
   display: flex;
@@ -861,17 +897,13 @@ footer {
   list-style-type: disc;
   padding-left: 1.5rem;
   margin: 0.75rem 0;
-  color: var(--text-secondary);
-  font-size: 1rem; /* Reduced from 22px */
+  color: var(--text-secondary, #4b5563);
+  font-size: 1rem;
   line-height: 1.6;
 }
 
-.activity-suggestions-card ul li {
-  margin-bottom: 0.5rem;
-}
-
 .activity-suggestions-card p {
-  color: var(--text-secondary);
+  color: var(--text-secondary, #4b5563);
   font-size: 1rem;
   margin: 0.5rem 0;
 }
@@ -893,3 +925,4 @@ footer {
 .home-section .suggestions-card + .activity-suggestions-card {
   margin-top: 0; /* Maintain no extra margin */
 }
+
