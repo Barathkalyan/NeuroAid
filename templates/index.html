@@ -40,7 +40,7 @@
         <div class="profile-dropdown">
           <div class="profile">
             <div style="display: flex; align-items: center; gap: 8px;">
-              <img src="{{ profile_pic_url | default('https://randomuser.me/api/portraits/men/32.jpg') }}" alt="Profile" class="profile-pic"
+              <img src="{{ profile_pic_url | default('https://randomuser.me/api/portraits/men/32.jpg') }}" alt="Profile" class="profile-pic">
               <span>{{ user_name | default('User') }}</span>
             </div>
             <i class="ri-arrow-down-s-line"></i>
@@ -63,10 +63,14 @@
           <h2><i class="ri-home-5-line"></i> Welcome to NeuroAid</h2>
           <p>Your companion for mental health and self-reflection.</p>
         </div>
-        
+
+        <div class="mood-card">
+          <h3><i class="ri-emotion-line"></i> Today's Mood</h3>
+          <p>Your mood today: {{ mood_description }}</p>
+        </div>
+
         <div class="suggestions-card">
           <h3><i class="ri-lightbulb-line"></i> Today's Suggestions</h3>
-          <p>Your mood today: {{ mood_description }}</p>
           {% if suggestions is defined and suggestions %}
           <ul>
             {% for suggestion in suggestions %}
