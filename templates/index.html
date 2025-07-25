@@ -1,123 +1,143 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NeuroAid</title>
-    <link rel="stylesheet" href="base.css">
-    <link rel="stylesheet" href="dropdown.css">
-    <link rel="stylesheet" href="dashboard.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>NeuroAid - Home</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dropdown.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/welcome.css') }}" />
+  <link id="theme-stylesheet" rel="stylesheet" href="{{ url_for('static', filename='css/themes/' + theme + '.css') }}">
 </head>
 <body>
-    <div class="wrapper">
-        <div class="container">
-            <aside class="sidebar">
-                <div class="logo">
-                    <i class="fas fa-brain"></i>
-                    <h1>Neuro<span>Aid</span></h1>
-                </div>
-                <nav>
-                    <a href="#" class="active"><i class="fas fa-home"></i><span>Home</span></a>
-                    <a href="#"><i class="fas fa-book"></i><span>Journal</span></a>
-                    <a href="#"><i class="fas fa-chart-line"></i><span>Progress</span></a>
-                    <a href="#"><i class="fas fa-smile"></i><span>Vibe</span></a>
-                    <a href="#"><i class="fas fa-heart"></i><span>Gratitude</span></a>
-                    <a href="#"><i class="fas fa-cog"></i><span>Settings</span></a>
-                    <a href="#"><i class="fas fa-user"></i><span>Profile</span></a>
-                    <a href="#"><i class="fas fa-sign-out-alt"></i><span>Logout</span></a>
-                </nav>
-            </aside>
-            <div class="main-content">
-                <header>
-                    <div class="search-bar">
-                        <i class="fas fa-search"></i>
-                        <input type="text" placeholder="Search your journal...">
-                    </div>
-                    <div class="profile profile-dropdown">
-                        <img src="https://via.placeholder.com/40" alt="User Avatar">
-                        <span>{{ user_name | default('User') }}</span>
-                        <i class="fas fa-chevron-down"></i>
-                        <div class="dropdown-content">
-                            <div class="user-info">
-                                <p><i class="fas fa-user"></i>{{ user_name }}</p>
-                                <p><i class="fas fa-envelope"></i>{{ user_email }}</p>
-                                <p><i class="fas fa-calendar-alt"></i>Joined: {{ joined_date }}</p>
-                            </div>
-                            <a href="#"><i class="fas fa-user"></i>Profile</a>
-                            <a href="#"><i class="fas fa-cog"></i>Settings</a>
-                            <a href="#"><i class="fas fa-sign-out-alt"></i>Logout</a>
-                        </div>
-                    </div>
-                </header>
-                <section class="dashboard">
-                    <div class="home-section">
-                        <div class="welcome-message">
-                            <h2><i class="fas fa-hand-holding-heart"></i>Welcome to NeuroAid, {{ user_name }}</h2>
-                            <p>Your companion for mental health and self-reflection.</p>
-                        </div>
-                        <div class="mood-card floating-mood-card">
-                            <h3><i class="fas fa-smile"></i>Today's Mood</h3>
-                            <p>Your mood today: {{ mood_description }}</p>
-                        </div>
-                        <div class="suggestions-card">
-                            <h3><i class="fas fa-lightbulb"></i>Today's Suggestions</h3>
-                            {% if suggestions is defined and suggestions %}
-                            <ul>
-                                {% for suggestion in suggestions %}
-                                <li>{{ suggestion }}</li>
-                                {% endfor %}
-                            </ul>
-                            {% else %}
-                            <p>No suggestions available. <a href="#">Write a journal entry!</a></p>
-                            {% endif %}
-                        </div>
-                        <div class="activity-suggestions-card">
-                            <h3><i class="fas fa-running"></i>Activity Suggestions</h3>
-                            {% if activities is defined and activities %}
-                            <ul>
-                                {% for activity in activities %}
-                                <li>{{ activity }}</li>
-                                {% endfor %}
-                            </ul>
-                            {% else %}
-                            <p>No activity suggestions available.</p>
-                            {% endif %}
-                        </div>
-                        <div class="recent-reflections">
-                            <h3><i class="fas fa-book-open"></i>Recent Reflections</h3>
-                            {% if recent_entries is defined and recent_entries %}
-                            {% for entry in recent_entries %}
-                            <div class="entry-preview">
-                                <div class="entry-meta">{{ entry.created_at }}</div>
-                                <div class="entry-snippet">{{ entry.content_snippet | safe }}</div>
-                                <a href="#">Read More</a>
-                            </div>
-                            {% endfor %}
-                            {% else %}
-                            <p>No recent entries.</p>
-                            {% endif %}
-                        </div>
-                        <div class="quick-actions">
-                            <a href="#" class="neuroaid-btn"><i class="fas fa-pen"></i>Write a Journal Entry</a>
-                            <a href="#" class="neuroaid-btn"><i class="fas fa-chart-line"></i>View Progress</a>
-                        </div>
-                    </div>
-                </section>
-            </div>
-        </div>
-        <footer>
-            <p>© 2025 NeuroAid. Your mental health companion.</p>
-        </footer>
+  <div class="sidebar">
+    <div class="logo">
+      <i class="ri-brain-line"></i>
+      <h1>Neuro<span>Aid</span></h1>
     </div>
-    <script>
-        // Add JavaScript to handle the floating mood card popup on page load
-        document.addEventListener('DOMContentLoaded', () => {
-            const moodCard = document.querySelector('.floating-mood-card');
-            moodCard.classList.add('show');
-            setTimeout(() => {
-                moodCard.classList.remove('show');
-            }, 5000); // Hide after 5 seconds
-        });
-    </script>
+    <nav>
+      <a href="{{ url_for('index') }}" class="active"><i class="ri-home-5-line"></i> Home</a>
+      <a href="{{ url_for('journal') }}"><i class="ri-booklet-line"></i> Journal</a>
+      <a href="{{ url_for('progress') }}"><i class="ri-bar-chart-2-line"></i> Progress</a>
+      <a href="{{ url_for('vibe') }}"><i class="ri-music-2-line"></i> Vibe</a>
+      <a href="{{ url_for('gratitude') }}"><i class="ri-heart-line"></i> Gratitude</a>
+      <a href="{{ url_for('settings') }}"><i class="ri-settings-3-line"></i> Settings</a>
+      <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
+      <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
+    </nav>
+  </div>
+
+  <div class="wrapper">
+    <main class="main-content">
+      <header>
+        <div class="welcome-container">
+          <div class="welcome-text">Welcome to NeuroAid, {{ user_name }}</div>
+          <div class="quote-text"></div>
+        </div>
+        <div class="profile-dropdown">
+          <div class="profile">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <img src="{{ profile_pic_url | default('https://randomuser.me/api/portraits/men/32.jpg') }}" alt="Profile" class="profile-pic">
+              <span>{{ user_name | default('User') }}</span>
+            </div>
+            <i class="ri-arrow-down-s-line"></i>
+          </div>
+          <div class="dropdown-content" style="z-index: 1000;">
+            <div class="user-info">
+              <p><i class="ri-user-line"></i> {{ user_name }}</p>
+              <p><i class="ri-mail-line"></i> {{ user_email }}</p>
+              <p><i class="ri-calendar-line"></i> Joined: {{ joined_date }}</p>
+            </div>
+            <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
+            <a href="{{ url_for('settings') }}"><i class="ri-settings-3-line"></i> Settings</a>
+            <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
+          </div>
+        </div>
+      </header>
+
+      <section class="home-section">
+        <div class="welcome-message">
+          <h2><i class="ri-home-5-line"></i> Welcome to NeuroAid</h2>
+          <p>Your companion for mental health and self-reflection.</p>
+        </div>
+
+        <div class="mood-card floating-mood-card">
+          <h3><i class="ri-emotion-line"></i> Today's Mood</h3>
+          <p>{% if mood_description %}{{ mood_description }}{% else %}Write a journal today{% endif %}</p>
+          <button class="close-mood-card"><i class="ri-close-line"></i></button>
+        </div>
+
+        <div class="suggestions-card">
+          <h3><i class="ri-lightbulb-line"></i> Today's Suggestions</h3>
+          {% if suggestions is defined and suggestions %}
+          <ul>
+            {% for suggestion in suggestions %}
+            <li>{{ suggestion }}</li>
+            {% endfor %}
+          </ul>
+          {% else %}
+          <p>No suggestions available. Write a journal entry!</p>
+          {% endif %}
+        </div>
+
+        <div class="activity-suggestions-card">
+          <h3><i class="ri-star-line"></i> Activity Suggestions</h3>
+          {% if activities is defined and activities %}
+          <ul>
+            {% for activity in activities %}
+            <li>{{ activity }}</li>
+            {% endfor %}
+          </ul>
+          {% else %}
+          <p>No activity suggestions available.</p>
+          {% endif %}
+        </div>
+
+        <div class="recent-reflections">
+          <h3><i class="ri-booklet-line"></i> Recent Reflections</h3>
+          {% if recent_entries is defined and recent_entries %}
+            {% for entry in recent_entries %}
+              <div class="entry-preview">
+                <div class="entry-meta">{{ entry.created_at }}</div>
+                <div class="entry-snippet">{{ entry.content_snippet | safe }}</div>
+                <a href="{{ url_for('journal') }}">Read More</a>
+              </div>
+            {% endfor %}
+          {% else %}
+            <p>No recent entries.</p>
+          {% endif %}
+        </div>
+
+        <div class="quick-actions">
+          <a href="{{ url_for('journal') }}" class="neuroaid-btn"><i class="ri-booklet-line"></i> Write a Journal Entry</a>
+          <a href="{{ url_for('progress') }}" class="neuroaid-btn"><i class="ri-bar-chart-2-line"></i> View Progress</a>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <span>© 2025 NeuroAid. Your mental health companion.</span>
+    </footer>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/dropdown.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/welcome.js') }}"></script>
+  <script>
+    // Handle floating mood card popup on page load and close button
+    document.addEventListener('DOMContentLoaded', () => {
+      const moodCard = document.querySelector('.floating-mood-card');
+      const closeButton = document.querySelector('.close-mood-card');
+      moodCard.classList.add('show');
+      const hideCard = () => {
+        moodCard.classList.remove('show');
+      };
+      setTimeout(hideCard, 5000); // Auto-hide after 5 seconds
+      closeButton.addEventListener('click', hideCard); // Hide on close button click
+    });
+  </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'964c88612b857fdd',t:'MTc1MzQ1NTY4OC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script>
 </body>
 </html>

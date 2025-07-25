@@ -162,7 +162,7 @@ header {
   font-size: 1.2rem;
 }
 
-.profile{
+.profile {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -289,7 +289,7 @@ footer {
 .quick-actions {
   display: flex;
   gap: 1rem; /* Reduced from 35px for tighter layout */
- justify-content: center; /* Center buttons for balance */
+  justify-content: center; /* Center buttons for balance */
   margin-bottom: 2rem;
 }
 
@@ -488,17 +488,18 @@ footer {
   position: fixed;
   top: 100px;
   right: 24px;
-  width: 300px;
-  background: var(--glass-bg, rgba(255, 255, 255, 0.1));
-  backdrop-filter: blur(12px);
-  border: 1px solid var(--glass-border);
-  border-radius: 12px;
-  padding: 16px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  width: 320px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.15), rgba(124, 58, 237, 0.1));
+  backdrop-filter: blur(15px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25), 0 0 0 2px rgba(124, 58, 237, 0.3);
   z-index: 10000;
   transform: translateY(-100%);
   opacity: 0;
-  transition: transform 0.5s ease, opacity 0.5s ease;
+  transition: transform 0.5s ease, opacity 0.5s ease, box-shadow 0.3s ease;
+  animation: pulse-glow 2s ease-in-out infinite;
 }
 
 .floating-mood-card.show {
@@ -506,20 +507,50 @@ footer {
   opacity: 1;
 }
 
-.floating-mood-card h3 {
-  font-size: 1.3rem;
-  font-weight: 600;
+.floating-mood-card hh3 {
+  font-size: 1.4rem;
+  font-weight: 700;
   color: var(--text-primary);
-  margin-bottom: 8px;
+  margin-bottom: 10px;
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
 .floating-mood-card p {
-  font-size: 1rem;
+  font-size: 1.1rem;
   color: var(--text-secondary);
   line-height: 1.5;
+}
+
+.floating-mood-card .close-mood-card {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 1.2rem;
+  cursor: pointer;
+  transition: color 0.3s ease, transform 0.2s ease;
+}
+
+.floating-mood-card .close-mood-card:hover {
+  color: var(--primary);
+  transform: scale(1.2);
+}
+
+/* Pulse animation for attention-grabbing effect */
+@keyframes pulse-glow {
+  0% {
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25), 0 0 0 2px rgba(124, 58, 237, 0.3);
+  }
+  50% {
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3), 0 0 0 4px rgba(124, 58, 237, 0.5);
+  }
+  100% {
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25), 0 0 0 2px rgba(124, 58, 237, 0.3);
+  }
 }
 
 /* Responsive Styles */
@@ -564,7 +595,7 @@ footer {
   }
 
   .floating-mood-card {
-    width: 250px;
+    width: 260px;
     right: 16px;
     top: 80px;
   }
@@ -596,9 +627,7 @@ footer {
 
   .stats-section h2,
   .chart-section h2,
-  .insights-sectionиру
-
-  h2 {
+  .insights-section h2 {
     font-size: 1.6rem;
   }
 
@@ -631,7 +660,7 @@ footer {
   }
 
   .floating-mood-card {
-    width: 200px;
+    width: 220px;
     right: 12px;
     top: 60px;
   }
@@ -968,13 +997,4 @@ footer {
   color: var(--text-secondary);
   font-size: 1rem;
   line-height: 1.6;
-}
-
-/* Ensure proper spacing and order in home-section */
-.home-section > div {
-  margin-bottom: 2rem; /* Consistent spacing */
-}
-
-.home-section .suggestions-card + .activity-suggestions-card {
-  margin-top: 0; /* Maintain no extra margin */
 }
