@@ -4,14 +4,14 @@ import os
 
 # Extensions to include
 #".html", ".js", ".css", ".py", ".md"
-extensions = ["vibe.html", "vibe.css"]
+extensions = ["journal.html", "journal.css","app.py"]
 output_file = "NEUROAID_dump.txt"
 
 with open(output_file, "w", encoding="utf-8") as out:
     for root, _, files in os.walk("."):
         for file in files:
             if any(file.endswith(ext) for ext in extensions):
-                filepath = os.path.join(root, file)
+                filepath = os.path.join(root, file) 
                 rel_path = os.path.relpath(filepath, ".").replace("\\", "/")
                 ext = os.path.splitext(file)[1].lstrip(".")
                 try:
