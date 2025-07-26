@@ -77,11 +77,11 @@
           <div class="quote-text"></div>
         </div>
         <div class="profile-dropdown">
-            <div class="profile">
-              <img src="{{ profile_pic_url | default('https://randomuser.me/api/portraits/men/32.jpg') }}" alt="Profile" id="header-profile-pic" />
-              <span>{{ user_name }}</span>
-              <i class="ri-arrow-down-s-line"></i>
-            </div>
+          <div class="profile">
+            <img src="{{ profile_pic_url | default('https://randomuser.me/api/portraits/men/32.jpg') }}" alt="Profile" id="header-profile-pic" />
+            <span>{{ user_name }}</span>
+            <i class="ri-arrow-down-s-line"></i>
+          </div>
           <div class="dropdown-content">
             <a href="{{ url_for('settings') }}"><i class="ri-settings-3-line"></i> Settings</a>
             <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
@@ -103,10 +103,18 @@
           </div>
         </div>
 
+        {% if completion_percentage < 100 %}
+        <div class="cta-message">
+          <p>Complete your profile to unlock personalized features! Add your mental health goals to continue.</p>
+        </div>
+        {% endif %}
+
         <div class="card profile-overview">
           <div class="card-header">
             <h3>Profile Overview</h3>
-            <p class="status-indicator {{ 'complete' if name != 'Unknown' and email != 'Not found' and username != '@unknown' else 'incomplete' }}">Basic Info: {{ 'Complete' if name != 'Unknown' and email != 'Not found' and username != '@unknown' else 'Incomplete' }}</p>
+            {% if name != 'Unknown' and email != 'Not found' and username != '@unknown' %}
+            <span class="section-status complete">Complete</span>
+            {% endif %}
           </div>
           <div class="profile-content">
             <div class="profile-picture">
@@ -146,7 +154,9 @@
         <div class="card personal-details">
           <div class="card-header">
             <h3>Personal Details</h3>
-            <p class="status-indicator {{ 'complete' if profile_data.age or profile_data.gender or profile_data.location or profile_data.preferred_language else 'incomplete' }}">Personal Details: {{ 'Complete' if profile_data.age or profile_data.gender or profile_data.location or profile_data.preferred_language else 'Not Started' }}</p>
+            {% if profile_data.age and profile_data.gender and profile_data.location and profile_data.preferred_language %}
+            <span class="section-status complete">Complete</span>
+            {% endif %}
           </div>
           <div class="form-container">
             <div class="form-field">
@@ -193,7 +203,9 @@
         <div class="card mental-health-goals">
           <div class="card-header">
             <h3>Your Mental Health Goals</h3>
-            <p class="status-indicator {{ 'complete' if profile_data.primary_goal or profile_data.engagement_frequency or profile_data.preferred_activities else 'incomplete' }}">Goals: {{ 'Complete' if profile_data.primary_goal or profile_data.engagement_frequency or profile_data.preferred_activities else 'Not Started' }}</p>
+            {% if profile_data.primary_goal and profile_data.engagement_frequency and profile_data.preferred_activities %}
+            <span class="section-status complete">Complete</span>
+            {% endif %}
           </div>
           <div class="form-container">
             <div class="form-field">
@@ -240,9 +252,6 @@
               <button class="save-btn" id="save-goals">Save</button>
             </div>
           </div>
-        </div>
-        <div class="cta-message">
-          <p>Complete your profile to unlock personalized features! Add your mental health goals to continue.</p>
         </div>
       </section>
     </main>   
