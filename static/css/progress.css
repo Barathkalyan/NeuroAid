@@ -277,10 +277,30 @@ header {
   backdrop-filter: blur(12px);
   box-shadow: var(--shadow);
   transition: transform 0.3s ease, box-shadow 0.3s ease;
-  width: 100%; /* Ensure chart takes full width */
-  height:600px;
+  width: 100%;
+  min-height: 550px; /* Increased further to ensure space for 5 */
+  height: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: visible;
+  margin-top: 15px; /* Increased top margin for buffer */
 }
 
+.chart-card canvas {
+  flex: 1 1 auto;
+  width: 100% !important;
+  height: auto !important;
+  max-height: none !important; /* Prevent any max-height constraints */
+}
+
+.main-content {
+  flex: 1;
+  padding: 24px;
+  width: 100%;
+  margin: 0 auto;
+  min-height: 0; /* Ensure no height constraint from parent */
+  overflow: visible; /* Allow overflow if needed */
+}
 .chart-card:hover {
   transform: translateY(-8px);
   box-shadow: 10px 12px 40px rgba(0, 0, 0, 0.1);

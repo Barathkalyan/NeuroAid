@@ -1,34 +1,29 @@
-// Wait for the page to fully load before running the script
 document.addEventListener('DOMContentLoaded', function () {
-    // Get the canvas elements for the charts
     const moodCanvas = document.getElementById('moodChart');
     const confidenceCanvas = document.getElementById('confidenceChart');
 
-    // Function to create both charts with the fetched data
     function createCharts(data) {
         // --- Mood Chart (Line Chart) ---
         const moodCtx = moodCanvas.getContext('2d');
-        // Create a gradient for the line color (pink to purple)
         const moodLineGradient = moodCtx.createLinearGradient(0, 0, 0, 300);
-        moodLineGradient.addColorStop(0, '#FF6EC7'); // Neon pink
-        moodLineGradient.addColorStop(1, '#7879F1'); // Neon purple
-        // Create a gradient for the area under the line
+        moodLineGradient.addColorStop(0, '#FF6EC7');
+        moodLineGradient.addColorStop(1, '#7879F1');
         const moodFillGradient = moodCtx.createLinearGradient(0, 0, 0, 300);
         moodFillGradient.addColorStop(0, 'rgba(230, 230, 250, 0.5)');
         moodFillGradient.addColorStop(1, 'rgba(200, 200, 240, 0.1)');
 
         new Chart(moodCtx, {
-            type: 'line', // Line chart for mood
+            type: 'line',
             data: {
-                labels: data.labels, // X-axis: days (e.g., ["Jun 15", "Jun 16", ...])
+                labels: data.labels,
                 datasets: [{
                     label: 'Mood',
-                    data: data.data, // Y-axis: mood scores (e.g., [3.5, 4.0, ...])
+                    data: data.data,
                     borderColor: moodLineGradient,
                     borderWidth: 3,
-                    fill: true, // Fill the area under the line
+                    fill: true,
                     backgroundColor: moodFillGradient,
-                    tension: 0.4, // Smooth curve
+                    tension: 0.4,
                     pointBackgroundColor: '#FFFFFF',
                     pointBorderColor: '#7879F1',
                     pointBorderWidth: 2,
@@ -36,67 +31,121 @@ document.addEventListener('DOMContentLoaded', function () {
                 }]
             },
             options: {
-                responsive: true, // Adjusts to container size
-                maintainAspectRatio: false, // Allows custom height
+                responsive: true,
+                maintainAspectRatio: false,
+                layout: {
+                    padding: {
+                        top: 40,
+                        bottom: 20
+                    }
+                },
                 scales: {
                     y: {
                         beginAtZero: true,
-                        max: 5, // Mood score range: 0-5
+                        max: 6,
                         min: 0,
-                        ticks: { font: { family: "'Poppins', sans-serif", size: 14 } },
-                        title: { display: true, text: 'Mood Score', font: { size: 16 } }
+                        ticks: { 
+                            font: { family: "'Poppins', sans-serif", size: 12 },
+                            padding: 15,
+                            callback: function(value) {
+                                if (value === 6) return 'Max';
+                                return value;
+                            }
+                        },
+                        title: { display: true, text: 'Mood Score', font: { size: 14 } },
+                        grid: {
+                            display: true, // Keep y-axis grid lines
+                            drawBorder: true // Keep y-axis line
+                        }
                     },
                     x: {
-                        ticks: { font: { family: "'Poppins', sans-serif", size: 14 } },
-                        title: { display: true, text: 'Day', font: { size: 14 } }
+                        ticks: { 
+                            font: { family: "'Poppins', sans-serif", size: 10 },
+                            maxRotation: 0,
+                            minRotation: 0
+                        },
+                        title: { display: true, text: 'Day', font: { size: 12 } },
+                        grid: {
+                            display: false // Remove x-axis grid lines
+                        },
+                        border: {
+                            display: false // Remove x-axis line
+                        }
                     }
                 },
                 plugins: {
-                    legend: { labels: { font: { size: 12 } } },
-                    tooltip: { enabled: true } // Show tooltips on hover
+                    legend: {
+                        display: true,
+                        position: 'bottom',
+                        labels: { font: { size: 10 } }
+                    },
+                    tooltip: { enabled: true }
                 }
             }
         });
 
         // --- Confidence Chart (Bar Chart) ---
         const confidenceCtx = confidenceCanvas.getContext('2d');
-        // Create a gradient for the bars (blue shades)
         const confidenceBarGradient = confidenceCtx.createLinearGradient(0, 0, 0, 300);
         confidenceBarGradient.addColorStop(0, '#00BFFF');
         confidenceBarGradient.addColorStop(1, '#1E90FF');
 
         new Chart(confidenceCtx, {
-            type: 'bar', // Bar chart for confidence
+            type: 'bar',
             data: {
-                labels: data.labels, // Same days as mood chart
+                labels: data.labels,
                 datasets: [{
                     label: 'Confidence',
-                    data: data.confidence, // Y-axis: confidence scores (e.g., [0.7, 0.8, ...])
+                    data: data.confidence,
                     backgroundColor: confidenceBarGradient,
                     borderColor: '#FFFFFF',
                     borderWidth: 1,
-                    borderRadius: 5, // Rounded bars
-                    barThickness: 30 // Bar width
+                    borderRadius: 5,
+                    barThickness: 30
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                layout: {
+                    padding: {
+                        top: 40,
+                        bottom: 20
+                    }
+                },
                 scales: {
                     y: {
                         beginAtZero: true,
-                        max: 1, // Confidence score range: 0-1
+                        max: 1.1,
                         min: 0,
-                        ticks: { font: { family: "'Poppins', sans-serif", size: 14 } },
-                        title: { display: true, text: 'Confidence Score', font: { size: 16 } }
+                        ticks: { font: { family: "'Poppins', sans-serif", size: 12 }, padding: 15 },
+                        title: { display: true, text: 'Confidence Score', font: { size: 14 } },
+                        grid: {
+                            display: true,
+                            drawBorder: true
+                        }
                     },
                     x: {
-                        ticks: { font: { family: "'Poppins', sans-serif", size: 14 } },
-                        title: { display: true, text: 'Day', font: { size: 14 } }
+                        ticks: { 
+                            font: { family: "'Poppins', sans-serif", size: 10 },
+                            maxRotation: 0,
+                            minRotation: 0
+                        },
+                        title: { display: true, text: 'Day', font: { size: 12 } },
+                        grid: {
+                            display: false // Remove x-axis grid lines
+                        },
+                        border: {
+                            display: false // Remove x-axis line
+                        }
                     }
                 },
                 plugins: {
-                    legend: { labels: { font: { size: 12 } } },
+                    legend: {
+                        display: true,
+                        position: 'bottom',
+                        labels: { font: { size: 10 } }
+                    },
                     tooltip: { enabled: true }
                 }
             }
@@ -104,36 +153,28 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // --- Update Streak and Entries ---
         const streakElement = document.getElementById('streak-value');
-        if (streakElement) {
-            streakElement.textContent = `${data.streak} Days`; // e.g., "3 Days"
-        }
+        if (streakElement) streakElement.textContent = `${data.streak} Days`;
 
         const numEntriesElement = document.getElementById('entries-count');
-        if (numEntriesElement) {
-            numEntriesElement.textContent = `${data.numEntries} entries`; // e.g., "5 entries"
-        }
+        if (numEntriesElement) numEntriesElement.textContent = `${data.numEntries} entries`;
     }
 
-    // Fetch data from the server
+    // Fetch data from the server (unchanged)
     fetch('/api/mood_data')
         .then(response => {
-            // Check if the response is okay (status 200-299)
-            if (!response.ok) {
-                throw new Error(`Server error: ${response.status}`);
-            }
-            return response.json(); // Parse the JSON response
+            if (!response.ok) throw new Error(`Server error: ${response.status}`);
+            return response.json();
         })
         .then(data => {
-            console.log('Data received:', data); // Log data for debugging
-            createCharts(data); // Create charts with the data
+            console.log('Data received:', data);
+            createCharts(data);
         })
         .catch(error => {
-            console.error('Error:', error); // Log any errors
-            // Use fallback data if the API fails
+            console.error('Error:', error);
             createCharts({
                 labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-                data: [3, 3, 3, 3, 3, 3, 3], // Default mood scores
-                confidence: [0, 0, 0, 0, 0, 0, 0], // Default confidence scores
+                data: [3, 3, 3, 3, 3, 3, 3],
+                confidence: [0, 0, 0, 0, 0, 0, 0],
                 numEntries: 0,
                 streak: 0
             });

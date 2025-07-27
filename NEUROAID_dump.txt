@@ -1,585 +1,694 @@
-# File: static/css/login.css
+# File: static/css/progress.css
 ```css
+/* CSS Variables for consistency */
 :root {
-  --lavender: #e6d0ec;
-  --purple: #b27dd3;
-  --light-bg: #f9f6fc;
-  --dark: #2c2c2c;
-  --muted-gray: #78768b;
-  --blue: #3498db;
-  --red: #ff4444;
-  --gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --primary: #7c3aed;
+  --secondary: #f9faff;
+  --accent: #d4bfff;
+  --glass-bg: rgba(255, 255, 255, 0.9);
+  --glass-border: rgba(200, 200, 200, 0.3);
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+  --header-bg: linear-gradient(90deg, #a78bfa 0%, #c084fc 100%);
+  --text-primary: #1f2937;
+  --text-secondary: #6b7280;
 }
 
+/* General reset */
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Inter', sans-serif;
 }
 
+/* Body styling */
 body {
-  background: var(--lavender);
+  background: var(--secondary);
+  display: flex;
   min-height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 20px;
 }
 
-.login-container {
+/* App container */
+.app-container {
+  display: flex;
+  min-height: 100vh;
   width: 100%;
-  max-width: 1200px;
-  display: flex;
-  background: var(--light-bg);
-  border-radius: 30px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
-  overflow: hidden;
-  animation: fadeIn 1s ease;
 }
 
-.branding {
-  flex: 1;
-  background: var(--gradient);
-  color: #fff;
-  padding: 40px;
+/* Sidebar */
+.sidebar {
+  width: 260px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(10px);
+  border-right: 1px solid var(--glass-border);
+  padding: 24px;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  clip-path: polygon(0 0, 100% 0, 85% 100%, 0 100%);
-}
-
-.branding-scene {
-  width: 100%;
-  max-width: 700px;
-  padding: 20px;
+  gap: 32px;
+  position: fixed;
+  height: 100vh;
+  z-index: 100;
 }
 
 .logo {
-  text-align: center;
-  font-size: 48px;
-  font-weight: 700;
-  margin-bottom: 20px;
-}
-
-.logo .neuro {
-  background: linear-gradient(45deg, #fff, #f0f0f0);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
-.logo .aid {
-  color: var(--red);
-}
-
-.feature-block {
   display: flex;
   align-items: center;
-  margin-bottom: 30px;
-  opacity: 0;
-  animation: fadeInBlock 0.5s ease forwards;
-  transition: transform 0.3s ease;
+  gap: 12px;
 }
 
-.feature-block:hover {
-  transform: scale(1.05);
+.logo i {
+  font-size: 2rem;
+  color: var(--primary);
 }
 
-.feature-block:nth-child(3) { animation-delay: 0.5s; }
-.feature-block:nth-child(4) { animation-delay: 1s; }
-.feature-block:nth-child(5) { animation-delay: 1.5s; }
-.feature-block:nth-child(6) { animation-delay: 2s; }
 
-.feature-icon {
+.logo h1 span {
+  color: var(--primary);
+}
+
+.sidebar nav {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sidebar nav a {
+  color: var(--text-primary);
+  text-decoration: none;
+  font-size: 1rem;
+  font-weight: 500;
+  padding: 12px 16px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: background 0.3s, color 0.3s;
+}
+
+.sidebar nav a:hover,
+.sidebar nav a.active {
+  background: var(--primary);
+  color: #fff;
+}
+
+/* Wrapper for content */
+.wrapper {
+  flex: 1;
+  margin-left: 260px;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* Main content */
+.main-content {
+  flex: 1;
+  padding: 24px;
+  width: 1200px;
+  width: 100%;
+  margin: 0 auto; 
+}
+
+/* Header */
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  background: var(--header-bg);
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--glass-border);
+  margin-bottom: 24px;
+}
+
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: rgba(255, 255, 255, 0.3);
+  padding: 14px 20px;
+  border-radius: 10px;
+  width: 450px;
+  max-width: 100%;
+}
+
+.search-bar i {
+  color: #fff;
+  font-size: 1.5rem;
+}
+
+.search-bar input {
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-size: 1.2rem;
+  outline: none;
+  width: 100%;
+}
+
+.search-bar input::placeholder {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 1.2rem;
+}
+
+.profile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.profile img {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  font-size: 24px;
-  color: #fff;
-  background: var(--gradient);
-  margin-right: 15px;
+  border: 2px solid #fff;
+  object-fit: cover;
 }
 
-.feature-label {
-  font-size: 22px;
+.profile span {
+  color: #fff;
+  font-size: 1rem;
   font-weight: 500;
-  background: linear-gradient(90deg, #fff, #f0f0f0);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
 }
 
-.feature-tooltip {
-  position: absolute;
-  bottom: -30px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 14px;
+.profile i {
   color: #fff;
-  background: var(--gradient);
-  padding: 8px 12px;
-  border-radius: 6px;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.3s ease;
+  font-size: 1.2rem;
 }
 
-.feature-block:hover .feature-tooltip {
-  opacity: 1;
+/* Stats section */
+.stats-section {
+  margin-bottom: 32px;
 }
 
-.quote-container {
-  text-align: center;
-  font-size: 18px;
-  font-weight: 500;
-  color: #fff;
-  margin-bottom: 30px;
-  opacity: 0;
-  animation: fadeInBlock 0.5s ease forwards 0.3s;
-}
-
-.ripple {
-  position: absolute;
-  border-radius: 50%;
-  background: linear-gradient(90deg, rgba(118, 75, 162, 0.3), rgba(102, 126, 234, 0.3));
-  pointer-events: none;
-  transform: scale(0);
-  animation: rippleEffect 0.8s ease-out;
-}
-
-.login-box {
-  flex: 1.2;
-  padding: 60px 40px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-
-.welcome-section {
-  text-align: center;
-  margin-bottom: 30px;
-}
-
-.welcome-icon {
-  width: 50px;
-  height: 50px;
-  background: var(--gradient);
-  margin: 20px auto 10px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 24px;
-  box-shadow: 0 4px 10px rgba(102, 126, 234, 0.3);
-}
-
-.welcome-section h1 {
-  font-size: 36px;
-  font-weight: 700;
-  color: #333;
-}
-
-.welcome-section p {
-  font-size: 18px;
-  color: #666;
-  margin-top: 15px;
-}
-
-.login-box h2 {
-  margin-bottom: 50px;
-  text-align: center;
-  color: #333;
+.stats-section h2 {
   font-size: 32px;
   font-weight: 600;
-}
-
-form {
+  color: var(--text-primary);
+  margin-bottom: 24px;
   display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.input-group {
-  position: relative;
-}
-
-.input-group input {
-  width: 100%;
-  padding: 14px;
-  border-radius: 12px;
-  border: 1.5px solid var(--muted-gray);
-  background: transparent;
-  color: var(--dark);
-  font-size: 16px;
-  transition: border-color 0.3s ease, background 0.3s ease;
-}
-
-.input-group input:focus {
-  border-color: var(--purple);
-  background: #f5effb;
-}
-
-.input-group label {
-  position: absolute;
-  left: 14px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--muted-gray);
-  background: var(--light-bg);
-  padding: 0 5px;
-  font-size: 16px;
-  transition: all 0.25s ease;
-  pointer-events: none;
-}
-
-.input-group input:focus + label,
-.input-group input:not(:placeholder-shown) + label {
-  top: -8px;
-  left: 10px;
-  font-size: 12px;
-  color: var(--purple);
-}
-
-button {
-  padding: 14px;
-  border: none;
-  background: var(--dark);
-  color: #fff;
-  font-size: 16px;
-  border-radius: 12px;
-  cursor: pointer;
-  transition: background 0.3s ease, transform 0.2s ease;
-}
-
-button:hover {
-  background: var(--muted-gray);
-  transform: translateY(-2px);
-}
-
-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.spinner {
-  display: none;
-  border: 3px solid #f3f3f3;
-  border-top: 3px solid var(--blue);
-  border-radius: 50%;
-  width: 20px;
-  height: 20px;
-  animation: spin 1s linear infinite;
-  margin: 0 auto;
-}
-
-.submitting .spinner {
-  display: inline-block;
-}
-
-.submitting span {
-  display: none;
-}
-
-.toggle-password {
-  position: absolute;
-  right: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  cursor: pointer;
-  font-size: 14px;
-  color: var(--blue);
-}
-
-.error-message, #general-error {
-  color: red;
-  font-size: 12px;
-  margin-top: 5px;
-  text-align: center;
-}
-
-.success-message {
-  color: green;
-  font-size: 12px;
-  margin-top: 5px;
-  text-align: center;
-}
-
-.error-message {
-  display: none;
-}
-
-.input-error {
-  border: 1px solid red;
-}
-
-.forgot-password-link, .signup-link, .login-link {
-  text-align: center;
-  margin-top: 15px;
-  font-size: 16px;
-  color: var(--muted-gray);
-}
-
-.forgot-password-link a, .signup-link a, .login-link a {
-  color: var(--blue);
-  font-weight: 500;
-  text-decoration: none;
-}
-
-.forgot-password-link a:hover, .signup-link a:hover, .login-link a:hover {
-  text-decoration: underline;
-}
-
-.qr-container {
-  display: flex;
-  justify-content: center;
-  margin: 20px 0;
-  padding: 20px;
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-}
-
-.qr-container img {
-  max-width: 300px;
-  height: auto;
-}
-
-.secret-code {
-  font-family: 'Poppins', monospace;
-  background: var(--gradient);
-  color: #fff;
-  padding: 12px;
-  border-radius: 12px;
-  text-align: center;
-  margin: 20px 0;
-  font-size: 16px;
-  word-break: break-all;
-}
-
-.instruction {
-  font-size: 16px;
-  color: #666;
-  text-align: center;
-  margin: 15px 0;
-}
-
-.instruction a {
-  color: var(--blue);
-  text-decoration: none;
-  font-weight: 500;
-}
-
-.instruction a:hover {
-  text-decoration: underline;
-}
-
-@keyframes fadeIn {
-  0% { opacity: 0; transform: scale(0.96); }
-  100% { opacity: 1; transform: scale(1); }
-}
-
-@keyframes fadeInBlock {
-  0% { opacity: 0; transform: translateY(20px); }
-  100% { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-@keyframes rippleEffect {
-  to { transform: scale(3); opacity: 0; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .login-container, .branding-scene, .feature-block, .quote-container, .ripple {
-    animation: none;
-  }
-  .feature-block, .quote-container {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-@media (max-width: 1000px) {
-  .login-container {
-    flex-direction: column;
-    height: auto;
-  }
-  .branding {
-    clip-path: none;
-    border-radius: 30px 30px 0 0;
-    padding: 30px;
-  }
-  .login-box {
-    padding: 40px 20px;
-  }
-}
-
-@media (max-width: 768px) {
-  .logo {
-    font-size: 36px;
-  }
-  .feature-icon {
-    width: 36px;
-    height: 36px;
-    font-size: 20px;
-    margin-right: 10px;
-  }
-  .feature-label {
-    font-size: 18px;
-  }
-  .feature-tooltip {
-    font-size: 12px;
-    bottom: -25px;
-  }
-  .quote-container {
-    font-size: 16px;
-  }
-  .welcome-section h1 {
-    font-size: 28px;
-  }
-  .welcome-section p {
-    font-size: 16px;
-  }
-  .login-box h2 {
-    font-size: 28px;
-    margin-bottom: 30px;
-  }
-  .qr-container img {
-    max-width: 200px;
-  }
-  .secret-code {
-    font-size: 14px;
-  }
-  .instruction {
-    font-size: 14px;
-  }
-  .icon-gratitude, .icon-music {
-    display: none;
-   }
-.login-link {
-  display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 15px; /* Increased gap for more space */
-  margin-top: 20px; /* Space between links and form */
+  gap: 12px;
 }
 
-.link-item {
-  width: 100%;
-  text-align: center;
+.stats-section h2 i {
+  color: var(--primary);
+  font-size: 2.2rem;
 }
 
-.link-item p {
-  margin: 0;
-  font-size: 16px;
-  color: var(--muted-gray);
-  line-height: 1.5; /* Improve readability */
+.stats-boxes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 30px;
+  width: 100%; }
+
+.stat-box {
+  background: var(--glass-bg);
+  border-radius: 16px;
+  height: 120px;
+  padding: 24px;
+  border: 5px solid var(--glass-border);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
-.link-item a {
-  color: var(--blue);
+.stat-box:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1);
+}
+
+.stat-box i {
+  font-size: 2.2rem;
+  color: var(--primary);
+  background: var(--secondary);
+  border-radius: 12px;
+  padding: 12px;
+  min-width: 48px;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stat-box h3 {
+  font-size: 25px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.stat-box p {
+  font-size: 20px;
+  color: var(--text-secondary);
   font-weight: 500;
-  text-decoration: none;
-  transition: color 0.3s ease, text-decoration 0.3s ease;
+  line-height: 1.5;
+  letter-spacing: 1px;
 }
 
-.link-item a:hover {
-  text-decoration: underline;
-  color: #5b2edd; /* Darker hover color */
+/* Chart section */
+.chart-section {
+  margin-bottom: 32px;
 }
+
+.chart-section h2 {
+  font-size: 32px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.chart-section h2 i {
+  color: var(--primary);
+  font-size: 2rem;
+}
+
+.chart-card {
+  background: var(--glass-bg);
+  border-radius: 16px;
+  padding: 24px;
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  width: 100%; /* Ensure chart takes full width */
+  height:600px;
+}
+
+.chart-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 10px 12px 40px rgba(0, 0, 0, 0.1);
+}
+
+/* Insights section */
+.insights-section {
+  margin-bottom: 32px;
+}
+
+.insights-section h2 {
+  font-size: 30px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.insights-section h2 i {
+  color: var(--primary);
+  font-size: 2rem;
+}
+
+.insights-content {
+  background: var(--glass-bg);
+  border-radius: 16px;
+  padding: 24px;
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow);
+  font-size: 1rem;
+  color: var(--text-primary);
+  line-height: 1.5;
+  width: 100%; /* Ensure insights takes full width */
+}
+
+/* Footer */
+footer {
+  text-align: center;
+  padding: 20px;
+  background: var(--glass-bg);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  backdrop-filter: blur(4px);
+  border-top: 1px solid var(--glass-border);
+  margin-top: auto;
+  width: 100%;
+}
+/* Responsive design */
+@media (max-width: 900px) {
+  .sidebar {
+    width: 80px;
+    align-items: center;
+  }
+  .sidebar .logo h1 {
+    display: none;
+  }
+  .sidebar nav a {
+    justify-content: center;
+    padding: 12px;
+  }
+  .sidebar nav a span {
+    display: none;
+  }
+  .wrapper {
+    margin-left: 80px;
+  }
+  .main-content {
+    padding: 16px;
+  }
+  .search-bar {
+    width: 300px;
+  }
+  .stats-boxes {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 600px) {
+  .sidebar {
+    width: 100%;
+    height: auto;
+    position: static;
+    flex-direction: row;
+    justify-content: space-between;
+    padding: 16px;
+  }
+  .sidebar nav {
+    flex-direction: row;
+    gap: 8px;
+  }
+  .wrapper {
+    margin-left: 0;
+  }
+  .main-content {
+    padding: 16px;
+  }
+  .stats-section h2,
+  .chart-section h2,
+  .insights-section h2 {
+    font-size: 1.6rem;
+  }
+
+  .stat-box,
+  .chart-card,
+  .insights-content {
+    padding: 16px;
+  }
+
+  .search-bar {
+    width: 100%;
+    padding: 10px 16px;
+  }
+
+  .search-bar i {
+    font-size: 1.2rem;
+  }
+
+  .search-bar input,
+  .search-bar input::placeholder {
+    font-size: 1rem;
+  }
+}
+
+.sidebar nav a {
+  color: var(--text-primary);
+  text-decoration: none;
+  font-size: 1.3rem;
+  font-weight: 500;
+  padding: 12px 16px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  transition: all 0.3s ease;
 }
 ```
 
-# File: templates/login.html
+# File: static/js/progress.js
+```js
+// Wait for the page to fully load before running the script
+document.addEventListener('DOMContentLoaded', function () {
+    // Get the canvas elements for the charts
+    const moodCanvas = document.getElementById('moodChart');
+    const confidenceCanvas = document.getElementById('confidenceChart');
+
+    // Function to create both charts with the fetched data
+    function createCharts(data) {
+        // --- Mood Chart (Line Chart) ---
+        const moodCtx = moodCanvas.getContext('2d');
+        // Create a gradient for the line color (pink to purple)
+        const moodLineGradient = moodCtx.createLinearGradient(0, 0, 0, 300);
+        moodLineGradient.addColorStop(0, '#FF6EC7'); // Neon pink
+        moodLineGradient.addColorStop(1, '#7879F1'); // Neon purple
+        // Create a gradient for the area under the line
+        const moodFillGradient = moodCtx.createLinearGradient(0, 0, 0, 300);
+        moodFillGradient.addColorStop(0, 'rgba(230, 230, 250, 0.5)');
+        moodFillGradient.addColorStop(1, 'rgba(200, 200, 240, 0.1)');
+
+        new Chart(moodCtx, {
+            type: 'line', // Line chart for mood
+            data: {
+                labels: data.labels, // X-axis: days (e.g., ["Jun 15", "Jun 16", ...])
+                datasets: [{
+                    label: 'Mood',
+                    data: data.data, // Y-axis: mood scores (e.g., [3.5, 4.0, ...])
+                    borderColor: moodLineGradient,
+                    borderWidth: 3,
+                    fill: true, // Fill the area under the line
+                    backgroundColor: moodFillGradient,
+                    tension: 0.4, // Smooth curve
+                    pointBackgroundColor: '#FFFFFF',
+                    pointBorderColor: '#7879F1',
+                    pointBorderWidth: 2,
+                    pointRadius: 5
+                }]
+            },
+            options: {
+                responsive: true, // Adjusts to container size
+                maintainAspectRatio: false, // Allows custom height
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 5, // Mood score range: 0-5
+                        min: 0,
+                        ticks: { font: { family: "'Poppins', sans-serif", size: 14 } },
+                        title: { display: true, text: 'Mood Score', font: { size: 16 } }
+                    },
+                    x: {
+                        ticks: { font: { family: "'Poppins', sans-serif", size: 14 } },
+                        title: { display: true, text: 'Day', font: { size: 14 } }
+                    }
+                },
+                plugins: {
+                    legend: { labels: { font: { size: 12 } } },
+                    tooltip: { enabled: true } // Show tooltips on hover
+                }
+            }
+        });
+
+        // --- Confidence Chart (Bar Chart) ---
+        const confidenceCtx = confidenceCanvas.getContext('2d');
+        // Create a gradient for the bars (blue shades)
+        const confidenceBarGradient = confidenceCtx.createLinearGradient(0, 0, 0, 300);
+        confidenceBarGradient.addColorStop(0, '#00BFFF');
+        confidenceBarGradient.addColorStop(1, '#1E90FF');
+
+        new Chart(confidenceCtx, {
+            type: 'bar', // Bar chart for confidence
+            data: {
+                labels: data.labels, // Same days as mood chart
+                datasets: [{
+                    label: 'Confidence',
+                    data: data.confidence, // Y-axis: confidence scores (e.g., [0.7, 0.8, ...])
+                    backgroundColor: confidenceBarGradient,
+                    borderColor: '#FFFFFF',
+                    borderWidth: 1,
+                    borderRadius: 5, // Rounded bars
+                    barThickness: 30 // Bar width
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 1, // Confidence score range: 0-1
+                        min: 0,
+                        ticks: { font: { family: "'Poppins', sans-serif", size: 14 } },
+                        title: { display: true, text: 'Confidence Score', font: { size: 16 } }
+                    },
+                    x: {
+                        ticks: { font: { family: "'Poppins', sans-serif", size: 14 } },
+                        title: { display: true, text: 'Day', font: { size: 14 } }
+                    }
+                },
+                plugins: {
+                    legend: { labels: { font: { size: 12 } } },
+                    tooltip: { enabled: true }
+                }
+            }
+        });
+
+        // --- Update Streak and Entries ---
+        const streakElement = document.getElementById('streak-value');
+        if (streakElement) {
+            streakElement.textContent = `${data.streak} Days`; // e.g., "3 Days"
+        }
+
+        const numEntriesElement = document.getElementById('entries-count');
+        if (numEntriesElement) {
+            numEntriesElement.textContent = `${data.numEntries} entries`; // e.g., "5 entries"
+        }
+    }
+
+    // Fetch data from the server
+    fetch('/api/mood_data')
+        .then(response => {
+            // Check if the response is okay (status 200-299)
+            if (!response.ok) {
+                throw new Error(`Server error: ${response.status}`);
+            }
+            return response.json(); // Parse the JSON response
+        })
+        .then(data => {
+            console.log('Data received:', data); // Log data for debugging
+            createCharts(data); // Create charts with the data
+        })
+        .catch(error => {
+            console.error('Error:', error); // Log any errors
+            // Use fallback data if the API fails
+            createCharts({
+                labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                data: [3, 3, 3, 3, 3, 3, 3], // Default mood scores
+                confidence: [0, 0, 0, 0, 0, 0, 0], // Default confidence scores
+                numEntries: 0,
+                streak: 0
+            });
+        });
+});
+```
+
+# File: templates/progress.html
 ```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>NeuroAid - Login</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}" />
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>NeuroAid - Progress</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/progress.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dropdown.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/welcome.css') }}" />
+  <link id="theme-stylesheet" rel="stylesheet" href="{{ url_for('static', filename='css/themes/' + theme + '.css') }}">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+  <script type="text/javascript">
+    function googleTranslateElementInit() {
+      new google.translate.TranslateElement({
+        pageLanguage: 'en', // Default language is English
+        includedLanguages: 'en,es,fr', // Supported languages: English, Spanish, French
+        layout: google.translate.TranslateElement.InlineLayout.SIMPLE
+      }, 'google_translate_element');
+    }
+  </script>
 </head>
 <body>
-  <div class="login-container">
-    <div class="branding" aria-label="NeuroAid feature pillar with dynamic quote">
-      <div class="branding-scene">
-        <div class="logo"><span class="neuro">Neuro</span><span class="aid">Aid</span></div>
-        <div class="quote-container" id="quote">Take a moment to breathe deeply.</div>
-        <div class="feature-block">
-          <div class="feature-icon icon-journal">📝</div>
-          <p class="feature-label">Journal</p>
-          <p class="feature-tooltip">Write your thoughts</p>
-        </div>
-        <div class="feature-block">
-          <div class="feature-icon icon-mood">😊</div>
-          <p class="feature-label">Mood</p>
-          <p class="feature-tooltip">Track your emotions</p>
-        </div>
-        <div class="feature-block">
-          <div class="feature-icon icon-gratitude">🙏</div>
-          <p class="feature-label">Gratitude</p>
-          <p class="feature-tooltip">Practice gratitude</p>
-        </div>
-        <div class="feature-block">
-          <div class="feature-icon icon-music">🎵</div>
-          <p class="feature-label">Music</p>
-          <p class="feature-tooltip">Personalized recommendations</p>
-        </div>
+  <div class="app-container">
+    <div class="sidebar">
+      <div class="logo">
+        <i class="ri-brain-line"></i>
+        <h1>Neuro<span>Aid</span></h1>
       </div>
-    </div>
-    <div class="login-box">
-      <div class="welcome-section">
-        <div class="welcome-icon">🧠</div>
-        <h1>Welcome Back!</h1>
-        <p>Continue your journey to mental wellness</p>
-      </div>
-      <h2>Login</h2>
-      {% if error %}
-        <p id="general-error">{{ error }}</p>
-      {% endif %}
-      {% if success %}
-        <p id="general-success">{{ success }}</p>
-      {% endif %}
-      <form id="login-form" method="POST" action="{{ url_for('login') }}">
-        <div class="input-group">
-          <input type="text" name="email" id="email" required placeholder=" " />
-          <label for="email">Email</label>
-        </div>
-        <div class="input-group">
-          <input type="password" name="password" id="password" required placeholder=" " aria-describedby="password-error" />
-          <label for="password">Password</label>
-          <span class="toggle-password">Show</span>
-          <p class="error-message" id="password-error"></p>
-        </div>
-        <button type="submit">Login</button>
-      </form>
-    <div class="login-link">
-      <div class="link-container">
-        <a href="{{ url_for('signup') }}" class="link-item">📝 Signup</a>
-        <span class="separator">|</span>
-        <a href="{{ url_for('forgot_password') }}" class="link-item">🔒 Forgot Password?</a>
-      </div>
-
-      <p class="resend-note">
-        📩 Didn't receive your verification email?
-        <a href="#" class="link-item"
-          onclick="document.getElementById('resend-form').style.display='block'; this.parentElement.style.display='none'; return false;">
-          Resend Verification
-        </a>
-      </p>
+      <nav>
+        <a href="{{ url_for('index') }}"><i class="ri-home-5-line"></i> Home</a>
+        <a href="{{ url_for('journal') }}"><i class="ri-booklet-line"></i> Journal</a>
+        <a href="{{ url_for('progress') }}" class="active"><i class="ri-bar-chart-2-line"></i> Progress</a>
+        <a href="{{ url_for('vibe') }}"><i class="ri-music-2-line"></i> Vibe</a>
+        <a href="{{ url_for('gratitude') }}"><i class="ri-heart-line"></i> Gratitude</a>
+        <a href="{{ url_for('settings') }}"><i class="ri-settings-3-line"></i> Settings</a>
+        <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
+        <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
+      </nav>
     </div>
 
-  <script defer src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <div class="wrapper">
+      <main class="main-content">
+        <header>
+          <div class="welcome-container">
+            <div class="welcome-text">Welcome to NeuroAid, {{ user_name }}</div>
+            <div class="quote-text"></div>
+          </div>
+          <div class="profile-dropdown">
+            <div class="profile">
+              <img src="{{ profile_pic_url | default('https://randomuser.me/api/portraits/men/32.jpg') }}" alt="Profile" id="header-profile-pic" />
+              <span>{{ user_name }}</span>
+              <i class="ri-arrow-down-s-line"></i>
+            </div>
+            <div class="dropdown-content" style="z-index: 1000;">
+              <div class="user-info">
+                <p><i class="ri-user-line"></i> {{ user_name }}</p>
+                <p><i class="ri-mail-line"></i> {{ user_email }}</p>
+                <p><i class="ri-calendar-line"></i> Joined: {{ joined_date }}</p>
+              </div>
+              <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
+              <a href="{{ url_for('settings') }}"><i class="ri-settings-3-line"></i> Settings</a>
+              <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
+            </div>
+          </div>
+        </header>
+
+        <section class="stats-section">
+          <h2><i class="ri-bar-chart-2-line"></i> Your Progress</h2>
+          <div class="stats-boxes">
+            <div class="stat-box">
+              <i class="ri-calendar-line"></i>
+              <div>
+                <h3>Journaling Streak</h3>
+                <p><strong id="streak-value">0 Days</strong></p>
+              </div>
+            </div>
+            <div class="stat-box">
+              <i class="ri-booklet-line"></i>
+              <div>
+                <h3>Total Entries</h3>
+                <p><strong id="entries-count">0 entries</strong></p>
+              </div>
+            </div>
+            <div class="stat-box">
+              <i class="ri-emotion-happy-line"></i>
+              <div>
+                <h3>Average Mood</h3>
+                <p><strong id="mood">Neutral</strong></p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="chart-section">
+          <h2><i class="ri-line-chart-line"></i> Mood Over Time</h2>
+          <div class="chart-card">
+            <canvas id="moodChart"></canvas>
+          </div>
+        </section>
+
+        <section class="chart-section">
+          <h2><i class="ri-line-chart-line"></i> Confidence Over Time</h2>
+          <div class="chart-card">
+            <canvas id="confidenceChart"></canvas>
+          </div>
+        </section>
+      </main>
+
+      <footer>
+        <span>© 2025 NeuroAid. Your mental health companion.</span>
+      </footer>
+    </div>
+  </div>
+  <script src="{{ url_for('static', filename='js/progress.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/dropdown.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/welcome.js') }}"></script>
 </body>
 </html>
 ```
