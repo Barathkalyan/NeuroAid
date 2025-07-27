@@ -461,5 +461,36 @@ button:disabled {
   }
   .icon-gratitude, .icon-music {
     display: none;
+   }
   }
+.login-link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px; /* Increased gap for more space */
+  margin-top: 20px; /* Space between links and form */
+}
+
+.link-item {
+  width: 100%;
+  text-align: center;
+}
+
+.link-item p {
+  margin: 0;
+  font-size: 16px;
+  color: var(--muted-gray);
+  line-height: 1.5; /* Improve readability */
+}
+
+.link-item a {
+  color: var(--blue);
+  font-weight: 500;
+  text-decoration: none;
+  transition: color 0.3s ease, text-decoration 0.3s ease;
+}
+
+.link-item a:hover {
+  text-decoration: underline;
+  color: #5b2edd; /* Darker hover color */
 }

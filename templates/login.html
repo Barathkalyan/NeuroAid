@@ -61,20 +61,22 @@
         </div>
         <button type="submit">Login</button>
       </form>
-      <div class="login-link">
-        <p>Didn't receive a verification email? <a href="#" onclick="document.getElementById('resend-form').style.display='block';return false;">Resend Verification</a></p>
-        <form id="resend-form" method="POST" action="{{ url_for('resend_verification') }}" style="display:none;">
-          <div class="input-group">
-            <input type="text" name="email" id="resend-email" required placeholder=" " />
-            <label for="resend-email">Email</label>
-          </div>
-          <button type="submit">Resend Verification Email</button>
-        </form>
-        <p>Forgot your password? <a href="{{ url_for('forgot_password') }}">Reset here</a></p>
-        <p>Don't have an account? <a href="{{ url_for('signup') }}">Signup!</a></p>
+    <div class="login-link">
+      <div class="link-container">
+        <a href="{{ url_for('signup') }}" class="link-item">📝 Signup</a>
+        <span class="separator">|</span>
+        <a href="{{ url_for('forgot_password') }}" class="link-item">🔒 Forgot Password?</a>
       </div>
+
+      <p class="resend-note">
+        📩 Didn't receive your verification email?
+        <a href="#" class="link-item"
+          onclick="document.getElementById('resend-form').style.display='block'; this.parentElement.style.display='none'; return false;">
+          Resend Verification
+        </a>
+      </p>
     </div>
-  </div>
+
   <script defer src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>
