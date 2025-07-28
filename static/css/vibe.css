@@ -19,14 +19,15 @@
 }
 
 .selector-group {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 24px;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+    justify-content: flex-start; /* Keeps other items aligned to the left */
+    width: 100%; /* Ensures the container uses full width */
 }
-
 
 .selector-group label {
   font-weight: 500;
@@ -57,16 +58,20 @@
 
 /* New styles for Spotify info note */
 .note-container {
-  background: #f9fafb; /* Very soft gray */
-  border-left: 4px solid var(--primary, #7c3aed);
-  padding: 10px 16px;
-  border-radius: 6px;
-  font-size: 0.9rem;
-  color: var(--text-secondary, #4b5563);
-  max-width: 480px;
-  line-height: 1.5;
-  margin-top: 12px;
-  box-shadow: none;
+    background: #f9fafb;
+    border-left: 4px solid var(--primary, #7c3aed);
+    padding: 10px 16px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    color: var(--text-secondary, #4b5563);
+    max-width: 480px;
+    line-height: 1.5;
+    margin-top: 12px;
+    box-shadow: none;
+    margin-left: auto; /* Pushes it to the right */
+    margin-right: 0; /* No right margin */
+    width: auto; /* Allows natural width */
+    align-self: flex-end; /* Aligns it to the end of the flex container */
 }
 
 .note-label {
@@ -90,4 +95,8 @@
 
 .note-text a:hover {
   text-decoration: underline;
+}
+
+.music-box .note-container {
+  text-align: left;
 }

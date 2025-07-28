@@ -116,7 +116,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 scales: {
                     y: {
                         beginAtZero: true,
-                        max: 1.1,
+                        max: 1,
                         min: 0,
                         ticks: { font: { family: "'Poppins', sans-serif", size: 12 }, padding: 15 },
                         title: { display: true, text: 'Confidence Score', font: { size: 14 } },
