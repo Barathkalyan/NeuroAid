@@ -6,7 +6,7 @@
 
 ## 🪷 **Overview**
 
-**NeuroAid** is a full-stack mental wellness platform designed to empower users to enhance their mental health through reflective journaling, mood tracking, and AI-driven support.
+**NeuroAid** is a full-stack mental wellness platform designed to empower users to enhance their mental health through reflective journaling, mood tracking, and AI-driven support...
 
 By leveraging natural language processing (NLP) for emotion analysis, NeuroAid provides:
 - Personalized self-care recommendations  
