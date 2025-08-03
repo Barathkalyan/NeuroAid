@@ -1,205 +1,716 @@
-# File: static/css/vibe.css
+# File: static/css/progress.css
 ```css
-.music-box {
-    background: var(--card-bg, #ffffff);
-    border-radius: 12px;
-    padding: 20px;
-    margin-top: 20px;
-    text-align: center;
-    box-shadow: var(--shadow, 0 2px 5px rgba(0, 0, 0, 0.1));
+/* CSS Variables for consistency */
+:root {
+  --primary: #7c3aed;
+  --secondary: #f9faff;
+  --accent: #d4bfff;
+  --glass-bg: rgba(255, 255, 255, 0.9);
+  --glass-border: rgba(200, 200, 200, 0.3);
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+  --header-bg: linear-gradient(90deg, #a78bfa 0%, #c084fc 100%);
+  --text-primary: #1f2937;
+  --text-secondary: #6b7280;
 }
 
-.music-box h3 {
-    margin: 0 0 10px;
-    font-size: 2rem;
-    color: var(--text-primary, #1f2937);
+/* General reset */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Inter', sans-serif;
 }
 
-.music-box p {
-    color: var(--text-secondary, #6b7280);
-    font-size: 1rem;
-}
-
-.selector-group {
+/* Body styling */
+body {
+  background: var(--secondary);
   display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
+  min-height: 100vh;
+}
+
+/* App container */
+.app-container {
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+}
+
+/* Sidebar */
+.sidebar {
+  width: 260px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(10px);
+  border-right: 1px solid var(--glass-border);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  position: fixed;
+  height: 100vh;
+  z-index: 100;
+}
+
+.logo {
+  display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.logo i {
+  font-size: 2rem;
+  color: var(--primary);
+}
+
+
+.logo h1 span {
+  color: var(--primary);
+}
+
+.sidebar nav {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sidebar nav a {
+  color: var(--text-primary);
+  text-decoration: none;
+  font-size: 1rem;
+  font-weight: 500;
+  padding: 12px 16px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: background 0.3s, color 0.3s;
+}
+
+.sidebar nav a:hover,
+.sidebar nav a.active {
+  background: var(--primary);
+  color: #fff;
+}
+
+/* Wrapper for content */
+.wrapper {
+  flex: 1;
+  margin-left: 260px;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* Main content */
+.main-content {
+  flex: 1;
+  padding: 24px;
+  width: 1200px;
+  width: 100%;
+  margin: 0 auto; 
+}
+
+/* Header */
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  background: var(--header-bg);
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--glass-border);
   margin-bottom: 24px;
 }
 
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: rgba(255, 255, 255, 0.3);
+  padding: 14px 20px;
+  border-radius: 10px;
+  width: 450px;
+  max-width: 100%;
+}
 
-.selector-group label {
+.search-bar i {
+  color: #fff;
+  font-size: 1.5rem;
+}
+
+.search-bar input {
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-size: 1.2rem;
+  outline: none;
+  width: 100%;
+}
+
+.search-bar input::placeholder {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 1.2rem;
+}
+
+.profile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.profile img {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  object-fit: cover;
+}
+
+.profile span {
+  color: #fff;
+  font-size: 1rem;
   font-weight: 500;
-  font-size: 1rem;
-  color: var(--text-primary, #1f2937);
 }
 
-
-.selector-group select {
-  padding: 10px 14px;
-  font-size: 1rem;
-  max-width: 200px;
+.profile i {
+  color: #fff;
+  font-size: 1.2rem;
 }
 
-
-.selector-group select:focus {
-    outline: none;
-    border-color: var(--primary, #7c3aed);
+/* Stats section */
+.stats-section {
+  margin-bottom: 32px;
 }
 
-.music-recommendations-section h2 {
-    font-size: 42px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    color: var(--text-primary, #1f2937);
-}
-
-/* New styles for Spotify info note */
-.note-container {
-  background: #f9fafb; /* Very soft gray */
-  border-left: 4px solid var(--primary, #7c3aed);
-  padding: 10px 16px;
-  border-radius: 6px;
-  font-size: 0.9rem;
-  color: var(--text-secondary, #4b5563);
-  max-width: 480px;
-  line-height: 1.5;
-  margin-top: 12px;
-  box-shadow: none;
-  margin-left: 0;
-  margin-right: auto;
-
-}
-
-.note-label {
-  display: block;
+.stats-section h2 {
+  font-size: 32px;
   font-weight: 600;
-  color: var(--primary, #7c3aed);
-  margin-bottom: 4px;
-  font-size: 0.9rem;
+  color: var(--text-primary);
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
-.note-text {
-  color: var(--text-secondary, #4b5563);
-  font-size: 0.9rem;
+.stats-section h2 i {
+  color: var(--primary);
+  font-size: 2.2rem;
 }
 
-.note-text a {
-  color: var(--primary, #7c3aed);
-  text-decoration: none;
+.stats-boxes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 30px;
+  width: 100%; }
+
+.stat-box {
+  background: var(--glass-bg);
+  border-radius: 16px;
+  height: 120px;
+  padding: 24px;
+  border: 5px solid var(--glass-border);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.stat-box:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1);
+}
+
+.stat-box i {
+  font-size: 2.2rem;
+  color: var(--primary);
+  background: var(--secondary);
+  border-radius: 12px;
+  padding: 12px;
+  min-width: 48px;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stat-box h3 {
+  font-size: 25px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.stat-box p {
+  font-size: 20px;
+  color: var(--text-secondary);
   font-weight: 500;
+  line-height: 1.5;
+  letter-spacing: 1px;
 }
 
-.note-text a:hover {
-  text-decoration: underline;
+/* Chart section */
+.chart-section {
+  margin-bottom: 32px;
 }
 
-.music-box .note-container {
-  text-align: left;
+.chart-section h2 {
+  font-size: 32px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
+.chart-section h2 i {
+  color: var(--primary);
+  font-size: 2rem;
+}
+
+.chart-card {
+  background: var(--glass-bg);
+  border-radius: 16px;
+  padding: 24px;
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  width: 100%;
+  min-height: 550px; /* Increased further to ensure space for 5 */
+  height: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: visible;
+  margin-top: 15px; /* Increased top margin for buffer */
+}
+
+.chart-card canvas {
+  flex: 1 1 auto;
+  width: 100% !important;
+  height: auto !important;
+  max-height: none !important; /* Prevent any max-height constraints */
+}
+
+.main-content {
+  flex: 1;
+  padding: 24px;
+  width: 100%;
+  margin: 0 auto;
+  min-height: 0; /* Ensure no height constraint from parent */
+  overflow: visible; /* Allow overflow if needed */
+}
+.chart-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 10px 12px 40px rgba(0, 0, 0, 0.1);
+}
+
+/* Insights section */
+.insights-section {
+  margin-bottom: 32px;
+}
+
+.insights-section h2 {
+  font-size: 30px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.insights-section h2 i {
+  color: var(--primary);
+  font-size: 2rem;
+}
+
+.insights-content {
+  background: var(--glass-bg);
+  border-radius: 16px;
+  padding: 24px;
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow);
+  font-size: 1rem;
+  color: var(--text-primary);
+  line-height: 1.5;
+  width: 100%; /* Ensure insights takes full width */
+}
+
+/* Footer */
+footer {
+  text-align: center;
+  padding: 20px;
+  background: var(--glass-bg);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  backdrop-filter: blur(4px);
+  border-top: 1px solid var(--glass-border);
+  margin-top: auto;
+  width: 100%;
+}
+/* Responsive design */
+@media (max-width: 900px) {
+  .sidebar {
+    width: 80px;
+    align-items: center;
+  }
+  .sidebar .logo h1 {
+    display: none;
+  }
+  .sidebar nav a {
+    justify-content: center;
+    padding: 12px;
+  }
+  .sidebar nav a span {
+    display: none;
+  }
+  .wrapper {
+    margin-left: 80px;
+  }
+  .main-content {
+    padding: 16px;
+  }
+  .search-bar {
+    width: 300px;
+  }
+  .stats-boxes {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 600px) {
+  .sidebar {
+    width: 100%;
+    height: auto;
+    position: static;
+    flex-direction: row;
+    justify-content: space-between;
+    padding: 16px;
+  }
+  .sidebar nav {
+    flex-direction: row;
+    gap: 8px;
+  }
+  .wrapper {
+    margin-left: 0;
+  }
+  .main-content {
+    padding: 16px;
+  }
+  .stats-section h2,
+  .chart-section h2,
+  .insights-section h2 {
+    font-size: 1.6rem;
+  }
+
+  .stat-box,
+  .chart-card,
+  .insights-content {
+    padding: 16px;
+  }
+
+  .search-bar {
+    width: 100%;
+    padding: 10px 16px;
+  }
+
+  .search-bar i {
+    font-size: 1.2rem;
+  }
+
+  .search-bar input,
+  .search-bar input::placeholder {
+    font-size: 1rem;
+  }
+}
+
+.sidebar nav a {
+  color: var(--text-primary);
+  text-decoration: none;
+  font-size: 1.3rem;
+  font-weight: 500;
+  padding: 12px 16px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  transition: all 0.3s ease;
+}
 ```
 
-# File: templates/vibe.html
+# File: templates/index.html
 ```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NeuroAid - Vibe</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/vibe.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/dropdown.css') }}" />
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/welcome.css') }}" />
-    <link id="theme-stylesheet" rel="stylesheet" href="{{ url_for('static', filename='css/themes/' + theme + '.css') }}">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>NeuroAid - Home</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dropdown.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/welcome.css') }}" />
+  <link id="theme-stylesheet" rel="stylesheet" href="{{ url_for('static', filename='css/themes/' + theme + '.css') }}">
 </head>
 <body>
-    <div class="app-container">
-        <aside class="sidebar">
-            <div class="logo">
-                <i class="ri-brain-line" aria-hidden="true"></i>
-                <h1>Neuro<span>Aid</span></h1>
-            </div>
-            <nav aria-label="Main navigation">
-                <a href="{{ url_for('index') }}"><i class="ri-home-5-line" aria-hidden="true"></i> Home</a>
-                <a href="{{ url_for('journal') }}"><i class="ri-booklet-line" aria-hidden="true"></i> Journal</a>
-                <a href="{{ url_for('progress') }}"><i class="ri-bar-chart-2-line" aria-hidden="true"></i> Progress</a>
-                <a href="{{ url_for('vibe') }}" class="active" aria-current="page"><i class="ri-music-2-line" aria-hidden="true"></i> Vibe</a>
-                <a href="{{ url_for('gratitude') }}"><i class="ri-heart-line" aria-hidden="true"></i> Gratitude</a>
-                <a href="{{ url_for('settings') }}"><i class="ri-settings-3-line" aria-hidden="true"></i> Settings</a>
-                <a href="{{ url_for('profile') }}"><i class="ri-user-line" aria-hidden="true"></i> Profile</a>
-                <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line" aria-hidden="true"></i> Logout</a>
-            </nav>
-        </aside>
+  <div class="sidebar">
+    <div class="logo">
+      <i class="ri-brain-line"></i>
+      <h1>Neuro<span>Aid</span></h1>
+    </div>
+    <nav>
+      <a href="{{ url_for('index') }}" class="active"><i class="ri-home-5-line"></i> Home</a>
+      <a href="{{ url_for('journal') }}"><i class="ri-booklet-line"></i> Journal</a>
+      <a href="{{ url_for('progress') }}"><i class="ri-bar-chart-2-line"></i> Progress</a>
+      <a href="{{ url_for('vibe') }}"><i class="ri-music-2-line"></i> Vibe</a>
+      <a href="{{ url_for('gratitude') }}"><i class="ri-heart-line"></i> Gratitude</a>
+      <a href="{{ url_for('settings') }}"><i class="ri-settings-3-line"></i> Settings</a>
+      <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
+      <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
+    </nav>
+  </div>
 
-        <div class="wrapper">
-            <main class="main-content" role="main">
-                <header class="main-header">
-                    <div class="welcome-container">
-                        <div class="welcome-text">Welcome to NeuroAid, {{ user_name }}</div>
-                        <div class="quote-text"></div>
-                    </div>
-                    <div class="profile-dropdown">
-                        <div class="profile">
-                            <img src="{{ profile_pic_url | default('https://randomuser.me/api/portraits/men/32.jpg') }}" alt="Profile" />
-                            <span>{{ user_name }}</span>
-                            <i class="ri-arrow-down-s-line"></i>
-                        </div>
-                        <div class="dropdown-content" style="z-index: 1000;">
-                            <div class="user-info">
-                                <p><i class="ri-user-line"></i> {{ user_name }}</p>
-                                <p><i class="ri-mail-line"></i> {{ user_email }}</p>
-                                <p><i class="ri-calendar-line"></i> Joined: {{ joined_date }}</p>
-                            </div>
-                            <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
-                            <a href="{{ url_for('settings') }}"><i class="ri-settings-3-line"></i> Settings</a>
-                            <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
-                        </div>
-                    </div>
-                </header>
-
-                <section class="music-recommendations-section" aria-labelledby="music-recommendations-title">
-                    <h2 id="music-recommendations-title"><i class="ri-music-2-line" aria-hidden="true"></i> Music Recommendations</h2>
-                    <div class="selector-group">
-                        <label for="language-select">Select Language:</label>
-                        <select id="language-select" aria-label="Select music language">
-                            <option value="tamil">Tamil</option>
-                            <option value="telugu">Telugu</option>
-                            <option value="malayalam">Malayalam</option>
-                            <option value="english">English</option>
-                        </select>
-                       <div class="note-container">
-                        <span class="note-label">Note:</span>
-                        <span class="note-text">
-                            A Spotify account is required to play full songs. Without a login, only song previews are available.
-                            <a href="https://www.spotify.com/signup" target="_blank">Sign up for Spotify</a> or log in to enjoy full tracks!
-                        </span>
-                        </div>
-
-                    </div>
-                    <div class="music-box" id="spotify-player" role="region" aria-live="polite">
-                        <h3>Now Playing</h3>
-                        <p>Loading your personalized playlist...</p>
-                    </div>
-                </section>
-            </main>
-
-            <footer>
-                <span>© 2025 NeuroAid. Your mental health companion.</span>
-            </footer>
+  <div class="wrapper">
+    <main class="main-content">
+      <header>
+        <div class="welcome-container">
+          <div class="welcome-text">Welcome to NeuroAid, {{ user_name }}</div>
+          <div class="quote-text"></div>
         </div>
+        <div class="profile-dropdown">
+          <div class="profile">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <img src="{{ profile_pic_url | default('https://randomuser.me/api/portraits/men/32.jpg') }}" alt="Profile" class="profile-pic">
+              <span>{{ user_name | default('User') }}</span>
+            </div>
+            <i class="ri-arrow-down-s-line"></i>
+          </div>
+          <div class="dropdown-content" style="z-index: 1000;">
+            <div class="user-info">
+              <p><i class="ri-user-line"></i> {{ user_name }}</p>
+              <p><i class="ri-mail-line"></i> {{ user_email }}</p>
+              <p><i class="ri-calendar-line"></i> Joined: {{ joined_date }}</p>
+            </div>
+            <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
+            <a href="{{ url_for('settings') }}"><i class="ri-settings-3-line"></i> Settings</a>
+            <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
+          </div>
+        </div>
+      </header>
+
+      <section class="home-section">
+        <div class="welcome-message">
+          <h2><i class="ri-home-5-line"></i> Welcome to NeuroAid</h2>
+          <p>Your companion for mental health and self-reflection.</p>
+        </div>
+
+        <div class="mood-card floating-mood-card">
+          <h3><i class="ri-emotion-line"></i> Today's Mood</h3>
+          <p>{% if mood_description %}{{ mood_description }}{% else %}Write a journal today{% endif %}</p>
+          <button class="close-mood-card"><i class="ri-close-line"></i></button>
+        </div>
+
+        <div class="suggestions-card">
+          <h3><i class="ri-lightbulb-line"></i> Today's Suggestions</h3>
+          {% if suggestions is defined and suggestions %}
+          <ul>
+            {% for suggestion in suggestions %}
+            <li>{{ suggestion }}</li>
+            {% endfor %}
+          </ul>
+          {% else %}
+          <p>No suggestions available. Write a journal entry!</p>
+          {% endif %}
+        </div>
+
+        <div class="activity-suggestions-card">
+          <h3><i class="ri-star-line"></i> Activity Suggestions</h3>
+          {% if activities is defined and activities %}
+          <ul>
+            {% for activity in activities %}
+            <li>{{ activity }}</li>
+            {% endfor %}
+          </ul>
+          {% else %}
+          <p>No activity suggestions available.</p>
+          {% endif %}
+        </div>
+
+        <div class="recent-reflections">
+          <h3><i class="ri-booklet-line"></i> Recent Reflections</h3>
+          {% if recent_entries is defined and recent_entries %}
+            {% for entry in recent_entries %}
+              <div class="entry-preview">
+                <div class="entry-meta">{{ entry.created_at }}</div>
+                <div class="entry-snippet">{{ entry.content_snippet | safe }}</div>
+                <a href="{{ url_for('journal') }}">Read More</a>
+              </div>
+            {% endfor %}
+          {% else %}
+            <p>No recent entries.</p>
+          {% endif %}
+        </div>
+
+        <div class="quick-actions">
+          <a href="{{ url_for('journal') }}" class="neuroaid-btn"><i class="ri-booklet-line"></i> Write a Journal Entry</a>
+          <a href="{{ url_for('progress') }}" class="neuroaid-btn"><i class="ri-bar-chart-2-line"></i> View Progress</a>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <span>© 2025 NeuroAid. Your mental health companion.</span>
+    </footer>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/dropdown.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/welcome.js') }}"></script>
+  <script>
+    // Handle floating mood card popup on page load and close button
+    document.addEventListener('DOMContentLoaded', () => {
+      const moodCard = document.querySelector('.floating-mood-card');
+      const closeButton = document.querySelector('.close-mood-card');
+      moodCard.classList.add('show');
+      const hideCard = () => {
+        moodCard.classList.remove('show');
+      };
+      setTimeout(hideCard, 5000); // Auto-hide after 5 seconds
+      closeButton.addEventListener('click', hideCard); // Hide on close button click
+    });
+  </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'964c88612b857fdd',t:'MTc1MzQ1NTY4OC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script>
+</body>
+</html>
+```
+
+# File: templates/progress.html
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>NeuroAid - Progress</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/progress.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dropdown.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/welcome.css') }}" />
+  <link id="theme-stylesheet" rel="stylesheet" href="{{ url_for('static', filename='css/themes/' + theme + '.css') }}">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+  <script type="text/javascript">
+    function googleTranslateElementInit() {
+      new google.translate.TranslateElement({
+        pageLanguage: 'en', // Default language is English
+        includedLanguages: 'en,es,fr', // Supported languages: English, Spanish, French
+        layout: google.translate.TranslateElement.InlineLayout.SIMPLE
+      }, 'google_translate_element');
+    }
+  </script>
+</head>
+<body>
+  <div class="app-container">
+    <div class="sidebar">
+      <div class="logo">
+        <i class="ri-brain-line"></i>
+        <h1>Neuro<span>Aid</span></h1>
+      </div>
+      <nav>
+        <a href="{{ url_for('index') }}"><i class="ri-home-5-line"></i> Home</a>
+        <a href="{{ url_for('journal') }}"><i class="ri-booklet-line"></i> Journal</a>
+        <a href="{{ url_for('progress') }}" class="active"><i class="ri-bar-chart-2-line"></i> Progress</a>
+        <a href="{{ url_for('vibe') }}"><i class="ri-music-2-line"></i> Vibe</a>
+        <a href="{{ url_for('gratitude') }}"><i class="ri-heart-line"></i> Gratitude</a>
+        <a href="{{ url_for('settings') }}"><i class="ri-settings-3-line"></i> Settings</a>
+        <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
+        <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
+      </nav>
     </div>
 
-    <script src="{{ url_for('static', filename='js/welcome.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/vibe.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/dropdown.js') }}"></script>
+    <div class="wrapper">
+      <main class="main-content">
+        <header>
+          <div class="welcome-container">
+            <div class="welcome-text">Welcome to NeuroAid, {{ user_name }}</div>
+            <div class="quote-text"></div>
+          </div>
+          <div class="profile-dropdown">
+            <div class="profile">
+              <img src="{{ profile_pic_url | default('https://randomuser.me/api/portraits/men/32.jpg') }}" alt="Profile" id="header-profile-pic" />
+              <span>{{ user_name }}</span>
+              <i class="ri-arrow-down-s-line"></i>
+            </div>
+            <div class="dropdown-content" style="z-index: 1000;">
+              <div class="user-info">
+                <p><i class="ri-user-line"></i> {{ user_name }}</p>
+                <p><i class="ri-mail-line"></i> {{ user_email }}</p>
+                <p><i class="ri-calendar-line"></i> Joined: {{ joined_date }}</p>
+              </div>
+              <a href="{{ url_for('profile') }}"><i class="ri-user-line"></i> Profile</a>
+              <a href="{{ url_for('settings') }}"><i class="ri-settings-3-line"></i> Settings</a>
+              <a href="{{ url_for('logout') }}"><i class="ri-logout-box-line"></i> Logout</a>
+            </div>
+          </div>
+        </header>
+
+        <section class="stats-section">
+          <h2><i class="ri-bar-chart-2-line"></i> Your Progress</h2>
+          <div class="stats-boxes">
+            <div class="stat-box">
+              <i class="ri-calendar-line"></i>
+              <div>
+                <h3>Journaling Streak</h3>
+                <p><strong id="streak-value">0 Days</strong></p>
+              </div>
+            </div>
+            <div class="stat-box">
+              <i class="ri-booklet-line"></i>
+              <div>
+                <h3>Total Entries</h3>
+                <p><strong id="entries-count">0 entries</strong></p>
+              </div>
+            </div>
+            <div class="stat-box">
+              <i class="ri-emotion-happy-line"></i>
+              <div>
+                <h3>Average Mood</h3>
+                <p><strong id="mood">Neutral</strong></p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="chart-section">
+          <h2><i class="ri-line-chart-line"></i> Mood Over Time</h2>
+          <div class="chart-card">
+            <canvas id="moodChart"></canvas>
+          </div>
+        </section>
+
+        <section class="chart-section">
+          <h2><i class="ri-line-chart-line"></i> Confidence Over Time</h2>
+          <div class="chart-card">
+            <canvas id="confidenceChart"></canvas>
+          </div>
+        </section>
+      </main>
+
+      <footer>
+        <span>© 2025 NeuroAid. Your mental health companion.</span>
+      </footer>
+    </div>
+  </div>
+  <script src="{{ url_for('static', filename='js/progress.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/dropdown.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/welcome.js') }}"></script>
 </body>
 </html>
 ```
