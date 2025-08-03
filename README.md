@@ -89,16 +89,16 @@ The platform prioritizes user security with robust authentication (including 2FA
 
 ## 🧑‍💻 **Tech Stack**
 
-| Layer             | Technologies                                                                 |
-|------------------|-------------------------------------------------------------------------------|
-| **Frontend**      | HTML, CSS, JavaScript (served via Flask templates)                           |
-| **Backend**       | Flask (Python)                                                               |
-| **Database**      | Supabase (PostgreSQL)                                                        |
-| **Authentication**| bcrypt (password hashing), pyotp (2FA), qrcode (QR code generation)          |
-| **Email Service** | SMTP via `smtplib` (Gmail)                                                   |
-| **Emotion AI**    | Hugging Face API (`j-hartmann/emotion-english-distilroberta-base`)           |
-| **Music API**     | Spotify API (embedded playlists based on detected mood & language)           |
-| **Other Libraries**| `python-dotenv`, `requests`, `schedule`, `storage3`, `uuid`, `secrets`     |
+| Layer              | Technologies                                                                 |
+|--------------------|------------------------------------------------------------------------------|
+| **Frontend**       | HTML, CSS, JavaScript (served via Flask templates)                           |
+| **Backend**        | Flask (Python)                                                               |
+| **Database**       | Supabase (PostgreSQL)                                                        |
+| **Authentication** | bcrypt (password hashing), pyotp (2FA), qrcode (QR code generation)          |
+| **Email Service**  | SMTP via `smtplib` (Gmail)                                                   |
+| **Emotion AI**     | Hugging Face API (`j-hartmann/emotion-english-distilroberta-base`)           |
+| **Music API**      | Spotify API (embedded playlists based on detected mood & language)           |
+| **Other Libraries**| `python-dotenv`, `requests`, `schedule`, `storage3`, `uuid`, `secrets`       |
 
 ---
 
