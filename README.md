@@ -112,8 +112,8 @@ The platform prioritizes user security with robust authentication (including 2FA
   🔗 [GitHub](https://github.com/Barathkalyan) | 📫 tbarathkalyan@gmail.com
 
 - **Krishnakumar** - Backend Developer, LLM Model tuner, Learner!!!
--  🔗 [GitHub](https://github.com/V-Krishnakumar) | 📫 drkrishnav06@gmail.com
-- 
+  🔗 [GitHub](https://github.com/V-Krishnakumar) | 📫 drkrishnav06@gmail.com
+ 
 
 We welcome contributions, feedback, or collaborations! Feel free to reach out or open an issue.
 
