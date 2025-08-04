@@ -1281,7 +1281,7 @@ def index():
     suggestions = None
     recent_entries_data = []
     mood_description = "Neutral"
-    activities = []
+    activities = ["Write a journal entry to get activity suggestions!"]  # Default message
 
     try:
         latest_entry_query = supabase.table('journal_entries')\
@@ -1313,13 +1313,13 @@ def index():
                     5: "Great"
                 }
                 mood_description = mood_descriptions.get(mood_score, "Neutral")
-                activities = generate_activity_suggestions(supabase, user_id, mood_score)
+                activities = generate_activity_suggestions(supabase, user_id, mood_score)  # Generate activities only if entry exists
             else:
                 suggestions = ["Write a journal entry for today!"]
-                activities = generate_activity_suggestions(supabase, user_id, 3)  # Default to neutral mood
+                # activities remains the default message
         else:
             suggestions = ["Write a journal entry to get suggestions!"]
-            activities = generate_activity_suggestions(supabase, user_id, 3)  # Default to neutral mood
+            # activities remains the default message
 
         recent_entries_query = supabase.table('journal_entries')\
             .select('id, content, created_at')\
@@ -1343,7 +1343,7 @@ def index():
     except Exception as e:
         logger.error(f"Error fetching data for index: {str(e)}")
         suggestions = ["Unable to load suggestions. Try writing!"]
-        activities = ["Try a relaxing activity.", "Consider a short mindfulness session."]
+        activities = ["Unable to load activity suggestions. Try writing!"]  # Error fallback
         recent_entries_data = []
 
     dropdown_data = get_user_dropdown_data(supabase, user_id)
@@ -1355,7 +1355,6 @@ def index():
                           mood_description=mood_description,
                           activities=activities,
                           **dropdown_data)
-
 
 @app.route('/journal', methods=['GET', 'POST'])
 def journal():
