@@ -190,15 +190,21 @@ header {
 
 /* Footer */
 footer {
-  text-align: center;
-  padding: 20px;
-  background: var(--glass-bg);
-  color: var(--text-primary);
-  font-size: 0.9rem;
-  backdrop-filter: blur(4px);
-  border-top: 1px solid var(--glass-border);
-  margin-top: auto;
-  width: 100%;
+  text-align: center !important;
+  padding: 20px !important;
+  background: rgba(255, 255, 255, 0.9) !important; /* Use exact value instead of --glass-bg */
+  color: #1f2937 !important; /* Use exact value instead of --text-primary */
+  font-size: 0.9rem !important;
+  backdrop-filter: blur(4px) !important;
+  border-top: 1px solid rgba(200, 200, 200, 0.3) !important; /* Use exact value instead of --glass-border */
+  margin-top: auto !important;
+  width: 100% !important;
+}
+footer span {
+  color: #1f2937 !important;
+  font-size: 0.9rem !important; /* Ensure consistent font size */
+  display: inline-block !important;
+  opacity: 1 !important;
 }
 
 /* Responsive design */
