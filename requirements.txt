@@ -1,0 +1,10 @@
+Flask
+gunicorn
+python-dotenv
+requests
+schedule
+storage3
+bcrypt
+pyotp
+qrcode
+email-validator
