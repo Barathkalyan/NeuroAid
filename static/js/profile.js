@@ -155,8 +155,15 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         const data = await response.json();
         if (data.success) {
+          // Update input fields with returned values to ensure consistency
+          document.getElementById('age-input').value = data.profile_data?.age || '';
+          document.getElementById('gender-input').value = data.profile_data?.gender || '';
+          document.getElementById('location-input').value = data.profile_data?.location || '';
+          document.getElementById('language-input').value = data.profile_data?.preferred_language || '';
           showFeedback('Personal details saved successfully!');
           updateProfileCompletion();
+          savePersonalDetailsBtn.disabled = false;
+          savePersonalDetailsBtn.textContent = 'Save';
         } else {
           showFeedback(data.error || 'Failed to save personal details.', 'error');
           savePersonalDetailsBtn.disabled = false;
@@ -197,6 +204,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (data.success) {
           showFeedback('Mental health goals saved successfully!');
           updateProfileCompletion();
+          saveGoalsBtn.disabled = false;
+          saveGoalsBtn.textContent = 'Save';
         } else {
           showFeedback(data.error || 'Failed to save mental health goals.', 'error');
           saveGoalsBtn.disabled = false;
@@ -212,40 +221,39 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Update profile completion dynamically
- const updateProfileCompletion = async () => {
-  try {
-    const response = await fetch('/api/profile_completion', {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json' }
-    });
-    const data = await response.json();
-    if (data.success) {
-      const progressText = document.querySelector('.progress-text');
-      const progressCircle = document.querySelector('.progress-ring__circle');
-      progressText.textContent = `${data.completion_percentage}% Complete`;
-      progressCircle.style.strokeDasharray = `${data.completion_dasharray} 276.46`;
-      const ctaMessage = document.querySelector('.cta-message');
-      if (ctaMessage && data.completion_percentage === 100) {
-        ctaMessage.style.display = 'none';
+  const updateProfileCompletion = async () => {
+    try {
+      const response = await fetch('/api/profile_completion', {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      const data = await response.json();
+      if (data.success) {
+        const progressText = document.querySelector('.progress-text');
+        const progressCircle = document.querySelector('.progress-ring__circle');
+        progressText.textContent = `${data.completion_percentage}% Complete`;
+        progressCircle.style.strokeDasharray = `${data.completion_dasharray} 276.46`;
+        const ctaMessage = document.querySelector('.cta-message');
+        if (ctaMessage && data.completion_percentage === 100) {
+          ctaMessage.style.display = 'none';
+        }
+        const overviewStatus = document.querySelector('.profile-overview .section-status');
+        const personalDetailsStatus = document.querySelector('.personal-details .section-status');
+        const mentalHealthGoalsStatus = document.querySelector('.mental-health-goals .section-status');
+        if (overviewStatus) {
+          overviewStatus.style.display = data.overview_complete ? 'inline-block' : 'none';
+        }
+        if (personalDetailsStatus) {
+          personalDetailsStatus.style.display = data.personal_details_complete ? 'inline-block' : 'none';
+        }
+        if (mentalHealthGoalsStatus) {
+          mentalHealthGoalsStatus.style.display = data.mental_health_goals_complete ? 'inline-block' : 'none';
+        }
       }
-      const overviewStatus = document.querySelector('.profile-overview .section-status');
-      const personalDetailsStatus = document.querySelector('.personal-details .section-status');
-      const mentalHealthGoalsStatus = document.querySelector('.mental-health-goals .section-status');
-      if (overviewStatus) {
-        overviewStatus.style.display = data.overview_complete ? 'inline-block' : 'none';
-      }
-      if (personalDetailsStatus) {
-        personalDetailsStatus.style.display = data.personal_details_complete ? 'inline-block' : 'none';
-      }
-      if (mentalHealthGoalsStatus) {
-        mentalHealthGoalsStatus.style.display = data.mental_health_goals_complete ? 'inline-block' : 'none';
-      }
+    } catch (error) {
+      console.error('Error updating profile completion:', error);
     }
-  } catch (error) {
-    console.error('Error updating profile completion:', error);
-  }
-};
-
+  };
 });
 
 // Add feedback styles dynamically
