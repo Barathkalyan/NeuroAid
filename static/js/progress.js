@@ -48,14 +48,22 @@ document.addEventListener('DOMContentLoaded', function () {
                             font: { family: "'Poppins', sans-serif", size: 12 },
                             padding: 15,
                             callback: function(value) {
-                                if (value === 6) return 'Max';
-                                return value;
+                                const moodLabels = {
+                                    0: '',
+                                    1: 'Very Low',
+                                    2: 'Low',
+                                    3: 'Neutral',
+                                    4: 'Good',
+                                    5: 'Great',
+                                    6: 'Max'
+                                };
+                                return moodLabels[value] || value;
                             }
                         },
                         title: { display: true, text: 'Mood Score', font: { size: 14 } },
                         grid: {
-                            display: true, // Keep y-axis grid lines
-                            drawBorder: true // Keep y-axis line
+                            display: true,
+                            drawBorder: true
                         }
                     },
                     x: {
@@ -66,10 +74,10 @@ document.addEventListener('DOMContentLoaded', function () {
                         },
                         title: { display: true, text: 'Day', font: { size: 12 } },
                         grid: {
-                            display: false // Remove x-axis grid lines
+                            display: false
                         },
                         border: {
-                            display: false // Remove x-axis line
+                            display: false
                         }
                     }
                 },
@@ -133,10 +141,10 @@ document.addEventListener('DOMContentLoaded', function () {
                         },
                         title: { display: true, text: 'Day', font: { size: 12 } },
                         grid: {
-                            display: false // Remove x-axis grid lines
+                            display: false
                         },
                         border: {
-                            display: false // Remove x-axis line
+                            display: false
                         }
                     }
                 },
@@ -151,15 +159,27 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
 
-        // --- Update Streak and Entries ---
+        // --- Update Streak, Entries, and Average Mood ---
         const streakElement = document.getElementById('streak-value');
         if (streakElement) streakElement.textContent = `${data.streak} Days`;
 
         const numEntriesElement = document.getElementById('entries-count');
         if (numEntriesElement) numEntriesElement.textContent = `${data.numEntries} entries`;
+
+        const moodElement = document.getElementById('mood');
+        if (moodElement) {
+            const moodEmojis = {
+                'Very Low': '😞',
+                'Low': '🙁',
+                'Neutral': '😐',
+                'Good': '🙂',
+                'Great': '😊'
+            };
+            moodElement.textContent = `${data.avg_mood_description || 'Neutral'} ${moodEmojis[data.avg_mood_description] || ''}`;
+        }
     }
 
-    // Fetch data from the server (unchanged)
+    // Fetch data from the server
     fetch('/api/mood_data')
         .then(response => {
             if (!response.ok) throw new Error(`Server error: ${response.status}`);
@@ -176,7 +196,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 data: [3, 3, 3, 3, 3, 3, 3],
                 confidence: [0, 0, 0, 0, 0, 0, 0],
                 numEntries: 0,
-                streak: 0
+                streak: 0,
+                avg_mood_description: 'Neutral'
             });
         });
 });

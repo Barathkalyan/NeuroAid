@@ -623,6 +623,18 @@ def get_mood_data():
             mood_data.append(round(avg_mood, 2))
             confidence_data.append(round(avg_confidence, 2))
 
+        # Calculate overall average mood and description
+        all_moods = [mood for date_str in date_map for mood in date_map[date_str]['moods']]
+        overall_avg_mood = sum(all_moods) / len(all_moods) if all_moods else 3
+        mood_descriptions = {
+            1: "Very Low",
+            2: "Low",
+            3: "Neutral",
+            4: "Good",
+            5: "Great"
+        }
+        avg_mood_description = mood_descriptions.get(round(overall_avg_mood), "Neutral")
+
         all_entries = supabase.table('journal_entries')\
             .select('created_at')\
             .eq('user_id', user_id)\
@@ -654,7 +666,9 @@ def get_mood_data():
             'data': mood_data,
             'numEntries': len(entries.data),
             'streak': streak,
-            'confidence': confidence_data
+            'confidence': confidence_data,
+            'avg_mood': round(overall_avg_mood, 2),
+            'avg_mood_description': avg_mood_description
         })
     except Exception as e:
         logger.error(f"Error fetching mood data: {str(e)}")
@@ -663,7 +677,9 @@ def get_mood_data():
             'data': [3] * 7,
             'numEntries': 0,
             'streak': 0,
-            'confidence': [0] * 7
+            'confidence': [0] * 7,
+            'avg_mood': 3,
+            'avg_mood_description': 'Neutral'
         }), 200
 
 @app.route('/api/gratitude', methods=['GET', 'POST'])
