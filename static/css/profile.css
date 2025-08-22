@@ -1,63 +1,60 @@
-/* Define CSS variables for theming */
-:root {
-  --primary: #7c3aed;
-  --text-primary: #1f2937;
-  --text-secondary: #6b7280;
-  --card-bg: #ffffff;
-  --border-color: #e5e7eb;
-  --success: #10b981;
-  --error: #ef4444;
-  --input-bg: #f9fafb;
-  --button-bg: #7c3aed;
-  --button-hover-bg: #6d28d9;
-  --disabled-bg: #e5e7eb;
-}
+/* Profile-specific styles with enhanced mobile responsiveness */
 
 .profile-section {
-  padding: 24px 16px;
+  padding: 20px 12px;
   width: 100%;
   max-width: 1280px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 20px;
   box-sizing: border-box;
 }
 
 .profile-header {
   text-align: center;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .profile-header h2 {
-  font-size: 1.75rem;
+  font-size: 1.75rem; /* 28px */
   font-weight: 600;
-  color: var(--text-primary);
-  margin-bottom: 8px;
+  color: var(--text-primary, #1f2937);
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
 .profile-header p {
-  font-size: 1rem;
-  color: var(--text-secondary);
+  font-size: 0.875rem; /* 14px */
+  color: var(--text-secondary, #6b7280);
+  line-height: 1.5;
 }
 
 .progress-container {
   display: flex;
   justify-content: center;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .progress-circle {
-  width: 100px;
-  height: 100px;
+  width: 80px;
+  height: 80px;
   position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .progress-ring__circle {
-  stroke: var(--primary);
-  stroke-width: 8;
+  stroke: var(--primary, #7c3aed);
+  stroke-width: 6;
   fill: none;
   transition: stroke-dashoffset 0.3s ease;
+  transform-origin: center;
+  transform: rotate(-90deg); /* Adjust for SVG circle starting point */
 }
 
 .progress-text {
@@ -65,52 +62,115 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  font-size: 1rem;
+  font-size: 0.875rem; /* 14px */
   font-weight: 500;
-  color: var(--primary);
+  color: var(--primary, #7c3aed);
+  text-align: center;
+  line-height: 1; /* Ensure text fits vertically */
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 1;
+}
+
+@media (max-width: 900px) {
+  .progress-circle {
+    width: 70px;
+    height: 70px;
+  }
+
+  .progress-ring__circle {
+    stroke-width: 5;
+    r: 40;
+  }
+
+  .progress-text {
+    font-size: 0.75rem; /* 12px */
+  }
+}
+
+@media (max-width: 600px) {
+  .progress-circle {
+    width: 60px;
+    height: 60px;
+  }
+
+  .progress-ring__circle {
+    stroke-width: 4;
+    r: 36;
+  }
+
+  .progress-text {
+    font-size: 0.7rem; /* 11px */
+  }
+}
+
+@media (max-width: 400px) {
+  .progress-circle {
+    width: 50px;
+    height: 50px;
+  }
+
+  .progress-ring__circle {
+    stroke-width: 3;
+    r: 32;
+  }
+
+  .progress-text {
+    font-size: 0.65rem; /* 10px */
+  }
 }
 
 .card {
-  background: var(--card-bg);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  padding: 24px;
+  background: var(--card-bg, #ffffff);
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 10px;
+  padding: 20px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  margin-bottom: 24px;
+  margin-bottom: 20px;
   width: 100%;
   box-sizing: border-box;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
 }
 
 .card-header {
   display: flex;
-  flex-direction: column; /* Stack title and status vertically */
-  align-items: flex-start; /* Align left for consistency */
-  margin-bottom: 16px;
+  flex-direction: column;
+  align-items: flex-start;
+  margin-bottom: 12px;
 }
 
 .card-header h3 {
-  font-size: 1.25rem;
+  font-size: 1.25rem; /* 20px */
   font-weight: 600;
-  color: var(--text-primary);
-  margin-bottom: 4px; /* Space between title and status */
+  color: var(--text-primary, #1f2937);
+  margin-bottom: 4px;
 }
 
 .section-status {
-  font-size: 0.875rem;
+  font-size: 0.75rem; /* 12px */
   font-weight: 500;
-  color: var(--success);
+  color: var(--success, #10b981);
   background: rgba(16, 185, 129, 0.1);
-  padding: 4px 8px;
+  padding: 3px 6px;
   border-radius: 4px;
 }
 
 .section-status.complete {
-  display: inline-block; /* Only show if complete */
+  display: inline-block;
 }
 
 .profile-content {
   display: flex;
-  gap: 32px;
+  gap: 24px;
   width: 100%;
   flex-wrap: wrap;
 }
@@ -119,182 +179,259 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
-  min-width: 200px;
+  gap: 12px;
+  min-width: 180px;
 }
 
 .profile-picture img,
 .profile-picture .profile-icon {
-  width: 120px;
-  height: 120px;
+  width: 100px;
+  height: 100px;
   border-radius: 50%;
   object-fit: cover;
-  border: 2px solid var(--border-color);
+  border: 2px solid var(--border-color, #e5e7eb);
+}
+
+.profile-icon {
+  font-size: 48px;
+  color: var(--primary, #7c3aed);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f9f9f9;
+  border: 1px solid #e9ecef;
 }
 
 .edit-button {
-  background: var(--button-bg);
+  background: var(--button-bg, #7c3aed);
   color: white;
   border: none;
   padding: 8px 16px;
-  border-radius: 8px;
-  font-size: 0.875rem;
+  border-radius: 6px;
+  font-size: 0.875rem; /* 14px */
   cursor: pointer;
-  transition: background 0.2s ease;
+  transition: background 0.2s ease, transform 0.2s ease;
+  touch-action: manipulation;
+  min-width: 100px;
 }
 
 .edit-button:hover {
-  background: var(--button-hover-bg);
+  background: var(--button-hover-bg, #6d28d9);
+  transform: scale(1.05);
+}
+
+.edit-button:active {
+  transform: scale(0.95);
 }
 
 .form-container {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
   min-width: 0;
 }
 
 .form-field {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   width: 100%;
 }
 
 .form-field label {
-  font-size: 1rem;
+  font-size: 0.875rem; /* 14px */
   font-weight: 500;
-  color: var(--text-primary);
+  color: var(--text-primary, #1f2937);
 }
 
 .input-container {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   width: 100%;
 }
 
 .form-field input,
 .form-field select {
   flex: 1;
-  padding: 10px;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  font-size: 1rem;
-  background: var(--input-bg);
+  padding: 8px;
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 6px;
+  font-size: 0.875rem; /* 14px */
+  background: var(--input-bg, #f9fafb);
 }
 
 .form-field input.editable {
-  border-color: var(--primary);
+  border: 2px solid var(--primary, #7c3aed);
+  background: #f9f9f9;
 }
 
 .form-field input:disabled {
-  background: var(--disabled-bg);
+  background: var(--disabled-bg, #e9ecef);
   cursor: not-allowed;
 }
 
 .edit-field-btn {
-  background: var(--button-bg);
+  background: var(--button-bg, #7c3aed);
   color: white;
   border: none;
   padding: 8px 16px;
-  border-radius: 8px;
-  font-size: 0.875rem;
+  border-radius: 6px;
+  font-size: 0.875rem; /* 14px */
   cursor: pointer;
-  transition: background 0.2s ease;
+  transition: background 0.2s ease, transform 0.2s ease;
+  touch-action: manipulation;
+  min-width: 80px;
 }
 
 .edit-field-btn:hover {
-  background: var(--button-hover-bg);
+  background: var(--button-hover-bg, #6d28d9);
+  transform: scale(1.05);
+}
+
+.edit-field-btn:active {
+  transform: scale(0.95);
 }
 
 .checkbox-container {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
   width: 100%;
 }
 
 .checkbox-option {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .checkbox-option input {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
 }
 
 .checkbox-option label {
-  font-size: 1rem;
-  color: var(--text-primary);
+  font-size: 0.875rem; /* 14px */
+  color: var(--text-primary, #1f2937);
 }
 
 .form-actions {
   display: flex;
   justify-content: flex-end;
-  margin-top: 16px;
+  margin-top: 12px;
   width: 100%;
+  gap: 8px;
 }
 
 .save-btn {
-  background: var(--button-bg);
+  background: var(--button-bg, #7c3aed);
   color: white;
   border: none;
-  padding: 10px 20px;
-  border-radius: 8px;
-  font-size: 1rem;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 0.875rem; /* 14px */
   cursor: pointer;
-  transition: background 0.2s ease;
+  transition: background 0.2s ease, transform 0.2s ease;
+  touch-action: manipulation;
+  min-width: 100px;
 }
 
 .save-btn:hover {
-  background: var(--button-hover-bg);
+  background: var(--button-hover-bg, #6d28d9);
+  transform: scale(1.05);
+}
+
+.save-btn:active {
+  transform: scale(0.95);
 }
 
 .save-btn:disabled {
-  background: var(--disabled-bg);
+  background: var(--disabled-bg, #e5e7eb);
   cursor: not-allowed;
 }
 
 .cta-message {
-  background: var(--card-bg);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  padding: 16px;
+  background: var(--card-bg, #ffffff);
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 10px;
+  padding: 12px;
   text-align: center;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
   width: 100%;
 }
 
 .cta-message p {
-  font-size: 1rem;
-  color: var(--text-primary);
+  font-size: 0.875rem; /* 14px */
+  color: var(--text-primary, #1f2937);
   margin: 0;
+  line-height: 1.5;
 }
 
 .feedback {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 8px;
+  border-radius: 6px;
+  font-size: 0.875rem; /* 14px */
+  text-align: center;
 }
 
 .feedback-success {
-  background: #10b981;
+  background: var(--success, #10b981);
+  color: white;
 }
 
 .feedback-error {
-  background: #ef4444;
+  background: var(--error, #ef4444);
+  color: white;
 }
 
-@media (max-width: 768px) {
+/* Responsive Styles */
+@media (max-width: 900px) {
   .profile-section {
+    padding: 16px 10px;
+  }
+
+  .profile-header h2 {
+    font-size: 1.5rem; /* 24px */
+  }
+
+  .profile-header p {
+    font-size: 0.75rem; /* 12px */
+  }
+
+  .progress-circle {
+    width: 70px;
+    height: 70px;
+  }
+
+  .progress-ring__circle {
+    stroke-width: 5;
+    r: 40;
+  }
+
+  .progress-text {
+    font-size: 0.75rem; /* 12px */
+  }
+
+  .card {
     padding: 16px;
+    margin-bottom: 16px;
+  }
+
+  .card-header h3 {
+    font-size: 1.125rem; /* 18px */
+  }
+
+  .section-status {
+    font-size: 0.7rem; /* 11px */
+    padding: 2px 5px;
   }
 
   .profile-content {
     flex-direction: column;
-    align-items: stretch;
+    gap: 16px;
   }
 
   .profile-picture {
@@ -303,52 +440,198 @@
     align-items: center;
   }
 
-  .form-field {
-    width: 100%;
+  .profile-picture img,
+  .profile-picture .profile-icon {
+    width: 80px;
+    height: 80px;
   }
 
-  .input-container {
-    flex-direction: column;
-    align-items: stretch;
+  .profile-icon {
+    font-size: 40px;
   }
 
-  .edit-field-btn {
-    width: 100%;
-    text-align: center;
-  }
-
-  .save-btn {
-    width: 100%;
-  }
-
-  .checkbox-container {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 480px) {
-  .profile-header h2 {
-    font-size: 1.5rem;
-  }
-
-  .card {
-    padding: 16px;
+  .form-field label {
+    font-size: 0.75rem; /* 12px */
   }
 
   .form-field input,
   .form-field select {
-    font-size: 0.875rem;
+    font-size: 0.75rem; /* 12px */
+    padding: 6px;
   }
 
   .edit-button,
   .edit-field-btn,
   .save-btn {
-    padding: 8px 16px;
-    font-size: 0.875rem;
+    font-size: 0.75rem; /* 12px */
+    padding: 6px 12px;
+    min-width: 80px;
+  }
+
+  .input-container {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+
+  .checkbox-container {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .checkbox-option label {
+    font-size: 0.75rem; /* 12px */
+  }
+
+  .checkbox-option input {
+    width: 12px;
+    height: 12px;
+  }
+
+  .form-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+
+  .cta-message {
+    padding: 10px;
+  }
+
+  .cta-message p {
+    font-size: 0.75rem; /* 12px */
+  }
+
+  .feedback {
+    font-size: 0.75rem; /* 12px */
+    padding: 6px;
+  }
+}
+
+@media (max-width: 600px) {
+  .profile-section {
+    padding: 12px 8px;
+  }
+
+  .profile-header h2 {
+    font-size: 1.25rem; /* 20px */
+  }
+
+  .profile-header p {
+    font-size: 0.7rem; /* 11px */
+  }
+
+  .progress-circle {
+    width: 60px;
+    height: 60px;
+  }
+
+  .progress-ring__circle {
+    stroke-width: 4;
+    r: 36;
+  }
+
+  .progress-text {
+    font-size: 0.7rem; /* 11px */
+  }
+
+  .card {
+    padding: 12px;
+    margin-bottom: 12px;
+  }
+
+  .card-header h3 {
+    font-size: 1rem; /* 16px */
   }
 
   .section-status {
-    font-size: 0.75rem;
-    padding: 3px 6px;
+    font-size: 0.65rem; /* 10px */
+    padding: 2px 4px;
+  }
+
+  .profile-picture img,
+  .profile-picture .profile-icon {
+    width: 70px;
+    height: 70px;
+  }
+
+  .profile-icon {
+    font-size: 36px;
+  }
+
+  .form-field label {
+    font-size: 0.7rem; /* 11px */
+  }
+
+  .form-field input,
+  .form-field select {
+    font-size: 0.7rem; /* 11px */
+    padding: 5px;
+  }
+
+  .edit-button,
+  .edit-field-btn,
+  .save-btn {
+    font-size: 0.7rem; /* 11px */
+    padding: 5px 10px;
+    min-width: 70px;
+  }
+
+  .checkbox-option label {
+    font-size: 0.7rem; /* 11px */
+  }
+
+  .checkbox-option input {
+    width: 10px;
+    height: 10px;
+  }
+
+  .cta-message {
+    padding: 8px;
+  }
+
+  .cta-message p {
+    font-size: 0.7rem; /* 11px */
+  }
+
+  .feedback {
+    font-size: 0.7rem; /* 11px */
+    padding: 5px;
+  }
+}
+
+@media (max-width: 400px) {
+  .profile-section {
+    padding: 10px 6px;
+  }
+
+  .profile-header h2 {
+    font-size: 1.125rem; /* 18px */
+  }
+
+  .profile-header p {
+    font-size: 0.65rem; /* 10px */
+  }
+
+  .card {
+    padding: 10px;
+  }
+
+  .card-header h3 {
+    font-size: 0.875rem; /* 14px */
+  }
+
+  .section-status {
+    font-size: 0.6rem; /* 9px */
+  }
+
+  .profile-picture img,
+  .profile-picture .profile-icon {
+    width: 60px;
+    height: 60px;
+  }
+
+  .profile-icon {
+    font-size: 32px;
   }
 }
