@@ -58,6 +58,21 @@ body {
   color: var(--primary);
 }
 
+.dropdown-content {
+  display: none;
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: var(--glass-bg);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  z-index: 1002;
+  min-width: 200px;
+  padding: 8px 0;
+}
+
 .dropdown-content .user-info {
   padding: 10px;
   border-bottom: 1px solid #eee;
@@ -76,6 +91,26 @@ body {
 .dropdown-content .user-info i {
   font-size: 1.125rem; /* 18px for icons */
   color: var(--primary);
+}
+
+.profile:hover .dropdown-content {
+  display: block;
+}
+
+@media (max-width: 900px) {
+  .dropdown-content {
+    right: -10px;
+    min-width: 180px;
+  }
+}
+
+@media (max-width: 600px) {
+  .dropdown-content {
+    position: fixed;
+    top: 60px;
+    right: 12px;
+    min-width: 160px;
+  }
 }
 
 .logo h1 {
@@ -301,6 +336,7 @@ footer {
   gap: 1rem;
   justify-content: center;
   margin-bottom: 2rem;
+  flex-wrap: wrap; /* Allow buttons to wrap on smaller screens */
 }
 
 .neuroaid-btn {
@@ -317,6 +353,8 @@ footer {
   align-items: center;
   gap: 0.5rem;
   text-decoration: none;
+  touch-action: manipulation; /* Improve touch responsiveness */
+  min-width: 120px; /* Ensure buttons are touch-friendly */
 }
 
 .neuroaid-btn:hover {
@@ -420,7 +458,7 @@ footer {
   backdrop-filter: blur(12px);
   box-shadow: var(--shadow);
   width: 100%;
-  min-height: 670px;
+  min-height: 400px; /* Reduced for better mobile fit */
   overflow: visible;
   color: var(--text-primary);
 }
@@ -428,7 +466,7 @@ footer {
 .chart-card canvas {
   width: 100% !important;
   max-width: 900px;
-  height: 650px !important;
+  height: 350px !important; /* Adjusted for mobile */
   margin: 0 auto;
 }
 
@@ -453,14 +491,14 @@ footer {
 /* Floating Mood Card */
 .floating-mood-card {
   position: fixed;
-  top: 100px;
-  right: 24px;
-  width: 320px;
+  top: 80px;
+  right: 16px;
+  width: 280px; /* Slightly smaller for mobile */
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.15), rgba(124, 58, 237, 0.1));
   backdrop-filter: blur(15px);
   border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: 16px;
-  padding: 20px;
+  padding: 16px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25), 0 0 0 2px rgba(124, 58, 237, 0.3);
   z-index: 10000;
   transform: translateY(-100%);
@@ -475,29 +513,29 @@ footer {
 }
 
 .floating-mood-card h3 {
-  font-size: 1.5rem; /* 24px for floating mood card heading */
+  font-size: 1.25rem; /* 20px for mobile */
   font-weight: 700;
   color: var(--text-primary);
-  margin-bottom: 10px;
+  margin-bottom: 8px;
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
 .floating-mood-card p {
-  font-size: 1rem; /* 16px for floating mood card text */
+  font-size: 0.875rem; /* 14px for mobile */
   color: var(--text-secondary);
   line-height: 1.5;
 }
 
 .floating-mood-card .close-mood-card {
   position: absolute;
-  top: 12px;
-  right: 12px;
+  top: 10px;
+  right: 10px;
   background: none;
   border: none;
   color: var(--text-secondary);
-  font-size: 1.25rem; /* 20px for close icon */
+  font-size: 1rem; /* 16px for close icon */
   cursor: pointer;
   transition: color 0.3s ease, transform 0.2s ease;
 }
@@ -520,20 +558,271 @@ footer {
   }
 }
 
-/* Responsive Styles */
+/* Welcome Message */
+.welcome-message {
+  margin-bottom: 2rem;
+  border: none;
+  border-radius: 8px;
+  padding: 1.5rem;
+  background-color: var(--card-bg, #2a3646);
+  box-shadow: var(--shadow-light, 0 2px 8px rgba(0, 0, 0, 0.1));
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.welcome-message:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+}
+
+.welcome-message h2 {
+  color: var(--text-primary);
+  font-size: 1.75rem; /* 28px for mobile */
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.welcome-message p {
+  color: var(--text-secondary);
+  font-size: 0.875rem; /* 14px for mobile */
+  font-weight: 400;
+  margin-top: 0.75rem;
+}
+
+/* Suggestions Card */
+.suggestions-card {
+  background: var(--card-bg, #2a3646);
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-light, 0 2px 8px rgba(0, 0, 0, 0.1));
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.suggestions-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+}
+
+.suggestions-card h3 {
+  color: var(--text-primary);
+  font-size: 1.25rem; /* 20px for mobile */
+  font-weight: 600;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.suggestions-card ul {
+  list-style-type: disc;
+  padding-left: 1.5rem;
+  margin: 0.75rem 0;
+  color: var(--text-secondary);
+  font-size: 0.875rem; /* 14px for mobile */
+  line-height: 1.6;
+}
+
+.suggestions-card ul li {
+  margin-bottom: 0.5rem;
+  display: block;
+}
+
+.suggestions-card p {
+  color: var(--text-secondary);
+  font-size: 0.875rem; /* 14px for mobile */
+  margin: 0.5rem 0;
+}
+
+.suggestions-card p a {
+  color: var(--primary);
+  text-decoration: none;
+}
+
+.suggestions-card p a:hover {
+  text-decoration: underline;
+}
+
+/* Recent Reflections */
+.recent-reflections {
+  background: var(--card-bg, #2a3646);
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-light, 0 2px 8px rgba(0, 0, 0, 0.1));
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.recent-reflections:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+}
+
+.recent-reflections h3 {
+  font-size: 1.25rem; /* 20px for mobile */
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--glass-border);
+  padding-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.recent-reflections .entry-preview {
+  background: transparent;
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  box-shadow: none;
+  transition: transform 0.2s ease;
+}
+
+.recent-reflections .entry-preview:hover {
+  transform: translateY(-4px);
+}
+
+.recent-reflections .entry-meta {
+  color: var(--text-secondary);
+  font-size: 0.75rem; /* 12px for mobile */
+  margin-bottom: 0.5rem;
+}
+
+.recent-reflections .entry-snippet {
+  color: var(--text-secondary);
+  font-size: 0.875rem; /* 14px for mobile */
+  line-height: 1.6;
+  margin-bottom: 0.5rem;
+}
+
+.recent-reflections .entry-preview a {
+  color: var(--primary);
+  font-size: 0.875rem; /* 14px for mobile */
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.recent-reflections .entry-preview a:hover {
+  color: var(--button-hover);
+  text-decoration: underline;
+}
+
+/* Activity Suggestions Card */
+.activity-suggestions-card {
+  background: var(--card-bg, #ffffff);
+  color: var(--text-primary, #1f2937);
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 2rem;
+  box-shadow: var(--shadow, 0 4px 12px rgba(0, 0, 0, 0.1));
+  border: 1px solid #e5e7eb;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.activity-suggestions-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+}
+
+.activity-suggestions-card h3 {
+  color: var(--text-primary, #1f2937);
+  font-size: 1.25rem; /* 20px for mobile */
+  font-weight: 600;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.activity-suggestions-card ul {
+  list-style-type: disc;
+  padding-left: 1.5rem;
+  margin: 0.75rem 0;
+  color: var(--text-secondary, #4b5563);
+  font-size: 0.875rem; /* 14px for mobile */
+  line-height: 1.6;
+}
+
+.activity-suggestions-card p {
+  color: var(--text-secondary, #4b5563);
+  font-size: 0.875rem; /* 14px for mobile */
+  margin: 0.5rem 0;
+}
+
+.activity-suggestions-card p a {
+  color: var(--primary);
+  text-decoration: none;
+}
+
+.activity-suggestions-card p a:hover {
+  text-decoration: underline;
+}
+
+/* Mood Card */
+.mood-card {
+  background: var(--card-bg, #ffffff);
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-light, 0 2px 8px rgba(0, 0, 0, 0.1));
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.mood-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+}
+
+.mood-card h3 {
+  color: var(--text-primary);
+  font-size: 1.25rem; /* 20px for mobile */
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.mood-card p {
+  color: var(--text-secondary);
+  font-size: 0.875rem; /* 14px for mobile */
+  line-height: 1.6;
+}
+
+/* Enhanced Responsive Styles */
 @media (max-width: 900px) {
   .sidebar {
     width: 80px;
     align-items: center;
+    padding: 16px;
   }
 
   .sidebar .logo h1 {
     display: none;
   }
 
+  .sidebar .logo i {
+    font-size: 1.75rem; /* 28px for smaller logo icon */
+  }
+
+  .sidebar nav {
+    gap: 8px;
+  }
+
   .sidebar nav a {
     justify-content: center;
-    padding: 12px;
+    padding: 10px;
+    font-size: 0; /* Hide text */
+  }
+
+  .sidebar nav a i {
+    font-size: 1.5rem; /* 24px for icons */
   }
 
   .sidebar nav a span {
@@ -542,75 +831,17 @@ footer {
 
   .main-content {
     margin-left: 80px;
-  }
-
-  .search-bar {
-    width: 300px;
-  }
-
-  .stats-boxes {
-    grid-template-columns: 1fr;
-  }
-
-  .chart-card {
-    min-height: 670px;
-  }
-
-  .chart-card canvas {
-    max-width: 100%;
-    height: 400px !important;
-  }
-
-  .floating-mood-card {
-    width: 260px;
-    right: 16px;
-    top: 80px;
-  }
-}
-
-@media (max-width: 600px) {
-  .sidebar {
-    width: 100%;
-    height: auto;
-    position: static;
-    flex-direction: row;
-    justify-content: space-between;
-    padding: 16px;
-  }
-
-  .sidebar nav {
-    flex-direction: row;
-    gap: 8px;
-  }
-
-  .main-content {
-    margin-left: 0;
-    padding: 16px;
-  }
-
-  .card-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .stats-section h2,
-  .chart-section h2,
-  .insights-section h2 {
-    font-size: 1.75rem; /* 28px for main headings on small screens */
-  }
-
-  .stat-box,
-  .chart-card,
-  .insights-content {
     padding: 16px;
   }
 
   .search-bar {
     width: 100%;
+    max-width: 300px;
     padding: 10px 16px;
   }
 
   .search-bar i {
-    font-size: 1.125rem; /* 18px for search icon */
+    font-size: 1.25rem; /* 20px for search icon */
   }
 
   .search-bar input,
@@ -618,38 +849,245 @@ footer {
     font-size: 1rem; /* 16px for input and placeholder */
   }
 
+  .stats-boxes {
+    grid-template-columns: 1fr;
+  }
+
   .chart-card {
-    min-height: 450px;
+    min-height: 350px;
   }
 
   .chart-card canvas {
+    max-width: 100%;
     height: 300px !important;
   }
 
   .floating-mood-card {
-    width: 220px;
+    width: 260px;
     right: 12px;
-    top: 60px;
+    top: 70px;
+    padding: 12px;
+  }
+
+  .floating-mood-card h3 {
+    font-size: 1.125rem; /* 18px */
+  }
+
+  .floating-mood-card p {
+    font-size: 0.75rem; /* 12px */
+  }
+
+  .quick-actions {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .neuroaid-btn {
+    width: 100%;
+    max-width: 300px;
+    padding: 0.75rem;
   }
 }
 
-/* Reusable button styles */
+@media (max-width: 600px) {
+  .sidebar {
+    width: 100%;
+    height: auto;
+    position: fixed;
+    bottom: 0;
+    top: auto;
+    flex-direction: row;
+    justify-content: space-around;
+    padding: 12px;
+    background: var(--glass-bg);
+    border-top: 1px solid var(--glass-border);
+    border-right: none;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+  }
+
+  .sidebar .logo {
+    display: none; /* Hide logo on mobile */
+  }
+
+  .sidebar nav {
+    flex-direction: row;
+    gap: 0;
+    width: 100%;
+    justify-content: space-around;
+  }
+
+  .sidebar nav a {
+    padding: 8px;
+    border-radius: 6px;
+    flex: 1;
+    text-align: center;
+  }
+
+  .sidebar nav a i {
+    font-size: 1.25rem; /* 20px for icons */
+  }
+
+  .main-content {
+    margin-left: 0;
+    margin-bottom: 60px; /* Space for bottom nav */
+    padding: 12px;
+  }
+
+  header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px;
+  }
+
+  .welcome-container {
+    width: 100%;
+  }
+
+  .welcome-text,
+  .quote-text {
+    font-size: 1rem; /* 16px for mobile */
+  }
+
+  .profile-dropdown {
+    width: 100%;
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .profile {
+    font-size: 0.875rem; /* 14px */
+  }
+
+  .profile img {
+    width: 32px;
+    height: 32px;
+  }
+
+  .profile i {
+    font-size: 1.25rem; /* 20px */
+  }
+
+  .card-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .stats-section h2,
+  .chart-section h2,
+  .insights-section h2 {
+    font-size: 1.5rem; /* 24px for mobile */
+  }
+
+  .stat-box,
+  .chart-card,
+  .insights-content,
+  .welcome-message,
+  .suggestions-card,
+  .recent-reflections,
+  .activity-suggestions-card,
+  .mood-card {
+    padding: 12px;
+    border-radius: 10px;
+  }
+
+  .card-icon,
+  .stat-box i {
+    font-size: 2rem; /* 32px for mobile */
+    min-width: 40px;
+    min-height: 40px;
+    padding: 8px;
+  }
+
+  .card-content h3,
+  .stat-box h3 {
+    font-size: 1.25rem; /* 20px for mobile */
+  }
+
+  .card-content p,
+  .stat-box p,
+  .insights-content {
+    font-size: 0.875rem; /* 14px for mobile */
+  }
+
+  .search-bar {
+    width: 100%;
+    padding: 8px 12px;
+  }
+
+  .search-bar i {
+    font-size: 1rem; /* 16px */
+  }
+
+  .search-bar input,
+  .search-bar input::placeholder {
+    font-size: 0.875rem; /* 14px */
+  }
+
+  .chart-card {
+    min-height: 300px;
+  }
+
+  .chart-card canvas {
+    height: 250px !important;
+  }
+
+  .floating-mood-card {
+    width: 90%;
+    max-width: 240px;
+    right: 8px;
+    top: 60px;
+    padding: 10px;
+  }
+
+  .floating-mood-card .close-mood-card {
+    font-size: 0.875rem; /* 14px */
+  }
+
+  .neuroaid-btn {
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem; /* 14px */
+    min-width: 100px;
+  }
+
+  .quick-actions {
+    gap: 0.5rem;
+  }
+}
+
+@media (max-width: 400px) {
+  .sidebar nav a i {
+    font-size: 1rem; /* 16px for very small screens */
+  }
+
+  .main-content {
+    margin-bottom: 50px; /* Adjust for smaller nav */
+  }
+
+  .floating-mood-card {
+    width: 95%;
+    max-width: 220px;
+    top: 50px;
+  }
+}
+
+/* Reusable button styles (consolidated) */
 .neuroaid-btn {
   background-color: var(--primary);
-  margin-top: 20px;
   color: #fff;
   border: none;
-  padding-top: 20px;
-  padding-bottom: 20px;
+  padding: 0.75rem 1.5rem;
   border-radius: 8px;
-  font-size: 1rem; /* 16px for button text */
+  font-size: 1rem;
   font-weight: 500;
   cursor: pointer;
   transition: transform 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease;
   display: inline-flex;
   align-items: center;
-  gap: 15px;
+  gap: 0.5rem;
   text-decoration: none;
+  touch-action: manipulation;
 }
 
 .neuroaid-btn:hover {
@@ -685,241 +1123,4 @@ footer {
 @keyframes spin {
   0% { transform: translateY(-50%) rotate(0deg); }
   100% { transform: translateY(-50%) rotate(360deg); }
-}
-
-/* Welcome Message */
-.welcome-message {
-  margin-bottom: 2rem;
-  border: none;
-  border-radius: 8px;
-  padding: 1.5rem;
-  background-color: var(--card-bg, #2a3646);
-  box-shadow: var(--shadow-light, 0 2px 8px rgba(0, 0, 0, 0.1));
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-.welcome-message:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
-}
-
-.welcome-message h2 {
-  color: var(--text-primary);
-  font-size: 2rem; /* 32px for welcome heading */
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.welcome-message p {
-  color: var(--text-secondary);
-  font-size: 1rem; /* 16px for welcome text */
-  font-weight: 400;
-  margin-top: 0.75rem;
-}
-
-/* Suggestions Card */
-.suggestions-card {
-  background: var(--card-bg, #2a3646);
-  border-radius: 8px;
-  padding: 1.5rem;
-  margin-bottom: 2rem;
-  border: 1px solid var(--glass-border);
-  box-shadow: var(--shadow-light, 0 2px 8px rgba(0, 0, 0, 0.1));
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-.suggestions-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
-}
-
-.suggestions-card h3 {
-  color: var(--text-primary);
-  font-size: 1.5rem; /* 24px for suggestions heading */
-  font-weight: 600;
-  margin-bottom: 1rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.suggestions-card ul {
-  list-style-type: disc;
-  padding-left: 1.5rem;
-  margin: 0.75rem 0;
-  color: var(--text-secondary);
-  font-size: 1rem; /* 16px for list items */
-  line-height: 1.6;
-}
-
-.suggestions-card ul li {
-  margin-bottom: 0.5rem;
-  display: block;
-}
-
-.suggestions-card p {
-  color: var(--text-secondary);
-  font-size: 1rem; /* 16px for suggestions text */
-  margin: 0.5rem 0;
-}
-
-.suggestions-card p a {
-  color: var(--primary);
-  text-decoration: none;
-}
-
-.suggestions-card p a:hover {
-  text-decoration: underline;
-}
-
-/* Recent Reflections */
-.recent-reflections {
-  background: var(--card-bg, #2a3646);
-  border-radius: 8px;
-  padding: 1.5rem;
-  margin-bottom: 2rem;
-  border: 1px solid var(--glass-border);
-  box-shadow: var(--shadow-light, 0 2px 8px rgba(0, 0, 0, 0.1));
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-.recent-reflections:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
-}
-
-.recent-reflections h3 {
-  font-size: 1.5rem; /* 24px for reflections heading */
-  font-weight: 600;
-  margin-bottom: 1rem;
-  color: var(--text-primary);
-  border-bottom: 1px solid var(--glass-border);
-  padding-bottom: 0.5rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.recent-reflections .entry-preview {
-  background: transparent;
-  border: 1px solid var(--glass-border);
-  border-radius: 8px;
-  padding: 1rem;
-  margin-bottom: 1rem;
-  box-shadow: none;
-  transition: transform 0.2s ease;
-}
-
-.recent-reflections .entry-preview:hover {
-  transform: translateY(-4px);
-}
-
-.recent-reflections .entry-meta {
-  color: var(--text-secondary);
-  font-size: 0.875rem; /* 14px for entry meta */
-  margin-bottom: 0.5rem;
-}
-
-.recent-reflections .entry-snippet {
-  color: var(--text-secondary);
-  font-size: 1rem; /* 16px for entry snippet */
-  line-height: 1.6;
-  margin-bottom: 0.5rem;
-}
-
-.recent-reflections .entry-preview a {
-  color: var(--primary);
-  font-size: 1rem; /* 16px for read more link */
-  text-decoration: none;
-  font-weight: 500;
-}
-
-.recent-reflections .entry-preview a:hover {
-  color: var(--button-hover);
-  text-decoration: underline;
-}
-
-/* Activity Suggestions Card */
-.activity-suggestions-card {
-  background: var(--card-bg, #ffffff);
-  color: var(--text-primary, #1f2937);
-  border-radius: 12px;
-  padding: 24px;
-  margin-bottom: 2rem;
-  box-shadow: var(--shadow, 0 4px 12px rgba(0, 0, 0, 0.1));
-  border: 1px solid #e5e7eb;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-.activity-suggestions-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
-}
-
-.activity-suggestions-card h3 {
-  color: var(--text-primary, #1f2937);
-  font-size: 1.5rem; /* 24px for activity suggestions heading */
-  font-weight: 600;
-  margin-bottom: 1rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.activity-suggestions-card ul {
-  list-style-type: disc;
-  padding-left: 1.5rem;
-  margin: 0.75rem 0;
-  color: var(--text-secondary, #4b5563);
-  font-size: 1rem; /* 16px for list items */
-  line-height: 1.6;
-}
-
-.activity-suggestions-card p {
-  color: var(--text-secondary, #4b5563);
-  font-size: 1rem; /* 16px for activity suggestions text */
-  margin: 0.5rem 0;
-}
-
-.activity-suggestions-card p a {
-  color: var(--primary);
-  text-decoration: none;
-}
-
-.activity-suggestions-card p a:hover {
-  text-decoration: underline;
-}
-
-/* Mood Card */
-.mood-card {
-  background: var(--card-bg, #ffffff);
-  border-radius: 8px;
-  padding: 1.5rem;
-  margin-bottom: 2rem;
-  border: 1px solid var(--glass-border);
-  box-shadow: var(--shadow-light, 0 2px 8px rgba(0, 0, 0, 0.1));
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-.mood-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
-}
-
-.mood-card h3 {
-  color: var(--text-primary);
-  font-size: 1.5rem; /* 24px for mood card heading */
-  font-weight: 600;
-  margin-bottom: 0.75rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.mood-card p {
-  color: var(--text-secondary);
-  font-size: 1rem; /* 16px for mood card text */
-  line-height: 1.6;
 }
