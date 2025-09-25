@@ -161,34 +161,131 @@
   background-color: #b91c1c;
 }
 
-/* Responsive Design */
-@media (max-width: 600px) {
+/* Mobile-first responsive design */
+@media (max-width: 768px) {
+  .settings-section {
+    margin-top: 16px;
+  }
+  
   .settings-section h2 {
-    font-size: 28px;
+    font-size: 1.75rem;
+    margin-bottom: 16px;
   }
-
+  
+  .settings-section h2 i {
+    font-size: 1.5rem;
+  }
+  
+  .settings-card {
+    padding: 16px;
+    margin-bottom: 20px;
+  }
+  
+  .settings-group {
+    margin-bottom: 20px;
+  }
+  
   .settings-group h3 {
-    font-size: 22px;
+    font-size: 1.25rem;
+    margin-bottom: 12px;
   }
-
+  
+  .settings-group h3 i {
+    font-size: 1.125rem;
+  }
+  
+  .form-group {
+    margin-bottom: 12px;
+  }
+  
   .form-group label {
-    font-size: 16px;
+    font-size: 1rem;
+    margin-bottom: 4px;
   }
-
+  
   .form-group input,
   .form-group select {
-    font-size: 14px;
+    font-size: 0.875rem;
     padding: 10px;
+    border-radius: 6px;
   }
-
+  
+  .toggle-group {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
   .neuroaid-btn {
     padding: 12px 20px;
-    font-size: 14px;
+    font-size: 0.875rem;
+    width: 100%;
+    justify-content: center;
   }
-
+  
+  .action-group {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
   .action-btn {
-    padding: 8px 16px;
-    font-size: 14px;
+    padding: 10px 16px;
+    font-size: 0.875rem;
+    width: 100%;
+    text-align: center;
+  }
+  
+  .flash-message {
+    font-size: 0.875rem;
+    padding: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .settings-section h2 {
+    font-size: 1.5rem;
+  }
+  
+  .settings-section h2 i {
+    font-size: 1.25rem;
+  }
+  
+  .settings-card {
+    padding: 12px;
+    margin-bottom: 16px;
+  }
+  
+  .settings-group h3 {
+    font-size: 1.125rem;
+  }
+  
+  .settings-group h3 i {
+    font-size: 1rem;
+  }
+  
+  .form-group label {
+    font-size: 0.875rem;
+  }
+  
+  .form-group input,
+  .form-group select {
+    font-size: 0.8rem;
+    padding: 8px;
+  }
+  
+  .neuroaid-btn {
+    padding: 10px 16px;
+    font-size: 0.8rem;
+  }
+  
+  .action-btn {
+    padding: 8px 12px;
+    font-size: 0.8rem;
+  }
+  
+  .flash-message {
+    font-size: 0.8rem;
+    padding: 8px;
   }
 }
 

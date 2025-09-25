@@ -20,6 +20,15 @@
   --container-max-width: 1200px;
   --button-padding: 12px 24px;
   --button-border-radius: 8px;
+  
+  /* Mobile-specific variables */
+  --mobile-padding: 16px;
+  --mobile-font-h1: 1.75rem;
+  --mobile-font-h2: 1.5rem;
+  --mobile-font-h3: 1.25rem;
+  --mobile-font-body: 0.875rem;
+  --touch-target-size: 44px;
+  --mobile-sidebar-height: 60px;
 }
 
 * {
@@ -92,4 +101,184 @@ p, label, input, select, textarea {
 
 .neuroaid-btn.danger:hover {
   background: #b91c1c;
+}
+
+/* Mobile-first responsive design */
+@media (max-width: 768px) {
+  :root {
+    --font-size-h1: var(--mobile-font-h1);
+    --font-size-h2: var(--mobile-font-h2);
+    --font-size-h3: var(--mobile-font-h3);
+    --font-size-body: var(--mobile-font-body);
+    --spacing-md: var(--mobile-padding);
+    --button-padding: 12px 20px;
+  }
+  
+  body {
+    font-size: var(--mobile-font-body);
+    line-height: 1.6;
+  }
+  
+  .container {
+    padding: var(--mobile-padding);
+  }
+  
+  .neuroaid-btn {
+    min-height: var(--touch-target-size);
+    padding: 12px 20px;
+    font-size: var(--mobile-font-body);
+    touch-action: manipulation;
+  }
+  
+  h1 { font-size: var(--mobile-font-h1); }
+  h2 { font-size: var(--mobile-font-h2); }
+  h3 { font-size: var(--mobile-font-h3); }
+  p, label, input, select, textarea {
+    font-size: var(--mobile-font-body);
+  }
+}
+
+@media (max-width: 480px) {
+  :root {
+    --mobile-padding: 12px;
+    --mobile-font-h1: 1.5rem;
+    --mobile-font-h2: 1.25rem;
+    --mobile-font-h3: 1.125rem;
+    --mobile-font-body: 0.8rem;
+  }
+  
+  .container {
+    padding: var(--mobile-padding);
+  }
+  
+  .neuroaid-btn {
+    padding: 10px 16px;
+    font-size: 0.875rem;
+  }
+}
+
+/* Touch-friendly improvements */
+@media (hover: none) and (pointer: coarse) {
+  .neuroaid-btn:hover {
+    transform: none;
+    box-shadow: var(--shadow);
+  }
+  
+  .card:hover {
+    transform: none;
+    box-shadow: var(--shadow);
+  }
+  
+  .neuroaid-btn:active {
+    transform: scale(0.98);
+  }
+  
+  .card:active {
+    transform: scale(0.99);
+  }
+}
+
+/* Prevent zoom on input focus for iOS */
+@media screen and (-webkit-min-device-pixel-ratio: 0) {
+  select, textarea, input[type="text"], input[type="password"], input[type="email"] {
+    font-size: 16px;
+  }
+}
+
+/* Mobile-specific utilities */
+.mobile-only {
+  display: none;
+}
+
+.desktop-only {
+  display: block;
+}
+
+@media (max-width: 768px) {
+  .mobile-only {
+    display: block;
+  }
+  
+  .desktop-only {
+    display: none;
+  }
+}
+
+/* Improved touch targets for mobile */
+@media (max-width: 768px) {
+  button, 
+  .neuroaid-btn, 
+  a, 
+  input[type="button"], 
+  input[type="submit"], 
+  input[type="reset"] {
+    min-height: var(--touch-target-size);
+    min-width: var(--touch-target-size);
+  }
+  
+  /* Better spacing for mobile */
+  .mobile-spacing {
+    padding: var(--mobile-padding);
+  }
+  
+  .mobile-text {
+    font-size: var(--mobile-font-body);
+  }
+  
+  .mobile-heading {
+    font-size: var(--mobile-font-h2);
+  }
+  
+  /* Improved form elements for mobile */
+  input, select, textarea {
+    font-size: 16px; /* Prevents zoom on iOS */
+    padding: 12px;
+    border-radius: 8px;
+  }
+  
+  /* Better card spacing on mobile */
+  .card {
+    margin-bottom: 16px;
+    padding: 16px;
+  }
+  
+  /* Improved button groups for mobile */
+  .button-group {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+  }
+  
+  .button-group .neuroaid-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* Landscape mobile optimizations */
+@media (max-width: 768px) and (orientation: landscape) {
+  .main-content {
+    padding: 8px;
+  }
+  
+  .card {
+    padding: 12px;
+    margin-bottom: 12px;
+  }
+  
+  .neuroaid-btn {
+    padding: 8px 16px;
+  }
+}
+
+/* High DPI mobile screens */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .card {
+    border-width: 0.5px;
+  }
+  
+  .sidebar {
+    border-right-width: 0.5px;
+  }
 }

@@ -14,47 +14,62 @@
 .profile-header {
   text-align: center;
   margin-bottom: 20px;
+  padding: 20px 0;
 }
 
 .profile-header h2 {
   font-size: 1.75rem; /* 28px */
   font-weight: 600;
   color: var(--text-primary, #1f2937);
-  margin-bottom: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
+  margin-bottom: 12px;
+  display: block;
+  width: 100%;
 }
 
 .profile-header p {
   font-size: 0.875rem; /* 14px */
   color: var(--text-secondary, #6b7280);
   line-height: 1.5;
+  margin-bottom: 20px;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .progress-container {
   display: flex;
   justify-content: center;
-  margin-bottom: 20px;
+  margin: 20px 0;
+  padding: 20px 0;
+  min-height: 120px;
+  align-items: center;
 }
 
 .progress-circle {
-  width: 80px;
-  height: 80px;
+  width: 100px;
+  height: 100px;
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
+  margin: 0 auto;
+  flex-shrink: 0;
+  overflow: visible;
 }
 
 .progress-ring__circle {
   stroke: var(--primary, #7c3aed);
-  stroke-width: 6;
+  stroke-width: 8;
   fill: none;
   transition: stroke-dashoffset 0.3s ease;
   transform-origin: center;
   transform: rotate(-90deg); /* Adjust for SVG circle starting point */
+}
+
+.progress-ring {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
 .progress-text {
@@ -62,21 +77,39 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  font-size: 0.875rem; /* 14px */
+  font-size: 0.75rem; /* 12px - slightly smaller for better fit */
   font-weight: 500;
   color: var(--primary, #7c3aed);
   text-align: center;
-  line-height: 1; /* Ensure text fits vertically */
-  width: 100%;
-  height: 100%;
+  line-height: 1.1;
+  width: 90%; /* Leave some margin */
+  height: auto;
   display: flex;
   align-items: center;
   justify-content: center;
   pointer-events: none;
   z-index: 1;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 @media (max-width: 900px) {
+  .progress-circle {
+    width: 80px;
+    height: 80px;
+  }
+
+  .progress-ring__circle {
+    stroke-width: 6;
+  }
+
+  .progress-text {
+    font-size: 0.7rem; /* 11px */
+    width: 85%;
+  }
+}
+
+@media (max-width: 600px) {
   .progress-circle {
     width: 70px;
     height: 70px;
@@ -84,15 +117,15 @@
 
   .progress-ring__circle {
     stroke-width: 5;
-    r: 40;
   }
 
   .progress-text {
-    font-size: 0.75rem; /* 12px */
+    font-size: 0.65rem; /* 10px */
+    width: 80%;
   }
 }
 
-@media (max-width: 600px) {
+@media (max-width: 400px) {
   .progress-circle {
     width: 60px;
     height: 60px;
@@ -100,27 +133,11 @@
 
   .progress-ring__circle {
     stroke-width: 4;
-    r: 36;
   }
 
   .progress-text {
-    font-size: 0.7rem; /* 11px */
-  }
-}
-
-@media (max-width: 400px) {
-  .progress-circle {
-    width: 50px;
-    height: 50px;
-  }
-
-  .progress-ring__circle {
-    stroke-width: 3;
-    r: 32;
-  }
-
-  .progress-text {
-    font-size: 0.65rem; /* 10px */
+    font-size: 0.6rem; /* 9px */
+    width: 75%;
   }
 }
 
@@ -393,12 +410,25 @@
     padding: 16px 10px;
   }
 
+  .profile-header {
+    padding: 15px 0;
+  }
+
   .profile-header h2 {
     font-size: 1.5rem; /* 24px */
+    margin-bottom: 10px;
   }
 
   .profile-header p {
     font-size: 0.75rem; /* 12px */
+    margin-bottom: 15px;
+    max-width: 500px;
+  }
+
+  .progress-container {
+    margin: 15px 0;
+    padding: 15px 0;
+    min-height: 100px;
   }
 
   .progress-circle {
@@ -412,7 +442,8 @@
   }
 
   .progress-text {
-    font-size: 0.75rem; /* 12px */
+    font-size: 0.7rem; /* 11px */
+    width: 85%;
   }
 
   .card {
@@ -513,12 +544,25 @@
     padding: 12px 8px;
   }
 
+  .profile-header {
+    padding: 12px 0;
+  }
+
   .profile-header h2 {
     font-size: 1.25rem; /* 20px */
+    margin-bottom: 8px;
   }
 
   .profile-header p {
     font-size: 0.7rem; /* 11px */
+    margin-bottom: 12px;
+    max-width: 400px;
+  }
+
+  .progress-container {
+    margin: 12px 0;
+    padding: 12px 0;
+    min-height: 90px;
   }
 
   .progress-circle {
@@ -532,7 +576,8 @@
   }
 
   .progress-text {
-    font-size: 0.7rem; /* 11px */
+    font-size: 0.65rem; /* 10px */
+    width: 80%;
   }
 
   .card {
@@ -605,12 +650,25 @@
     padding: 10px 6px;
   }
 
+  .profile-header {
+    padding: 10px 0;
+  }
+
   .profile-header h2 {
     font-size: 1.125rem; /* 18px */
+    margin-bottom: 6px;
   }
 
   .profile-header p {
     font-size: 0.65rem; /* 10px */
+    margin-bottom: 10px;
+    max-width: 350px;
+  }
+
+  .progress-container {
+    margin: 10px 0;
+    padding: 10px 0;
+    min-height: 80px;
   }
 
   .card {

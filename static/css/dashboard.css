@@ -892,17 +892,18 @@ footer {
 @media (max-width: 600px) {
   .sidebar {
     width: 100%;
-    height: auto;
+    height: var(--mobile-sidebar-height);
     position: fixed;
     bottom: 0;
     top: auto;
     flex-direction: row;
     justify-content: space-around;
-    padding: 12px;
+    padding: 8px 12px;
     background: var(--glass-bg);
+    backdrop-filter: blur(20px);
     border-top: 1px solid var(--glass-border);
     border-right: none;
-    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
     z-index: 1000;
   }
 
@@ -919,19 +920,31 @@ footer {
 
   .sidebar nav a {
     padding: 8px;
-    border-radius: 6px;
+    border-radius: 8px;
     flex: 1;
     text-align: center;
+    min-height: var(--touch-target-size);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
   }
 
   .sidebar nav a i {
     font-size: 1.25rem; /* 20px for icons */
   }
+  
+  .sidebar nav a:hover,
+  .sidebar nav a.active {
+    background: var(--primary);
+    color: #fff;
+    transform: scale(1.05);
+  }
 
   .main-content {
     margin-left: 0;
-    margin-bottom: 60px; /* Space for bottom nav */
-    padding: 12px;
+    margin-bottom: var(--mobile-sidebar-height);
+    padding: var(--mobile-padding);
   }
 
   header {
