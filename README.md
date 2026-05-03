@@ -22,7 +22,8 @@
 ## 🌿 Vision
 
 <p align="center">
-Create a safe private space where users can understand emotions, reflect daily and improve mental wellness.
+Create a safe private space where users can understand emotions, reflect daily and improve mental wellness for prosperity
+  
 </p>
 
 ---
